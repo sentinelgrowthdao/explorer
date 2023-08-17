@@ -45,19 +45,23 @@ func NewMessageFromRaw(v sdk.Msg) *Message {
 	switch v := v.(type) {
 	case *nodetypes.MsgRegisterRequest:
 		item.Data = nodemessages.NewMsgRegisterRequestFromRaw(v)
-	case *nodetypes.MsgUpdateRequest:
-		item.Data = nodemessages.NewMsgMsgUpdateRequestFromRaw(v)
-	case *nodetypes.MsgSetStatusRequest:
-		item.Data = nodemessages.NewMsgSetStatusRequestFromRaw(v)
+	case *nodetypes.MsgUpdateDetailsRequest:
+		item.Data = nodemessages.NewMsgUpdateDetailsRequestFromRaw(v)
+	case *nodetypes.MsgUpdateStatusRequest:
+		item.Data = nodemessages.NewMsgUpdateStatusRequestFromRaw(v)
+	case *nodetypes.MsgSubscribeRequest:
+		item.Data = nodemessages.NewMsgSubscribeRequestFromRaw(v)
 
-	case *plantypes.MsgAddRequest:
-		item.Data = planmessages.NewMsgAddRequestFromRaw(v)
-	case *plantypes.MsgSetStatusRequest:
-		item.Data = planmessages.NewMsgSetStatusRequestFromRaw(v)
-	case *plantypes.MsgAddNodeRequest:
-		item.Data = planmessages.NewMsgMsgAddNodeRequestFromRaw(v)
-	case *plantypes.MsgRemoveNodeRequest:
-		item.Data = planmessages.NewMsgRemoveNodeRequestFromRaw(v)
+	case *plantypes.MsgCreateRequest:
+		item.Data = planmessages.NewMsgCreateRequestFromRaw(v)
+	case *plantypes.MsgUpdateStatusRequest:
+		item.Data = planmessages.NewMsgUpdateStatusRequestFromRaw(v)
+	case *plantypes.MsgLinkNodeRequest:
+		item.Data = planmessages.NewMsgLinkNodeRequestFromRaw(v)
+	case *plantypes.MsgUnlinkNodeRequest:
+		item.Data = planmessages.NewMsgUnlinkNodeRequestFromRaw(v)
+	case *plantypes.MsgSubscribeRequest:
+		item.Data = planmessages.NewMsgSubscribeRequestFromRaw(v)
 
 	case *providertypes.MsgRegisterRequest:
 		item.Data = providermessages.NewMsgRegisterRequestFromRaw(v)
@@ -66,21 +70,15 @@ func NewMessageFromRaw(v sdk.Msg) *Message {
 
 	case *sessiontypes.MsgStartRequest:
 		item.Data = sessionmessages.NewMsgStartRequestFromRaw(v)
-	case *sessiontypes.MsgUpdateRequest:
-		item.Data = sessionmessages.NewMsgUpdateRequestFromRaw(v)
+	case *sessiontypes.MsgUpdateDetailsRequest:
+		item.Data = sessionmessages.NewMsgUpdateDetailsRequestFromRaw(v)
 	case *sessiontypes.MsgEndRequest:
 		item.Data = sessionmessages.NewMsgMsgEndRequestFromRaw(v)
 
-	case *subscriptiontypes.MsgSubscribeToNodeRequest:
-		item.Data = subscriptionmessages.NewMsgSubscribeToNodeRequestFromRaw(v)
-	case *subscriptiontypes.MsgSubscribeToPlanRequest:
-		item.Data = subscriptionmessages.NewMsgSubscribeToPlanRequestFromRaw(v)
 	case *subscriptiontypes.MsgCancelRequest:
 		item.Data = subscriptionmessages.NewMsgMsgCancelRequestFromRaw(v)
-	case *subscriptiontypes.MsgAddQuotaRequest:
-		item.Data = subscriptionmessages.NewMsgAddQuotaRequestFromRaw(v)
-	case *subscriptiontypes.MsgUpdateQuotaRequest:
-		item.Data = subscriptionmessages.NewMsgUpdateQuotaRequestFromRaw(v)
+	case *subscriptiontypes.MsgAllocateRequest:
+		item.Data = subscriptionmessages.NewMsgAllocateRequestFromRaw(v)
 
 	case *swaptypes.MsgSwapRequest:
 		item.Data = swapmessages.NewMsgSwapRequestFromRaw(v)

@@ -18,6 +18,7 @@ type (
 		Identity    string `json:"identity,omitempty" bson:"identity"`
 		Website     string `json:"website,omitempty" bson:"website"`
 		Description string `json:"description,omitempty" bson:"description"`
+		Status      string `json:"status,omitempty" bson:"status"`
 	}
 )
 
@@ -38,5 +39,6 @@ func NewMsgMsgUpdateRequestFromRaw(v *providertypes.MsgUpdateRequest) *MsgUpdate
 		Identity:    v.Identity,
 		Website:     v.Website,
 		Description: v.Description,
+		Status:      v.Status.String(),
 	}
 }

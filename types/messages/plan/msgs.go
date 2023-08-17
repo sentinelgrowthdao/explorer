@@ -9,58 +9,71 @@ import (
 )
 
 type (
-	MsgAddRequest struct {
-		From     string            `json:"from,omitempty" bson:"from"`
-		Price    commontypes.Coins `json:"price,omitempty" bson:"price"`
-		Validity time.Duration     `json:"validity,omitempty" bson:"validity"`
-		Bytes    int64             `json:"bytes,omitempty" bson:"bytes"`
+	MsgCreateRequest struct {
+		From      string            `json:"from,omitempty" bson:"from"`
+		Duration  time.Duration     `json:"duration,omitempty" bson:"duration"`
+		Gigabytes int64             `json:"gigabytes,omitempty" bson:"gigabytes"`
+		Prices    commontypes.Coins `json:"prices,omitempty" bson:"prices"`
 	}
-	MsgSetStatusRequest struct {
+	MsgUpdateStatusRequest struct {
 		From   string `json:"from,omitempty" bson:"from"`
 		ID     uint64 `json:"id,omitempty" bson:"id"`
 		Status string `json:"status,omitempty" bson:"status"`
 	}
-	MsgAddNodeRequest struct {
-		From    string `json:"from,omitempty" bson:"from"`
-		ID      uint64 `json:"id,omitempty" bson:"id"`
-		Address string `json:"address,omitempty" bson:"address"`
+	MsgLinkNodeRequest struct {
+		From        string `json:"from,omitempty" bson:"from"`
+		ID          uint64 `json:"id,omitempty" bson:"id"`
+		NodeAddress string `json:"node_address,omitempty" bson:"node_address"`
 	}
-	MsgRemoveNodeRequest struct {
-		From    string `json:"from,omitempty" bson:"from"`
-		ID      uint64 `json:"id,omitempty" bson:"id"`
-		Address string `json:"address,omitempty" bson:"address"`
+	MsgUnlinkNodeRequest struct {
+		From        string `json:"from,omitempty" bson:"from"`
+		ID          uint64 `json:"id,omitempty" bson:"id"`
+		NodeAddress string `json:"node_address,omitempty" bson:"node_address"`
+	}
+	MsgSubscribeRequest struct {
+		From  string `json:"from,omitempty" bson:"from"`
+		ID    uint64 `json:"id,omitempty" bson:"id"`
+		Denom string `json:"denom,omitempty" bson:"denom"`
 	}
 )
 
-func NewMsgAddRequestFromRaw(v *plantypes.MsgAddRequest) *MsgAddRequest {
-	return &MsgAddRequest{
-		From:     v.From,
-		Price:    commontypes.NewCoinsFromRaw(v.Price),
-		Validity: v.Validity,
-		Bytes:    v.Bytes.Int64(),
+func NewMsgCreateRequestFromRaw(v *plantypes.MsgCreateRequest) *MsgCreateRequest {
+	return &MsgCreateRequest{
+		From:      v.From,
+		Duration:  v.Duration,
+		Gigabytes: v.Gigabytes,
+		Prices:    commontypes.NewCoinsFromRaw(v.Prices),
 	}
 }
 
-func NewMsgSetStatusRequestFromRaw(v *plantypes.MsgSetStatusRequest) *MsgSetStatusRequest {
-	return &MsgSetStatusRequest{
+func NewMsgUpdateStatusRequestFromRaw(v *plantypes.MsgUpdateStatusRequest) *MsgUpdateStatusRequest {
+	return &MsgUpdateStatusRequest{
 		From:   v.From,
-		ID:     v.Id,
+		ID:     v.ID,
 		Status: v.Status.String(),
 	}
 }
 
-func NewMsgMsgAddNodeRequestFromRaw(v *plantypes.MsgAddNodeRequest) *MsgAddNodeRequest {
-	return &MsgAddNodeRequest{
-		From:    v.From,
-		ID:      v.Id,
-		Address: v.Address,
+func NewMsgLinkNodeRequestFromRaw(v *plantypes.MsgLinkNodeRequest) *MsgLinkNodeRequest {
+	return &MsgLinkNodeRequest{
+		From:        v.From,
+		ID:          v.ID,
+		NodeAddress: v.NodeAddress,
 	}
 }
 
-func NewMsgRemoveNodeRequestFromRaw(v *plantypes.MsgRemoveNodeRequest) *MsgRemoveNodeRequest {
-	return &MsgRemoveNodeRequest{
-		From:    v.From,
-		ID:      v.Id,
-		Address: v.Address,
+func NewMsgUnlinkNodeRequestFromRaw(v *plantypes.MsgUnlinkNodeRequest) *MsgUnlinkNodeRequest {
+	return &MsgUnlinkNodeRequest{
+		From:        v.From,
+		ID:          v.ID,
+		NodeAddress: v.NodeAddress,
+	}
+}
+
+func NewMsgSubscribeRequestFromRaw(v *plantypes.MsgSubscribeRequest) *MsgSubscribeRequest {
+	return &MsgSubscribeRequest{
+		From:  v.From,
+		ID:    v.ID,
+		Denom: v.Denom,
 	}
 }
