@@ -1,9 +1,9 @@
 package types
 
 import (
-	sentinelhub "github.com/sentinel-official/hub"
+	"github.com/sentinel-official/hub/app"
 )
 
 var (
-	EncCfg = sentinelhub.MakeEncodingConfig()
+	EncCfg = app.DefaultEncodingConfig()
 )
