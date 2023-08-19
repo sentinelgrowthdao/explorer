@@ -7,7 +7,7 @@ require (
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/gofrs/flock v0.8.1
-	github.com/sentinel-official/hub v0.11.1
+	github.com/sentinel-official/hub v0.11.2
 	github.com/tendermint/tendermint v0.34.27
 	go.mongodb.org/mongo-driver v1.12.1
 	golang.org/x/sync v0.3.0
