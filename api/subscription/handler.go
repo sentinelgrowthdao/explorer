@@ -80,9 +80,9 @@ func HandlerGetSubscription(db *mongo.Database) gin.HandlerFunc {
 	}
 }
 
-func HandlerGetSubscriptionQuotas(db *mongo.Database) gin.HandlerFunc {
+func HandlerGetAllocations(db *mongo.Database) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req RequestGetSubscriptionQuotas
+		var req RequestGetAllocations
 		if err := c.ShouldBindQuery(&req); err != nil {
 			c.JSON(http.StatusBadRequest, types.NewResponseError(1, err.Error()))
 			return
@@ -101,7 +101,7 @@ func HandlerGetSubscriptionQuotas(db *mongo.Database) gin.HandlerFunc {
 			SetSkip(req.Skip).
 			SetLimit(req.Limit)
 
-		items, err := database.SubscriptionQuotaFindAll(context.TODO(), db, filter, opts)
+		items, err := database.AllocationFindAll(context.TODO(), db, filter, opts)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, types.NewResponseError(2, err.Error()))
 			return
@@ -111,9 +111,9 @@ func HandlerGetSubscriptionQuotas(db *mongo.Database) gin.HandlerFunc {
 	}
 }
 
-func HandlerGetSubscriptionQuota(db *mongo.Database) gin.HandlerFunc {
+func HandlerGetAllocation(db *mongo.Database) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req RequestGetSubscriptionQuota
+		var req RequestGetAllocation
 		if err := c.ShouldBindUri(&req); err != nil {
 			c.JSON(http.StatusBadRequest, types.NewResponseError(1, err.Error()))
 			return
@@ -127,7 +127,7 @@ func HandlerGetSubscriptionQuota(db *mongo.Database) gin.HandlerFunc {
 		opts := options.FindOne().
 			SetProjection(projection)
 
-		item, err := database.SubscriptionQuotaFindOne(context.TODO(), db, filter, opts)
+		item, err := database.AllocationFindOne(context.TODO(), db, filter, opts)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, types.NewResponseError(2, err.Error()))
 			return
@@ -137,9 +137,9 @@ func HandlerGetSubscriptionQuota(db *mongo.Database) gin.HandlerFunc {
 	}
 }
 
-func HandlerGetSubscriptionQuotaEvents(db *mongo.Database) gin.HandlerFunc {
+func HandlerGetAllocationEvents(db *mongo.Database) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req RequestGetSubscriptionQuotaEvents
+		var req RequestGetAllocationEvents
 		if err := c.ShouldBindQuery(&req); err != nil {
 			c.JSON(http.StatusBadRequest, types.NewResponseError(1, err.Error()))
 			return
@@ -159,7 +159,7 @@ func HandlerGetSubscriptionQuotaEvents(db *mongo.Database) gin.HandlerFunc {
 			SetSkip(req.Skip).
 			SetLimit(req.Limit)
 
-		items, err := database.SubscriptionQuotaEventFindAll(context.TODO(), db, filter, opts)
+		items, err := database.AllocationEventFindAll(context.TODO(), db, filter, opts)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, types.NewResponseError(2, err.Error()))
 			return

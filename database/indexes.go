@@ -9,7 +9,7 @@ db.txs.createIndex({'height': 1, 'result.code': 1}, {partialFilterExpression: {'
 db.nodes.createIndex({'address': 1}, {unique: true})
 db.deposits.createIndex({'address': 1}, {unique: true})
 db.subscriptions.createIndex({'id': 1}, {unique: true})
-db.subscription_quotas.createIndex({'id': 1, 'address': 1}, {unique: true})
+db.allocations.createIndex({'id': 1, 'address': 1}, {unique: true})
 db.sessions.createIndex({'id': 1}, {unique: true})
 db.plans.createIndex({'id': 1}, {unique: true})
 db.providers.createIndex({'address': 1}, {unique: true})

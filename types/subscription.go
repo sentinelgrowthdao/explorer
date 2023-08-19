@@ -8,18 +8,19 @@ import (
 )
 
 type Subscription struct {
-	ID        uint64 `json:"id,omitempty" bson:"id"`
-	Address   string `json:"address,omitempty" bson:"address"`
-	FreeBytes int64  `json:"free_bytes,omitempty" bson:"free_bytes"`
+	ID         uint64    `json:"id,omitempty" bson:"id"`
+	Address    string    `json:"address,omitempty" bson:"address"`
+	InactiveAt time.Time `json:"inactive_at,omitempty" bson:"inactive_at"`
 
 	NodeAddress string            `json:"node_address,omitempty" bson:"node_address"`
-	Price       *commontypes.Coin `json:"price,omitempty" bson:"price"`
+	Gigabytes   int64             `json:"gigabytes,omitempty" bson:"gigabytes"`
+	Hours       int64             `json:"hours,omitempty" bson:"hours"`
 	Deposit     *commontypes.Coin `json:"deposit,omitempty" bson:"deposit"`
 
 	PlanID        uint64            `json:"plan_id,omitempty" bson:"plan_id"`
+	Denom         string            `json:"denom,omitempty" bson:"denom"`
 	StakingReward *commontypes.Coin `json:"staking_reward,omitempty" bson:"staking_reward"`
 	Payment       *commontypes.Coin `json:"payment,omitempty" bson:"payment"`
-	Expiry        time.Time         `json:"expiry,omitempty" bson:"expiry"`
 
 	StartHeight    int64     `json:"start_height,omitempty" bson:"start_height"`
 	StartTimestamp time.Time `json:"start_timestamp,omitempty" bson:"start_timestamp"`

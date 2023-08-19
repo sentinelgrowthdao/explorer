@@ -28,10 +28,10 @@ type (
 )
 
 type Node struct {
-	Address         string            `json:"address,omitempty" bson:"address"`
-	ProviderAddress string            `json:"provider_address,omitempty" bson:"provider_address"`
-	Price           commontypes.Coins `json:"price,omitempty" bson:"price"`
-	RemoteURL       string            `json:"remote_url,omitempty" bson:"remote_url"`
+	Address        string            `json:"address,omitempty" bson:"address"`
+	GigabytePrices commontypes.Coins `json:"gigabyte_prices,omitempty" bson:"gigabyte_prices"`
+	HourlyPrices   commontypes.Coins `json:"hourly_prices,omitempty" bson:"hourly_prices"`
+	RemoteURL      string            `json:"remote_url,omitempty" bson:"remote_url"`
 
 	JoinHeight    int64     `json:"join_height,omitempty" bson:"join_height"`
 	JoinTimestamp time.Time `json:"join_timestamp,omitempty" bson:"join_timestamp"`

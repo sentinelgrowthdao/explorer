@@ -14,6 +14,7 @@ type Session struct {
 	NodeAddress    string                 `json:"node_address,omitempty" bson:"node_address"`
 	Duration       int64                  `json:"duration,omitempty" bson:"duration"`
 	Bandwidth      *commontypes.Bandwidth `json:"bandwidth,omitempty" bson:"bandwidth"`
+	InactiveAt     time.Time              `json:"inactive_at,omitempty" bson:"inactive_at"`
 
 	StartHeight    int64     `json:"start_height,omitempty" bson:"start_height"`
 	StartTimestamp time.Time `json:"start_timestamp,omitempty" bson:"start_timestamp"`
