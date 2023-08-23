@@ -57,3 +57,7 @@ func SessionAggregate(ctx context.Context, db *mongo.Database, pipeline []bson.M
 func SessionCountDocuments(ctx context.Context, db *mongo.Database, filter bson.M, opts ...*options.CountOptions) (int64, error) {
 	return CountDocuments(ctx, db.Collection(SessionCollectionName), filter, opts...)
 }
+
+func SessionUpdateMany(ctx context.Context, db *mongo.Database, filter, update bson.M, opts ...*options.UpdateOptions) error {
+	return UpdateMany(ctx, db.Collection(SessionCollectionName), filter, update, opts...)
+}

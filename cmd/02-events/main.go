@@ -722,7 +722,7 @@ func main() {
 								"subscription_id": msg.ID,
 							}
 
-							_, err = database.SessionFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
+							err = database.SessionUpdateMany(sctx, db, filter, update)
 							if err != nil {
 								return err
 							}

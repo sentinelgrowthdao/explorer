@@ -193,6 +193,16 @@ func DeleteMany(ctx context.Context, c *mongo.Collection, filter bson.M, opts ..
 	return err
 }
 
+func UpdateMany(ctx context.Context, c *mongo.Collection, filter, update bson.M, opts ...*options.UpdateOptions) error {
+	now := time.Now()
+	defer func() {
+		log.Println(c.Name(), "UpdateMany", time.Since(now))
+	}()
+
+	_, err := c.UpdateMany(ctx, filter, update, opts...)
+	return err
+}
+
 func IndexesCreateMany(ctx context.Context, c *mongo.Collection, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) error {
 	now := time.Now()
 	defer func() {
