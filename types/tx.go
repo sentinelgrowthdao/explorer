@@ -274,7 +274,20 @@ type Tx struct {
 func NewTxFromRaw(v tmtypes.Tx) *Tx {
 	tx, err := DecodeTx(v)
 	if err != nil {
-		panic(err)
+		return &Tx{
+			Hash:          bytes.HexBytes(v.Hash()).String(),
+			Height:        0,
+			Index:         0,
+			SignerInfos:   nil,
+			Fee:           nil,
+			GasLimit:      0,
+			Payer:         "",
+			Granter:       "",
+			Messages:      nil,
+			Memo:          "",
+			TimeoutHeight: 0,
+			Result:        nil,
+		}
 	}
 
 	return &Tx{

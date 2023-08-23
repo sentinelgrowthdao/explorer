@@ -17,7 +17,7 @@ type RequestGetStatistics struct {
 	FromTimestamp time.Time `form:"from_timestamp"`
 	ToTimestamp   time.Time `form:"to_timestamp,default=2050-01-01T00:00:00Z" binding:"gtfield=FromTimestamp"`
 	Timeframe     string    `form:"timeframe,default=day" binding:"oneof=day week month year"`
-	Status        string    `form:"status" binding:"omitempty,oneof=STATUS_ACTIVE STATUS_INACTIVE STATUS_INACTIVE_PENDING"`
+	Status        string    `form:"status" binding:"omitempty,oneof=active inactive inactive_pending"`
 	Sort          bson.D
 	SortBy        string `form:"sort_by"`
 	Skip          int64  `form:"skip,default=0" binding:"gte=0"`

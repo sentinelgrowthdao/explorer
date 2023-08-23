@@ -14,7 +14,9 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/gofrs/flock"
+	hubapp "github.com/sentinel-official/hub/app"
 	hubtypes "github.com/sentinel-official/hub/types"
+	subscriptiontypes "github.com/sentinel-official/hub/x/subscription/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -48,9 +50,8 @@ var (
 )
 
 func init() {
-	flag.Int64Var(&height, "from-height", 9_348_475, "")
+	flag.Int64Var(&height, "from-height", 12_310_005, "")
 	flag.Int64Var(&toHeight, "to-height", math.MaxInt64, "")
-	// flag.StringVar(&rpcAddress, "rpc-address", "http://188.34.144.2:26657", "")
 	flag.StringVar(&rpcAddress, "rpc-address", "http://10.104.0.6:26657", "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
@@ -70,7 +71,9 @@ func getStringEvent(events types.StringEvents, s string) (*types.StringEvent, er
 }
 
 func main() {
-	q, err := querier.NewQuerier(rpcAddress, "/websocket")
+	encCfg := hubapp.DefaultEncodingConfig()
+
+	q, err := querier.NewQuerier(&encCfg, rpcAddress, "/websocket")
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -179,7 +182,7 @@ func main() {
 						log.Println(string(buf))
 
 						switch dTxs[tIndex].Messages[mIndex].Type {
-						case "/sentinel.node.v1.MsgRegisterRequest", "/sentinel.node.v1.MsgService/MsgRegister":
+						case "/sentinel.node.v2.MsgRegisterRequest", "/sentinel.node.v2.MsgService/MsgRegister":
 							var msg nodemessages.MsgRegisterRequest
 							if err := json.Unmarshal(buf, &msg); err != nil {
 								return err
@@ -187,8 +190,8 @@ func main() {
 
 							dNode := &types.Node{
 								Address:                explorerutils.MustHexFromBech32AccAddress(msg.From),
-								ProviderAddress:        explorerutils.MustHexFromBech32ProvAddress(msg.Provider),
-								Price:                  msg.Price,
+								GigabytePrices:         msg.GigabytePrices,
+								HourlyPrices:           msg.HourlyPrices,
 								RemoteURL:              msg.RemoteURL,
 								JoinHeight:             dBlock.Height,
 								JoinTimestamp:          dBlock.Time,
@@ -214,8 +217,8 @@ func main() {
 							if err := database.NodeSave(sctx, db, dNode); err != nil {
 								return err
 							}
-						case "/sentinel.node.v1.MsgUpdateRequest", "/sentinel.node.v1.MsgService/MsgUpdate":
-							var msg nodemessages.MsgUpdateRequest
+						case "/sentinel.node.v2.MsgUpdateDetailsRequest", "/sentinel.node.v2.MsgService/MsgUpdateDetails":
+							var msg nodemessages.MsgUpdateDetailsRequest
 							if err := json.Unmarshal(buf, &msg); err != nil {
 								return err
 							}
@@ -225,13 +228,11 @@ func main() {
 							}
 
 							updateSet := bson.M{}
-							if msg.Provider != "" {
-								updateSet["provider_address"] = explorerutils.MustHexFromBech32ProvAddress(msg.Provider)
-								updateSet["price"] = nil
+							if msg.GigabytePrices != nil && len(msg.GigabytePrices) > 0 {
+								updateSet["gigabyte_prices"] = msg.GigabytePrices
 							}
-							if msg.Price != nil && len(msg.Price) > 0 {
-								updateSet["provider_address"] = ""
-								updateSet["price"] = msg.Price
+							if msg.HourlyPrices != nil && len(msg.HourlyPrices) > 0 {
+								updateSet["hourly_prices"] = msg.HourlyPrices
 							}
 							if msg.RemoteURL != "" {
 								updateSet["remote_url"] = msg.RemoteURL
@@ -248,8 +249,8 @@ func main() {
 							if err != nil {
 								return err
 							}
-						case "/sentinel.node.v1.MsgSetStatusRequest", "/sentinel.node.v1.MsgService/MsgSetStatus":
-							var msg nodemessages.MsgSetStatusRequest
+						case "/sentinel.node.v2.MsgUpdateStatusRequest", "/sentinel.node.v2.MsgService/MsgUpdateStatus":
+							var msg nodemessages.MsgUpdateStatusRequest
 							if err := json.Unmarshal(buf, &msg); err != nil {
 								return err
 							}
@@ -287,36 +288,42 @@ func main() {
 							if err := database.NodeEventSave(sctx, db, dNodeEvent); err != nil {
 								return err
 							}
-						case "/sentinel.subscription.v1.MsgSubscribeToNodeRequest", "/sentinel.subscription.v1.MsgService/MsgSubscribeToNode",
-							"/sentinel.subscription.v1.MsgSubscribeToPlanRequest", "/sentinel.subscription.v1.MsgService/MsgSubscribeToPlan":
-							eSubscribe, err := getStringEvent(resultLogs[mIndex].Events, "sentinel.subscription.v1.EventSubscribe")
+						case "/sentinel.node.v2.MsgSubscribeRequest", "/sentinel.node.v2.MsgService/MsgSubscribe":
+							eCreateSubscription, err := getStringEvent(resultLogs[mIndex].Events, "sentinel.node.v2.EventCreateSubscription")
 							if err != nil {
 								return err
 							}
 
-							id, err := strconv.ParseUint(eSubscribe.Attributes["id"], 10, 64)
+							id, err := strconv.ParseUint(eCreateSubscription.Attributes["id"], 10, 64)
 							if err != nil {
 								return err
 							}
 
-							qSubscription, err := q.QuerySubscription(id, dBlock.Height)
+							qSubscriptionI, err := q.QuerySubscription(id, dBlock.Height)
 							if err != nil {
 								return err
 							}
 
-							hexAccAddr := explorerutils.MustHexFromBech32AccAddress(qSubscription.Owner)
+							qSubscription, ok := qSubscriptionI.(*subscriptiontypes.NodeSubscription)
+							if !ok {
+								return fmt.Errorf("invalid subscription type %s", qSubscriptionI.Type())
+							}
+
+							hexAccAddr := explorerutils.MustHexFromBech32AccAddress(qSubscription.Address)
+							hexNodeAddr := explorerutils.MustHexFromBech32NodeAddress(qSubscription.NodeAddress)
 
 							dSubscription := &types.Subscription{
-								ID:              qSubscription.Id,
+								ID:              id,
 								Address:         hexAccAddr,
-								FreeBytes:       qSubscription.Free.Int64(),
-								NodeAddress:     explorerutils.MustHexFromBech32NodeAddress(qSubscription.Node),
-								Price:           commontypes.NewCoinFromRaw(&qSubscription.Price),
+								InactiveAt:      qSubscription.InactiveAt,
+								NodeAddress:     hexNodeAddr,
+								Gigabytes:       qSubscription.Gigabytes,
+								Hours:           qSubscription.Hours,
 								Deposit:         commontypes.NewCoinFromRaw(&qSubscription.Deposit),
-								PlanID:          qSubscription.Plan,
+								PlanID:          0,
+								Denom:           "",
 								StakingReward:   nil,
 								Payment:         nil,
-								Expiry:          qSubscription.Expiry,
 								StartHeight:     dBlock.Height,
 								StartTimestamp:  dBlock.Time,
 								StartTxHash:     dTxs[tIndex].Hash,
@@ -329,104 +336,360 @@ func main() {
 								StatusTxHash:    dTxs[tIndex].Hash,
 							}
 
-							var rawCoin sdk.Coin
-							if err := json.Unmarshal([]byte(eSubscribe.Attributes["amount"]), &rawCoin); err != nil {
+							if err = database.SubscriptionSave(sctx, db, dSubscription); err != nil {
 								return err
 							}
 
-							amount := sdk.NewCoins(rawCoin)
-
-							if dSubscription.PlanID == 0 {
-								accAddr, err := sdk.AccAddressFromHex(hexAccAddr)
-								if err != nil {
-									return err
-								}
-
-								qDeposit, err := q.QueryDeposit(accAddr, dBlock.Height)
-								if err != nil {
-									return err
-								}
-
-								filter = bson.M{
-									"address": hexAccAddr,
-								}
-								update := bson.M{
-									"$set": bson.M{
-										"coins":     commontypes.NewCoinsFromRaw(qDeposit.Coins),
-										"height":    dBlock.Height,
-										"timestamp": dBlock.Time,
-									},
-								}
-								projection = bson.M{
-									"_id": 1,
-								}
-
-								_, err = database.DepositFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
-								if err != nil {
-									return err
-								}
-
-								dDepositEvent := &types.DepositEvent{
-									Address:   hexAccAddr,
-									Coins:     commontypes.NewCoinsFromRaw(amount),
-									Subtract:  false,
-									Height:    dBlock.Height,
-									Timestamp: dBlock.Time,
-									TxHash:    dTxs[tIndex].Hash,
-								}
-
-								if err := database.DepositEventSave(sctx, db, dDepositEvent); err != nil {
-									return err
-								}
-							} else {
-								eStakingReward, err := getStringEvent(resultLogs[mIndex].Events, "sentinel.subscription.v1.EventStakingReward")
-								if err != nil {
-									return err
-								}
-
-								var rawCoin sdk.Coin
-								if err := json.Unmarshal([]byte(eStakingReward.Attributes["amount"]), &rawCoin); err != nil {
-									return err
-								}
-
-								dSubscription.StakingReward = commontypes.NewCoinFromRaw(&rawCoin)
-								dSubscription.Payment = commontypes.NewCoinFromRaw(&amount[0])
+							accAddr, err := sdk.AccAddressFromHex(hexAccAddr)
+							if err != nil {
+								return err
 							}
+
+							qDeposit, err := q.QueryDeposit(accAddr, dBlock.Height)
+							if err != nil {
+								return err
+							}
+
+							filter = bson.M{
+								"address": hexAccAddr,
+							}
+							update := bson.M{
+								"$set": bson.M{
+									"coins":     commontypes.NewCoinsFromRaw(qDeposit.Coins),
+									"height":    dBlock.Height,
+									"timestamp": dBlock.Time,
+								},
+							}
+							projection = bson.M{
+								"_id": 1,
+							}
+
+							_, err = database.DepositFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
+							if err != nil {
+								return err
+							}
+
+							dDepositEvent := &types.DepositEvent{
+								Address:   hexAccAddr,
+								Coins:     commontypes.NewCoinsFromRaw(sdk.NewCoins(qSubscription.Deposit)),
+								Action:    "addition",
+								Height:    dBlock.Height,
+								Timestamp: dBlock.Time,
+								TxHash:    dTxs[tIndex].Hash,
+							}
+
+							if err = database.DepositEventSave(sctx, db, dDepositEvent); err != nil {
+								return err
+							}
+
+							if qSubscription.Gigabytes != 0 {
+								qAllocation, err := q.QueryAllocation(qSubscription.ID, accAddr, dBlock.Height)
+								if err != nil {
+									return err
+								}
+
+								dAllocation := &types.Allocation{
+									ID:            qSubscription.ID,
+									Address:       hexAccAddr,
+									UtilisedBytes: qAllocation.UtilisedBytes.Int64(),
+									GrantedBytes:  qAllocation.GrantedBytes.Int64(),
+								}
+
+								if err := database.AllocationSave(sctx, db, dAllocation); err != nil {
+									return err
+								}
+
+								dAllocationEvent := &types.AllocationEvent{
+									ID:            qSubscription.ID,
+									Address:       hexAccAddr,
+									UtilisedBytes: qAllocation.UtilisedBytes.Int64(),
+									GrantedBytes:  qAllocation.GrantedBytes.Int64(),
+									Height:        dBlock.Height,
+									Timestamp:     dBlock.Time,
+									TxHash:        dTxs[tIndex].Hash,
+								}
+
+								if err := database.AllocationEventSave(sctx, db, dAllocationEvent); err != nil {
+									return err
+								}
+							}
+						case "/sentinel.plan.v2.MsgCreateRequest", "/sentinel.plan.v2.MsgService/MsgCreate":
+							var msg planmessages.MsgCreateRequest
+							if err := json.Unmarshal(buf, &msg); err != nil {
+								return err
+							}
+
+							eCreate, err := getStringEvent(resultLogs[mIndex].Events, "sentinel.plan.v2.EventCreate")
+							if err != nil {
+								return err
+							}
+
+							id, err := strconv.ParseUint(eCreate.Attributes["id"], 10, 64)
+							if err != nil {
+								return err
+							}
+
+							dPlan := &types.Plan{
+								ID:              id,
+								ProviderAddress: explorerutils.MustHexFromBech32ProvAddress(msg.From),
+								Prices:          msg.Prices,
+								Duration:        msg.Duration.Nanoseconds(),
+								Gigabytes:       msg.Gigabytes,
+								NodeAddresses:   []string{},
+								CreateHeight:    dBlock.Height,
+								CreateTimestamp: dBlock.Time,
+								CreateTxHash:    dTxs[tIndex].Hash,
+								Status:          hubtypes.StatusInactive.String(),
+								StatusHeight:    dBlock.Height,
+								StatusTimestamp: dBlock.Time,
+								StatusTxHash:    dTxs[tIndex].Hash,
+							}
+
+							if err := database.PlanSave(sctx, db, dPlan); err != nil {
+								return err
+							}
+						case "/sentinel.plan.v2.MsgUpdateStatusRequest", "/sentinel.plan.v2.MsgService/MsgUpdateStatus":
+							var msg planmessages.MsgUpdateStatusRequest
+							if err := json.Unmarshal(buf, &msg); err != nil {
+								return err
+							}
+
+							filter = bson.M{
+								"id": msg.ID,
+							}
+							update := bson.M{
+								"$set": bson.M{
+									"status":           msg.Status,
+									"status_height":    dBlock.Height,
+									"status_timestamp": dBlock.Time,
+									"status_tx_hash":   dTxs[tIndex].Hash,
+								},
+							}
+							projection = bson.M{
+								"_id": 1,
+							}
+
+							_, err = database.PlanFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
+							if err != nil {
+								return err
+							}
+						case "/sentinel.plan.v2.MsgLinkNodeRequest", "/sentinel.plan.v2.MsgService/MsgLinkNode":
+							var msg planmessages.MsgLinkNodeRequest
+							if err := json.Unmarshal(buf, &msg); err != nil {
+								return err
+							}
+
+							filter = bson.M{
+								"id": msg.ID,
+							}
+							update := bson.M{
+								"$push": bson.M{
+									"node_addresses": explorerutils.MustHexFromBech32NodeAddress(msg.NodeAddress),
+								},
+							}
+							projection = bson.M{
+								"_id": 1,
+							}
+
+							_, err = database.PlanFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
+							if err != nil {
+								return err
+							}
+						case "/sentinel.plan.v2.MsgUnlinkNodeRequest", "/sentinel.plan.v2.MsgService/MsgUnlinkNode":
+							var msg planmessages.MsgUnlinkNodeRequest
+							if err := json.Unmarshal(buf, &msg); err != nil {
+								return err
+							}
+
+							filter = bson.M{
+								"id": msg.ID,
+							}
+							update := bson.M{
+								"$pull": bson.M{
+									"node_addresses": explorerutils.MustHexFromBech32NodeAddress(msg.NodeAddress),
+								},
+							}
+							projection = bson.M{
+								"_id": 1,
+							}
+
+							_, err = database.PlanFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
+							if err != nil {
+								return err
+							}
+						case "/sentinel.plan.v2.MsgSubscribeRequest", "/sentinel.plan.v2.MsgService/MsgSubscribe":
+							eCreateSubscription, err := getStringEvent(resultLogs[mIndex].Events, "sentinel.plan.v2.EventCreateSubscription")
+							if err != nil {
+								return err
+							}
+
+							id, err := strconv.ParseUint(eCreateSubscription.Attributes["id"], 10, 64)
+							if err != nil {
+								return err
+							}
+
+							qSubscriptionI, err := q.QuerySubscription(id, dBlock.Height)
+							if err != nil {
+								return err
+							}
+
+							qSubscription, ok := qSubscriptionI.(*subscriptiontypes.PlanSubscription)
+							if !ok {
+								return fmt.Errorf("invalid subscription type %s", qSubscriptionI.Type())
+							}
+
+							hexAccAddr := explorerutils.MustHexFromBech32AccAddress(qSubscription.Address)
+
+							dSubscription := &types.Subscription{
+								ID:              qSubscription.ID,
+								Address:         hexAccAddr,
+								InactiveAt:      qSubscription.InactiveAt,
+								NodeAddress:     "",
+								Gigabytes:       0,
+								Hours:           0,
+								Deposit:         nil,
+								PlanID:          qSubscription.PlanID,
+								Denom:           qSubscription.Denom,
+								StakingReward:   nil,
+								Payment:         nil,
+								StartHeight:     dBlock.Height,
+								StartTimestamp:  dBlock.Time,
+								StartTxHash:     dTxs[tIndex].Hash,
+								EndHeight:       0,
+								EndTimestamp:    time.Time{},
+								EndTxHash:       "",
+								Status:          qSubscription.Status.String(),
+								StatusHeight:    dBlock.Height,
+								StatusTimestamp: dBlock.Time,
+								StatusTxHash:    dTxs[tIndex].Hash,
+							}
+
+							ePayForPlan, err := getStringEvent(resultLogs[mIndex].Events, "sentinel.subscription.v2.EventPayForPlan")
+							if err != nil {
+								return err
+							}
+
+							payment, err := sdk.ParseCoinNormalized(ePayForPlan.Attributes["payment"])
+							if err != nil {
+								return err
+							}
+
+							stakingReward, err := sdk.ParseCoinNormalized(ePayForPlan.Attributes["staking_reward"])
+							if err != nil {
+								return err
+							}
+
+							dSubscription.StakingReward = commontypes.NewCoinFromRaw(&stakingReward)
+							dSubscription.Payment = commontypes.NewCoinFromRaw(&payment)
 
 							if err := database.SubscriptionSave(sctx, db, dSubscription); err != nil {
 								return err
 							}
 
-							qSubscriptionQuota, err := q.QuerySubscriptionQuota(qSubscription.Id, qSubscription.GetOwner(), dBlock.Height)
+							accAddr, err := sdk.AccAddressFromHex(hexAccAddr)
 							if err != nil {
 								return err
 							}
 
-							dSubscriptionQuota := &types.SubscriptionQuota{
-								ID:             qSubscription.Id,
-								Address:        hexAccAddr,
-								ConsumedBytes:  qSubscriptionQuota.Consumed.Int64(),
-								AllocatedBytes: qSubscriptionQuota.Allocated.Int64(),
-							}
-
-							if err := database.SubscriptionQuotaSave(sctx, db, dSubscriptionQuota); err != nil {
+							qAllocation, err := q.QueryAllocation(qSubscription.ID, accAddr, dBlock.Height)
+							if err != nil {
 								return err
 							}
 
-							dSubscriptionQuotaEvent := &types.SubscriptionQuotaEvent{
-								ID:             qSubscription.Id,
-								Address:        hexAccAddr,
-								ConsumedBytes:  qSubscriptionQuota.Consumed.Int64(),
-								AllocatedBytes: qSubscriptionQuota.Allocated.Int64(),
-								Height:         dBlock.Height,
-								Timestamp:      dBlock.Time,
-								TxHash:         dTxs[tIndex].Hash,
+							dAllocation := &types.Allocation{
+								ID:            qSubscription.ID,
+								Address:       hexAccAddr,
+								UtilisedBytes: qAllocation.UtilisedBytes.Int64(),
+								GrantedBytes:  qAllocation.GrantedBytes.Int64(),
 							}
 
-							if err := database.SubscriptionQuotaEventSave(sctx, db, dSubscriptionQuotaEvent); err != nil {
+							if err := database.AllocationSave(sctx, db, dAllocation); err != nil {
 								return err
 							}
-						case "/sentinel.subscription.v1.MsgCancelRequest", "/sentinel.subscription.v1.MsgService/MsgCancel":
+
+							dAllocationEvent := &types.AllocationEvent{
+								ID:            qSubscription.ID,
+								Address:       hexAccAddr,
+								UtilisedBytes: qAllocation.UtilisedBytes.Int64(),
+								GrantedBytes:  qAllocation.GrantedBytes.Int64(),
+								Height:        dBlock.Height,
+								Timestamp:     dBlock.Time,
+								TxHash:        dTxs[tIndex].Hash,
+							}
+
+							if err := database.AllocationEventSave(sctx, db, dAllocationEvent); err != nil {
+								return err
+							}
+						case "/sentinel.provider.v2.MsgRegisterRequest", "/sentinel.provider.v2.MsgService/MsgRegister":
+							var msg providermessages.MsgRegisterRequest
+							if err := json.Unmarshal(buf, &msg); err != nil {
+								return err
+							}
+
+							dProvider := &types.Provider{
+								Address:         explorerutils.MustHexFromBech32AccAddress(msg.From),
+								Name:            msg.Name,
+								Identity:        msg.Identity,
+								Website:         msg.Website,
+								Description:     msg.Description,
+								Status:          hubtypes.StatusInactive.String(),
+								StatusHeight:    dBlock.Height,
+								StatusTimestamp: dBlock.Time,
+								StatusTxHash:    dTxs[tIndex].Hash,
+								JoinHeight:      dBlock.Height,
+								JoinTimestamp:   dBlock.Time,
+								JoinTxHash:      dTxs[tIndex].Hash,
+							}
+
+							if err := database.ProviderSave(sctx, db, dProvider); err != nil {
+								return err
+							}
+						case "/sentinel.provider.v2.MsgUpdateRequest", "/sentinel.provider.v2.MsgService/MsgUpdate":
+							var msg providermessages.MsgUpdateRequest
+							if err := json.Unmarshal(buf, &msg); err != nil {
+								return err
+							}
+
+							provAddr, err := hubtypes.ProvAddressFromBech32(msg.From)
+							if err != nil {
+								return err
+							}
+
+							qProvider, err := q.QueryProvider(provAddr, dBlock.Height)
+							if err != nil {
+								return err
+							}
+
+							filter = bson.M{
+								"address": explorerutils.MustHexFromBech32ProvAddress(msg.From),
+							}
+
+							updateSet := bson.M{
+								"name":        qProvider.Name,
+								"identity":    qProvider.Identity,
+								"website":     qProvider.Website,
+								"description": qProvider.Description,
+								"status":      qProvider.Status,
+							}
+
+							if msg.Status != hubtypes.StatusUnspecified.String() {
+								updateSet["status_height"] = dBlock.Height
+								updateSet["status_timestamp"] = dBlock.Time
+								updateSet["status_tx_hash"] = dTxs[tIndex].Hash
+							}
+
+							update := bson.M{
+								"$set": updateSet,
+							}
+							projection = bson.M{
+								"_id": 1,
+							}
+
+							_, err = database.ProviderFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
+							if err != nil {
+								return err
+							}
+						case "/sentinel.subscription.v2.MsgCancelRequest", "/sentinel.subscription.v2.MsgService/MsgCancel":
 							var msg subscriptionmessages.MsgCancelRequest
 							if err := json.Unmarshal(buf, &msg); err != nil {
 								return err
@@ -454,55 +717,32 @@ func main() {
 							if err != nil {
 								return err
 							}
-						case "/sentinel.subscription.v1.MsgAddQuotaRequest", "/sentinel.subscription.v1.MsgService/MsgAddQuota":
-							var msg subscriptionmessages.MsgAddQuotaRequest
+
+							filter = bson.M{
+								"subscription_id": msg.ID,
+							}
+
+							_, err = database.SessionFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
+							if err != nil {
+								return err
+							}
+						case "/sentinel.subscription.v2.MsgAllocateRequest", "/sentinel.subscription.v2.MsgService/MsgAllocate":
+							var msg subscriptionmessages.MsgAllocateRequest
 							if err := json.Unmarshal(buf, &msg); err != nil {
 								return err
 							}
 
-							hexAccAddr := explorerutils.MustHexFromBech32AccAddress(msg.Address)
-
-							dSubscriptionQuota := &types.SubscriptionQuota{
-								ID:             msg.ID,
-								Address:        hexAccAddr,
-								ConsumedBytes:  0,
-								AllocatedBytes: msg.Bytes,
-							}
-
-							if err := database.SubscriptionQuotaSave(sctx, db, dSubscriptionQuota); err != nil {
-								return err
-							}
-
-							dSubscriptionQuotaEvent := &types.SubscriptionQuotaEvent{
-								ID:             msg.ID,
-								Address:        hexAccAddr,
-								ConsumedBytes:  0,
-								AllocatedBytes: msg.Bytes,
-								Height:         dBlock.Height,
-								Timestamp:      dBlock.Time,
-								TxHash:         dTxs[tIndex].Hash,
-							}
-
-							if err := database.SubscriptionQuotaEventSave(sctx, db, dSubscriptionQuotaEvent); err != nil {
-								return err
-							}
-						case "/sentinel.subscription.v1.MsgUpdateQuotaRequest", "/sentinel.subscription.v1.MsgService/MsgUpdateQuota":
-							var msg subscriptionmessages.MsgUpdateQuotaRequest
-							if err := json.Unmarshal(buf, &msg); err != nil {
-								return err
-							}
-
-							accAddr, err := sdk.AccAddressFromBech32(msg.Address)
+							accAddr, err := sdk.AccAddressFromBech32(msg.From)
 							if err != nil {
 								return err
 							}
 
-							qSubscriptionQuota, err := q.QuerySubscriptionQuota(msg.ID, accAddr, dBlock.Height)
+							qAllocation, err := q.QueryAllocation(msg.ID, accAddr, dBlock.Height)
 							if err != nil {
 								return err
 							}
 
-							hexAccAddr := explorerutils.MustHexFromBech32AccAddress(msg.Address)
+							hexAccAddr := explorerutils.MustHexFromBech32AccAddress(msg.From)
 
 							filter = bson.M{
 								"id":      msg.ID,
@@ -510,39 +750,84 @@ func main() {
 							}
 							update := bson.M{
 								"$set": bson.M{
-									"consumed_bytes":  qSubscriptionQuota.Consumed.Int64(),
-									"allocated_bytes": qSubscriptionQuota.Allocated.Int64(),
+									"granted_bytes":  qAllocation.GrantedBytes.Int64(),
+									"utilised_bytes": qAllocation.UtilisedBytes.Int64(),
 								},
 							}
 							projection = bson.M{
 								"_id": 1,
 							}
 
-							_, err = database.SubscriptionQuotaFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
+							_, err = database.AllocationFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
 							if err != nil {
 								return err
 							}
 
-							dSubscriptionQuotaEvent := &types.SubscriptionQuotaEvent{
-								ID:             msg.ID,
-								Address:        hexAccAddr,
-								ConsumedBytes:  qSubscriptionQuota.Consumed.Int64(),
-								AllocatedBytes: qSubscriptionQuota.Allocated.Int64(),
-								Height:         dBlock.Height,
-								Timestamp:      dBlock.Time,
-								TxHash:         dTxs[tIndex].Hash,
+							dAllocationEvent := &types.AllocationEvent{
+								ID:            msg.ID,
+								Address:       hexAccAddr,
+								GrantedBytes:  qAllocation.GrantedBytes.Int64(),
+								UtilisedBytes: qAllocation.UtilisedBytes.Int64(),
+								Height:        dBlock.Height,
+								Timestamp:     dBlock.Time,
+								TxHash:        dTxs[tIndex].Hash,
 							}
 
-							if err := database.SubscriptionQuotaEventSave(sctx, db, dSubscriptionQuotaEvent); err != nil {
+							if err := database.AllocationEventSave(sctx, db, dAllocationEvent); err != nil {
 								return err
 							}
-						case "/sentinel.session.v1.MsgStartRequest", "/sentinel.session.v1.MsgService/MsgStart":
+
+							accAddr, err = sdk.AccAddressFromBech32(msg.Address)
+							if err != nil {
+								return err
+							}
+
+							qAllocation, err = q.QueryAllocation(msg.ID, accAddr, dBlock.Height)
+							if err != nil {
+								return err
+							}
+
+							hexAccAddr = explorerutils.MustHexFromBech32AccAddress(msg.Address)
+
+							filter = bson.M{
+								"id":      msg.ID,
+								"address": hexAccAddr,
+							}
+							update = bson.M{
+								"$set": bson.M{
+									"granted_bytes":  qAllocation.GrantedBytes.Int64(),
+									"utilised_bytes": qAllocation.UtilisedBytes.Int64(),
+								},
+							}
+							projection = bson.M{
+								"_id": 1,
+							}
+
+							_, err = database.AllocationFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
+							if err != nil {
+								return err
+							}
+
+							dAllocationEvent = &types.AllocationEvent{
+								ID:            msg.ID,
+								Address:       hexAccAddr,
+								GrantedBytes:  qAllocation.GrantedBytes.Int64(),
+								UtilisedBytes: qAllocation.UtilisedBytes.Int64(),
+								Height:        dBlock.Height,
+								Timestamp:     dBlock.Time,
+								TxHash:        dTxs[tIndex].Hash,
+							}
+
+							if err := database.AllocationEventSave(sctx, db, dAllocationEvent); err != nil {
+								return err
+							}
+						case "/sentinel.session.v2.MsgStartRequest", "/sentinel.session.v2.MsgService/MsgStart":
 							var msg sessionmessages.MsgStartRequest
 							if err := json.Unmarshal(buf, &msg); err != nil {
 								return err
 							}
 
-							eStart, err := getStringEvent(resultLogs[mIndex].Events, "sentinel.session.v1.EventStart")
+							eStart, err := getStringEvent(resultLogs[mIndex].Events, "sentinel.session.v2.EventStart")
 							if err != nil {
 								return err
 							}
@@ -556,7 +841,7 @@ func main() {
 								ID:              id,
 								SubscriptionID:  msg.ID,
 								Address:         explorerutils.MustHexFromBech32AccAddress(msg.From),
-								NodeAddress:     explorerutils.MustHexFromBech32NodeAddress(msg.Node),
+								NodeAddress:     explorerutils.MustHexFromBech32NodeAddress(msg.Address),
 								Duration:        0,
 								Bandwidth:       nil,
 								StartHeight:     dBlock.Height,
@@ -591,8 +876,8 @@ func main() {
 							if err := database.SessionEventSave(sctx, db, dSessionEvent); err != nil {
 								return err
 							}
-						case "/sentinel.session.v1.MsgUpdateRequest", "/sentinel.session.v1.MsgService/MsgUpdate":
-							var msg sessionmessages.MsgUpdateRequest
+						case "/sentinel.session.v2.MsgUpdateDetailsRequest", "/sentinel.session.v2.MsgService/MsgUpdateDetails":
+							var msg sessionmessages.MsgUpdateDetailsRequest
 							if err := json.Unmarshal(buf, &msg); err != nil {
 								return err
 							}
@@ -628,7 +913,7 @@ func main() {
 							if err := database.SessionEventSave(sctx, db, dSessionEvent); err != nil {
 								return err
 							}
-						case "/sentinel.session.v1.MsgEndRequest", "/sentinel.session.v1.MsgService/MsgEnd":
+						case "/sentinel.session.v2.MsgEndRequest", "/sentinel.session.v2.MsgService/MsgEnd":
 							var msg sessionmessages.MsgEndRequest
 							if err := json.Unmarshal(buf, &msg); err != nil {
 								return err
@@ -657,165 +942,6 @@ func main() {
 							if err != nil {
 								return err
 							}
-						case "/sentinel.plan.v1.MsgAddRequest", "/sentinel.plan.v1.MsgService/MsgAdd":
-							var msg planmessages.MsgAddRequest
-							if err := json.Unmarshal(buf, &msg); err != nil {
-								return err
-							}
-
-							eAdd, err := getStringEvent(resultLogs[mIndex].Events, "sentinel.plan.v1.EventAdd")
-							if err != nil {
-								return err
-							}
-
-							id, err := strconv.ParseUint(eAdd.Attributes["id"], 10, 64)
-							if err != nil {
-								return err
-							}
-
-							dPlan := &types.Plan{
-								ID:              id,
-								ProviderAddress: explorerutils.MustHexFromBech32ProvAddress(msg.From),
-								Price:           msg.Price,
-								Validity:        msg.Validity.Nanoseconds(),
-								Bytes:           msg.Bytes,
-								NodeAddresses:   []string{},
-								AddHeight:       dBlock.Height,
-								AddTimestamp:    dBlock.Time,
-								AddTxHash:       dTxs[tIndex].Hash,
-								Status:          hubtypes.StatusInactive.String(),
-								StatusHeight:    dBlock.Height,
-								StatusTimestamp: dBlock.Time,
-								StatusTxHash:    dTxs[tIndex].Hash,
-							}
-
-							if err := database.PlanSave(sctx, db, dPlan); err != nil {
-								return err
-							}
-						case "/sentinel.plan.v1.MsgSetStatusRequest", "/sentinel.plan.v1.MsgService/MsgSetStatus":
-							var msg planmessages.MsgSetStatusRequest
-							if err := json.Unmarshal(buf, &msg); err != nil {
-								return err
-							}
-
-							filter = bson.M{
-								"id": msg.ID,
-							}
-							update := bson.M{
-								"$set": bson.M{
-									"status":           msg.Status,
-									"status_height":    dBlock.Height,
-									"status_timestamp": dBlock.Time,
-									"status_tx_hash":   dTxs[tIndex].Hash,
-								},
-							}
-							projection = bson.M{
-								"_id": 1,
-							}
-
-							_, err = database.PlanFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
-							if err != nil {
-								return err
-							}
-						case "/sentinel.plan.v1.MsgAddNodeRequest", "/sentinel.plan.v1.MsgService/MsgAddNode":
-							var msg planmessages.MsgAddNodeRequest
-							if err := json.Unmarshal(buf, &msg); err != nil {
-								return err
-							}
-
-							filter = bson.M{
-								"id": msg.ID,
-							}
-							update := bson.M{
-								"$push": bson.M{
-									"node_addresses": explorerutils.MustHexFromBech32NodeAddress(msg.Address),
-								},
-							}
-							projection = bson.M{
-								"_id": 1,
-							}
-
-							_, err = database.PlanFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
-							if err != nil {
-								return err
-							}
-						case "/sentinel.plan.v1.MsgRemoveNodeRequest", "/sentinel.plan.v1.MsgService/MsgRemoveNode":
-							var msg planmessages.MsgRemoveNodeRequest
-							if err := json.Unmarshal(buf, &msg); err != nil {
-								return err
-							}
-
-							filter = bson.M{
-								"id": msg.ID,
-							}
-							update := bson.M{
-								"$pull": bson.M{
-									"node_addresses": explorerutils.MustHexFromBech32NodeAddress(msg.Address),
-								},
-							}
-							projection = bson.M{
-								"_id": 1,
-							}
-
-							_, err = database.PlanFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
-							if err != nil {
-								return err
-							}
-						case "/sentinel.provider.v1.MsgRegisterRequest", "/sentinel.provider.v1.MsgService/MsgRegister":
-							var msg providermessages.MsgRegisterRequest
-							if err := json.Unmarshal(buf, &msg); err != nil {
-								return err
-							}
-
-							dProvider := &types.Provider{
-								Address:       explorerutils.MustHexFromBech32AccAddress(msg.From),
-								Name:          msg.Name,
-								Identity:      msg.Identity,
-								Website:       msg.Website,
-								Description:   msg.Description,
-								JoinHeight:    dBlock.Height,
-								JoinTimestamp: dBlock.Time,
-								JoinTxHash:    dTxs[tIndex].Hash,
-							}
-
-							if err := database.ProviderSave(sctx, db, dProvider); err != nil {
-								return err
-							}
-						case "/sentinel.provider.v1.MsgUpdateRequest", "/sentinel.provider.v1.MsgService/MsgUpdate":
-							var msg providermessages.MsgUpdateRequest
-							if err := json.Unmarshal(buf, &msg); err != nil {
-								return err
-							}
-
-							provAddr, err := hubtypes.ProvAddressFromBech32(msg.From)
-							if err != nil {
-								return err
-							}
-
-							qProvider, err := q.QueryProvider(provAddr, dBlock.Height)
-							if err != nil {
-								return err
-							}
-
-							filter = bson.M{
-								"address": explorerutils.MustHexFromBech32ProvAddress(msg.From),
-							}
-							update := bson.M{
-								"$set": bson.M{
-									"name":        qProvider.Name,
-									"identity":    qProvider.Identity,
-									"website":     qProvider.Website,
-									"description": qProvider.Description,
-								},
-							}
-							projection = bson.M{
-								"_id": 1,
-							}
-
-							_, err = database.ProviderFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
-							if err != nil {
-								return err
-							}
 						default:
 
 						}
@@ -826,7 +952,7 @@ func main() {
 				for eIndex := 0; eIndex < len(dBlock.EndBlockEvents); eIndex++ {
 					log.Println("EndBlockEventType", eIndex, dBlock.EndBlockEvents[eIndex].Type)
 					switch dBlock.EndBlockEvents[eIndex].Type {
-					case "sentinel.node.v1.EventUpdate":
+					case "sentinel.node.v2.EventUpdateDetails":
 						nodeAddr, err := hubtypes.NodeAddressFromBech32(dBlock.EndBlockEvents[eIndex].Attributes["address"])
 						if err != nil {
 							return err
@@ -842,7 +968,8 @@ func main() {
 						}
 						update := bson.M{
 							"$set": bson.M{
-								"price": commontypes.NewCoinsFromRaw(qNode.Price),
+								"gigabyte_prices": commontypes.NewCoinsFromRaw(qNode.GigabytePrices),
+								"hourly_prices":   commontypes.NewCoinsFromRaw(qNode.HourlyPrices),
 							},
 						}
 						projection = bson.M{
@@ -853,7 +980,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-					case "sentinel.node.v1.EventSetStatus":
+					case "sentinel.node.v2.EventUpdateStatus":
 						hexNodeAddr := explorerutils.MustHexFromBech32NodeAddress(dBlock.EndBlockEvents[eIndex].Attributes["address"])
 
 						filter = bson.M{
@@ -886,35 +1013,31 @@ func main() {
 						if err := database.NodeEventSave(sctx, db, dNodeEvent); err != nil {
 							return err
 						}
-					case "sentinel.session.v1.EventStakingReward", "sentinel.session.v1.EventPay":
-						var rawCoin sdk.Coin
-						if err := json.Unmarshal([]byte(dBlock.EndBlockEvents[eIndex].Attributes["amount"]), &rawCoin); err != nil {
-							return err
-						}
-
-						id, err := strconv.ParseInt(dBlock.EndBlockEvents[eIndex].Attributes["id"], 10, 64)
+					case "sentinel.subscription.v2.EventPayForSession":
+						payment, err := sdk.ParseCoinNormalized(dBlock.EndBlockEvents[eIndex].Attributes["payment"])
 						if err != nil {
 							return err
 						}
 
-						coin := commontypes.NewCoinFromRaw(&rawCoin)
+						stakingReward, err := sdk.ParseCoinNormalized(dBlock.EndBlockEvents[eIndex].Attributes["staking_reward"])
+						if err != nil {
+							return err
+						}
+
+						id, err := strconv.ParseInt(dBlock.EndBlockEvents[eIndex].Attributes["session_id"], 10, 64)
+						if err != nil {
+							return err
+						}
 
 						filter = bson.M{
 							"id": id,
 						}
 
-						updateSet := bson.M{
-							"payment": coin,
-						}
-
-						if dBlock.EndBlockEvents[eIndex].Type == "sentinel.session.v1.EventStakingReward" {
-							updateSet = bson.M{
-								"staking_reward": coin,
-							}
-						}
-
 						update := bson.M{
-							"$set": updateSet,
+							"$set": bson.M{
+								"payment":        commontypes.NewCoinFromRaw(&payment),
+								"staking_reward": commontypes.NewCoinFromRaw(&stakingReward),
+							},
 						}
 						projection = bson.M{
 							"address": 1,
@@ -957,10 +1080,12 @@ func main() {
 							return err
 						}
 
+						coins := sdk.NewCoins(stakingReward.Add(payment))
+
 						dDepositEvent := &types.DepositEvent{
 							Address:   dSession.Address,
-							Coins:     commontypes.Coins{coin},
-							Subtract:  true,
+							Coins:     commontypes.NewCoinsFromRaw(coins),
+							Action:    "subtract",
 							Height:    dBlock.Height,
 							Timestamp: dBlock.Time,
 							TxHash:    "",
@@ -1002,17 +1127,16 @@ func main() {
 							return err
 						}
 
-						var rawCoins sdk.Coins
-						if err := json.Unmarshal([]byte(dBlock.EndBlockEvents[eIndex].Attributes["coins"]), &rawCoins); err != nil {
+						rawCoins, err := sdk.ParseCoinsNormalized(dBlock.EndBlockEvents[eIndex].Attributes["coins"])
+						if err != nil {
 							return err
 						}
 
 						coins := commontypes.NewCoinsFromRaw(rawCoins)
-
 						dDepositEvent := &types.DepositEvent{
 							Address:   hexAccAddr,
 							Coins:     coins,
-							Subtract:  true,
+							Action:    "subtract",
 							Height:    dBlock.Height,
 							Timestamp: dBlock.Time,
 							TxHash:    "",
@@ -1021,7 +1145,7 @@ func main() {
 						if err := database.DepositEventSave(sctx, db, dDepositEvent); err != nil {
 							return err
 						}
-					case "sentinel.session.v1.EventSetStatus":
+					case "sentinel.session.v2.EventUpdateStatus":
 						id, err := strconv.ParseUint(dBlock.EndBlockEvents[eIndex].Attributes["id"], 10, 64)
 						if err != nil {
 							return err
@@ -1049,61 +1173,64 @@ func main() {
 							"$set": updateSet,
 						}
 						projection = bson.M{
-							"subscription_id": 1,
-							"address":         1,
+							"_id": 1,
 						}
 
-						dSession, err := database.SessionFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
+						_, err = database.SessionFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
 						if err != nil {
 							return err
 						}
-						if dSession == nil || dSession.Address == "" {
-							continue
-						}
-
-						accAddr, err := sdk.AccAddressFromHex(dSession.Address)
+					case "sentinel.subscription.v2.EventAllocate":
+						id, err := strconv.ParseUint(dBlock.EndBlockEvents[eIndex].Attributes["id"], 10, 64)
 						if err != nil {
 							return err
 						}
 
-						qSubscriptionQuota, err := q.QuerySubscriptionQuota(dSession.SubscriptionID, accAddr, dBlock.Height)
+						accAddr, err := sdk.AccAddressFromBech32(dBlock.EndBlockEvents[eIndex].Attributes["address"])
 						if err != nil {
-							continue // TODO: cannot return error; subscription deletion before session deletion
+							return err
+						}
+
+						hexAccAddr := explorerutils.MustHexFromBech32AccAddress(accAddr.String())
+
+						qAllocation, err := q.QueryAllocation(id, accAddr, dBlock.Height)
+						if err != nil {
+							return err
 						}
 
 						filter = bson.M{
-							"id":      dSession.SubscriptionID,
-							"address": dSession.Address,
+							"id":      id,
+							"address": hexAccAddr,
 						}
-						update = bson.M{
+						update := bson.M{
 							"$set": bson.M{
-								"consumed_bytes":  qSubscriptionQuota.Consumed.Int64(),
-								"allocated_bytes": qSubscriptionQuota.Allocated.Int64(),
+								"granted_bytes":  qAllocation.GrantedBytes.Int64(),
+								"utilised_bytes": qAllocation.UtilisedBytes.Int64(),
 							},
 						}
 						projection = bson.M{
 							"_id": 1,
 						}
 
-						_, err = database.SubscriptionQuotaFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
+						_, err = database.AllocationFindOneAndUpdate(sctx, db, filter, update, options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true))
 						if err != nil {
 							return err
 						}
 
-						dSubscriptionQuotaEvent := &types.SubscriptionQuotaEvent{
-							ID:             dSession.SubscriptionID,
-							Address:        dSession.Address,
-							ConsumedBytes:  qSubscriptionQuota.Consumed.Int64(),
-							AllocatedBytes: qSubscriptionQuota.Allocated.Int64(),
-							Height:         dBlock.Height,
-							Timestamp:      dBlock.Time,
-							TxHash:         "",
+						dAllocationEvent := &types.AllocationEvent{
+							ID:            id,
+							Address:       hexAccAddr,
+							GrantedBytes:  qAllocation.GrantedBytes.Int64(),
+							UtilisedBytes: qAllocation.UtilisedBytes.Int64(),
+							Height:        dBlock.Height,
+							Timestamp:     dBlock.Time,
+							TxHash:        "",
 						}
 
-						if err := database.SubscriptionQuotaEventSave(sctx, db, dSubscriptionQuotaEvent); err != nil {
+						if err := database.AllocationEventSave(sctx, db, dAllocationEvent); err != nil {
 							return err
 						}
-					case "sentinel.subscription.v1.EventSetStatus":
+					case "sentinel.subscription.v2.EventUpdateStatus":
 						id, err := strconv.ParseUint(dBlock.EndBlockEvents[eIndex].Attributes["id"], 10, 64)
 						if err != nil {
 							return err

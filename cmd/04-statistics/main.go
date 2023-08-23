@@ -256,7 +256,7 @@ func HistoricalActiveNodesCount(ctx context.Context, db *mongo.Database, fromTim
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				"status": "STATUS_ACTIVE",
+				"status": "active",
 				"timestamp": bson.M{
 					"$gte": fromTimestamp,
 					"$lt":  toTimestamp,
@@ -483,18 +483,6 @@ func HistoricalStatisticsSession(ctx context.Context, db *mongo.Database, fromTi
 	monthStakingRewards := make(map[time.Time]sdk.Coins)
 	yearStakingRewards := make(map[time.Time]sdk.Coins)
 
-	nodeAddrDayStartSessions := make(map[string]map[time.Time]int64)
-	nodeAddrDayEndSessions := make(map[string]map[time.Time]int64)
-	nodeAddrDayActiveSessions := make(map[string]map[time.Time]int64)
-	nodeAddrDayPayments := make(map[string]map[time.Time]sdk.Coins)
-	nodeAddrDayStakingRewards := make(map[string]map[time.Time]sdk.Coins)
-
-	addrDayStartSessions := make(map[string]map[time.Time]int64)
-	addrDayEndSessions := make(map[string]map[time.Time]int64)
-	addrDayActiveSessions := make(map[string]map[time.Time]int64)
-	addrDayPayments := make(map[string]map[time.Time]sdk.Coins)
-	addrDayStakingRewards := make(map[string]map[time.Time]sdk.Coins)
-
 	year, month, day := fromTimestamp.Date()
 	fromTimestamp = time.Date(year, month, day, 0, 0, 0, 0, fromTimestamp.Location())
 
@@ -530,45 +518,10 @@ func HistoricalStatisticsSession(ctx context.Context, db *mongo.Database, fromTi
 			endTimestamp = toTimestamp
 		}
 
-		if _, ok := addrDayStartSessions[item.Address]; !ok {
-			addrDayStartSessions[item.Address] = make(map[time.Time]int64)
-		}
-		if _, ok := addrDayActiveSessions[item.Address]; !ok {
-			addrDayActiveSessions[item.Address] = make(map[time.Time]int64)
-		}
-		if _, ok := addrDayEndSessions[item.Address]; !ok {
-			addrDayEndSessions[item.Address] = make(map[time.Time]int64)
-		}
-		if _, ok := addrDayPayments[item.Address]; !ok {
-			addrDayPayments[item.Address] = make(map[time.Time]sdk.Coins)
-		}
-		if _, ok := addrDayStakingRewards[item.Address]; !ok {
-			addrDayStakingRewards[item.Address] = make(map[time.Time]sdk.Coins)
-		}
-
-		if _, ok := nodeAddrDayStartSessions[item.NodeAddress]; !ok {
-			nodeAddrDayStartSessions[item.NodeAddress] = make(map[time.Time]int64)
-		}
-		if _, ok := nodeAddrDayActiveSessions[item.NodeAddress]; !ok {
-			nodeAddrDayActiveSessions[item.NodeAddress] = make(map[time.Time]int64)
-		}
-		if _, ok := nodeAddrDayEndSessions[item.NodeAddress]; !ok {
-			nodeAddrDayEndSessions[item.NodeAddress] = make(map[time.Time]int64)
-		}
-		if _, ok := nodeAddrDayPayments[item.NodeAddress]; !ok {
-			nodeAddrDayPayments[item.NodeAddress] = make(map[time.Time]sdk.Coins)
-		}
-		if _, ok := nodeAddrDayStakingRewards[item.NodeAddress]; !ok {
-			nodeAddrDayStakingRewards[item.NodeAddress] = make(map[time.Time]sdk.Coins)
-		}
-
 		dayStartTimestamp := utils.DayDate(startTimestamp)
 		dayEndTimestamp := utils.DayDate(endTimestamp)
 		for t := dayStartTimestamp; !t.After(dayEndTimestamp); t = t.AddDate(0, 0, 1) {
 			dayActiveSessions[t] += 1
-
-			addrDayActiveSessions[item.Address][t] += 1
-			nodeAddrDayActiveSessions[item.NodeAddress][t] += 1
 		}
 
 		weekStartTimestamp := utils.ISOWeekDate(startTimestamp)
@@ -594,18 +547,12 @@ func HistoricalStatisticsSession(ctx context.Context, db *mongo.Database, fromTi
 			weekStartSessions[weekStartTimestamp] += 1
 			monthStartSessions[monthStartTimestamp] += 1
 			yearStartSessions[yearStartTimestamp] += 1
-
-			addrDayStartSessions[item.Address][dayStartTimestamp] += 1
-			nodeAddrDayStartSessions[item.NodeAddress][dayStartTimestamp] += 1
 		}
 		if !item.EndTimestamp.IsZero() {
 			dayEndSessions[dayEndTimestamp] += 1
 			weekEndSessions[weekEndTimestamp] += 1
 			monthEndSessions[monthEndTimestamp] += 1
 			yearEndSessions[yearEndTimestamp] += 1
-
-			addrDayEndSessions[item.Address][dayEndTimestamp] += 1
-			nodeAddrDayEndSessions[item.NodeAddress][dayEndTimestamp] += 1
 		}
 		if item.Payment != nil {
 			paymentRaw := item.Payment.Raw()
@@ -613,9 +560,6 @@ func HistoricalStatisticsSession(ctx context.Context, db *mongo.Database, fromTi
 			weekPayments[weekEndTimestamp] = weekPayments[weekEndTimestamp].Add(paymentRaw)
 			monthPayments[monthEndTimestamp] = monthPayments[monthEndTimestamp].Add(paymentRaw)
 			yearPayments[yearEndTimestamp] = yearPayments[yearEndTimestamp].Add(paymentRaw)
-
-			addrDayPayments[item.Address][dayEndTimestamp] = addrDayPayments[item.Address][dayEndTimestamp].Add(paymentRaw)
-			nodeAddrDayPayments[item.NodeAddress][dayEndTimestamp] = nodeAddrDayPayments[item.NodeAddress][dayEndTimestamp].Add(paymentRaw)
 		}
 		if item.StakingReward != nil {
 			stakingRewardRaw := item.StakingReward.Raw()
@@ -623,9 +567,6 @@ func HistoricalStatisticsSession(ctx context.Context, db *mongo.Database, fromTi
 			weekStakingRewards[weekEndTimestamp] = weekStakingRewards[weekEndTimestamp].Add(stakingRewardRaw)
 			monthStakingRewards[monthEndTimestamp] = monthStakingRewards[monthEndTimestamp].Add(stakingRewardRaw)
 			yearStakingRewards[yearEndTimestamp] = yearStakingRewards[yearEndTimestamp].Add(stakingRewardRaw)
-
-			addrDayStakingRewards[item.Address][dayEndTimestamp] = addrDayStakingRewards[item.Address][dayEndTimestamp].Add(stakingRewardRaw)
-			nodeAddrDayStakingRewards[item.NodeAddress][dayEndTimestamp] = nodeAddrDayStakingRewards[item.NodeAddress][dayEndTimestamp].Add(stakingRewardRaw)
 		}
 	}
 
@@ -792,118 +733,6 @@ func HistoricalStatisticsSession(ctx context.Context, db *mongo.Database, fromTi
 			"timestamp": timestamp,
 			"value":     commontypes.NewCoinsFromRaw(coins),
 		})
-	}
-
-	for addr, dayStartSessions := range addrDayStartSessions {
-		for timestamp, value := range dayStartSessions {
-			addrResult = append(addrResult, bson.M{
-				"tag":       types.TagStartSession,
-				"timeframe": "day",
-				"timestamp": timestamp,
-				"address":   addr,
-				"value":     value,
-			})
-		}
-	}
-	for addr, dayActiveSessions := range addrDayActiveSessions {
-		for timestamp, value := range dayActiveSessions {
-			addrResult = append(addrResult, bson.M{
-				"tag":       types.TagActiveSession,
-				"timeframe": "day",
-				"timestamp": timestamp,
-				"address":   addr,
-				"value":     value,
-			})
-		}
-	}
-	for addr, dayEndSessions := range addrDayEndSessions {
-		for timestamp, value := range dayEndSessions {
-			addrResult = append(addrResult, bson.M{
-				"tag":       types.TagEndSession,
-				"timeframe": "day",
-				"timestamp": timestamp,
-				"address":   addr,
-				"value":     value,
-			})
-		}
-	}
-	for addr, dayPayments := range addrDayPayments {
-		for timestamp, coins := range dayPayments {
-			addrResult = append(addrResult, bson.M{
-				"tag":       types.TagSessionPayment,
-				"timeframe": "day",
-				"timestamp": timestamp,
-				"address":   addr,
-				"value":     commontypes.NewCoinsFromRaw(coins),
-			})
-		}
-	}
-	for addr, dayStakingRewards := range addrDayStakingRewards {
-		for timestamp, coins := range dayStakingRewards {
-			addrResult = append(addrResult, bson.M{
-				"tag":       types.TagSessionStakingReward,
-				"timeframe": "day",
-				"timestamp": timestamp,
-				"address":   addr,
-				"value":     commontypes.NewCoinsFromRaw(coins),
-			})
-		}
-	}
-
-	for nodeAddr, dayStartSessions := range nodeAddrDayStartSessions {
-		for timestamp, value := range dayStartSessions {
-			nodeAddrResult = append(nodeAddrResult, bson.M{
-				"tag":       types.TagStartSession,
-				"timeframe": "day",
-				"timestamp": timestamp,
-				"address":   nodeAddr,
-				"value":     value,
-			})
-		}
-	}
-	for nodeAddr, dayActiveSessions := range nodeAddrDayActiveSessions {
-		for timestamp, value := range dayActiveSessions {
-			nodeAddrResult = append(nodeAddrResult, bson.M{
-				"tag":       types.TagActiveSession,
-				"timeframe": "day",
-				"timestamp": timestamp,
-				"address":   nodeAddr,
-				"value":     value,
-			})
-		}
-	}
-	for nodeAddr, dayEndSessions := range nodeAddrDayEndSessions {
-		for timestamp, value := range dayEndSessions {
-			nodeAddrResult = append(nodeAddrResult, bson.M{
-				"tag":       types.TagEndSession,
-				"timeframe": "day",
-				"timestamp": timestamp,
-				"address":   nodeAddr,
-				"value":     value,
-			})
-		}
-	}
-	for nodeAddr, dayPayments := range nodeAddrDayPayments {
-		for timestamp, coins := range dayPayments {
-			nodeAddrResult = append(nodeAddrResult, bson.M{
-				"tag":       types.TagSessionPayment,
-				"timeframe": "day",
-				"timestamp": timestamp,
-				"address":   nodeAddr,
-				"value":     commontypes.NewCoinsFromRaw(coins),
-			})
-		}
-	}
-	for nodeAddr, dayStakingRewards := range nodeAddrDayStakingRewards {
-		for timestamp, coins := range dayStakingRewards {
-			nodeAddrResult = append(nodeAddrResult, bson.M{
-				"tag":       types.TagSessionStakingReward,
-				"timeframe": "day",
-				"timestamp": timestamp,
-				"address":   nodeAddr,
-				"value":     commontypes.NewCoinsFromRaw(coins),
-			})
-		}
 	}
 
 	return result, addrResult, nodeAddrResult, nil

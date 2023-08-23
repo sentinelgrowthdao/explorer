@@ -45,13 +45,14 @@ func NewQuerier(encCfg *hubapp.EncodingConfig, remote, wsEndpoint string) (q *Qu
 		Codec:             encCfg.Codec,
 		InterfaceRegistry: encCfg.InterfaceRegistry,
 		HTTP:              http,
-		deposit:           deposittypes.NewQueryServiceClient(q),
-		node:              nodetypes.NewQueryServiceClient(q),
-		plan:              plantypes.NewQueryServiceClient(q),
-		provider:          providertypes.NewQueryServiceClient(q),
-		session:           sessiontypes.NewQueryServiceClient(q),
-		subscription:      subscriptiontypes.NewQueryServiceClient(q),
 	}
+
+	q.deposit = deposittypes.NewQueryServiceClient(q)
+	q.node = nodetypes.NewQueryServiceClient(q)
+	q.plan = plantypes.NewQueryServiceClient(q)
+	q.provider = providertypes.NewQueryServiceClient(q)
+	q.session = sessiontypes.NewQueryServiceClient(q)
+	q.subscription = subscriptiontypes.NewQueryServiceClient(q)
 
 	return q, nil
 }
@@ -63,8 +64,12 @@ func (q *Querier) queryABCI(req *abcitypes.RequestQuery) (*abcitypes.ResponseQue
 	}
 
 	result, err := q.ABCIQueryWithOptions(context.TODO(), req.Path, req.Data, opts)
+	log.Println("ABCIQueryWithOptions", err)
 	if err != nil {
 		if strings.Contains(err.Error(), "EOF") {
+			return q.queryABCI(req)
+		}
+		if strings.Contains(err.Error(), "invalid character '<' looking for beginning of value") {
 			return q.queryABCI(req)
 		}
 

@@ -58,7 +58,8 @@ type (
 		Moniker                string                 `json:"moniker"`
 		Operator               string                 `json:"operator"`
 		Peers                  int                    `json:"peers"`
-		Price                  string                 `json:"price"`
+		GigabytePrices         string                 `json:"gigabyte_prices"`
+		HourlyPrices           string                 `json:"hourly_prices"`
 		Provider               string                 `json:"provider"`
 		QOS                    *types.NodeQOS         `json:"qos"`
 		Type                   uint64                 `json:"type"`
@@ -147,7 +148,7 @@ func main() {
 				"remote_url": bson.M{
 					"$exists": true,
 				},
-				"status": "STATUS_ACTIVE",
+				"status": "active",
 			}
 			projection := bson.M{
 				"address":    1,

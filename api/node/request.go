@@ -10,7 +10,7 @@ import (
 type RequestGetNodes struct {
 	ProviderAddress string `uri:"provider_address"`
 
-	Status string `form:"status" binding:"omitempty,oneof=STATUS_ACTIVE STATUS_INACTIVE"`
+	Status string `form:"status" binding:"omitempty,oneof=active inactive"`
 	Skip   int64  `form:"skip,default=0" binding:"gte=0"`
 	Limit  int64  `form:"limit,default=25" binding:"gte=0,lte=100"`
 	Sort   bson.D
@@ -65,7 +65,7 @@ func NewRequestGetNode(c *gin.Context) (req *RequestGetNode, err error) {
 type RequestGetNodeEvents struct {
 	NodeAddress string `uri:"node_address"`
 
-	Status string `form:"status" binding:"omitempty,oneof=STATUS_ACTIVE STATUS_INACTIVE"`
+	Status string `form:"status" binding:"omitempty,oneof=active inactive"`
 	Skip   int64  `form:"skip,default=0" binding:"gte=0"`
 	Limit  int64  `form:"limit,default=25" binding:"gte=0,lte=100"`
 	Sort   bson.D

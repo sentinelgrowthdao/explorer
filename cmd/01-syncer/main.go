@@ -7,6 +7,7 @@ import (
 	"math"
 	"time"
 
+	hubapp "github.com/sentinel-official/hub/app"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -33,9 +34,9 @@ var (
 )
 
 func init() {
-	flag.Int64Var(&height, "from-height", 9_348_475, "")
+	flag.Int64Var(&height, "from-height", 12_310_005, "")
 	flag.Int64Var(&toHeight, "to-height", math.MaxInt64, "")
-	flag.StringVar(&rpcAddress, "rpc-address", "http://127.0.0.1:26657", "")
+	flag.StringVar(&rpcAddress, "rpc-address", "http://10.104.0.6:26657", "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
 	flag.StringVar(&dbUsername, "db-username", "", "")
@@ -44,7 +45,9 @@ func init() {
 }
 
 func main() {
-	q, err := querier.NewQuerier(rpcAddress, "/websocket")
+	encCfg := hubapp.DefaultEncodingConfig()
+
+	q, err := querier.NewQuerier(&encCfg, rpcAddress, "/websocket")
 	if err != nil {
 		log.Fatalln(err)
 	}
