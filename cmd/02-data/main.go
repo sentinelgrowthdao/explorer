@@ -56,7 +56,6 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 	projection := bson.M{
 		"height":           1,
 		"time":             1,
-		"num_txs":          1,
 		"end_block_events": 1,
 	}
 

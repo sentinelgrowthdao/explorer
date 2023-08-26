@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
@@ -138,6 +139,7 @@ type Tx struct {
 	Result        *TxResult     `json:"result,omitempty" bson:"result"`
 	SignerInfos   TxSignerInfos `json:"signer_infos,omitempty" bson:"signer_infos"`
 	TimeoutHeight uint64        `json:"timeout_height,omitempty" bson:"timeout_height"`
+	Timestamp     time.Time     `json:"timestamp,omitempty" bson:"timestamp"`
 }
 
 func NewTx(v tmtypes.Tx) *Tx {
@@ -159,6 +161,7 @@ func NewTx(v tmtypes.Tx) *Tx {
 		Payer:         tx.FeePayer().String(),
 		SignerInfos:   NewTxSignerInfosFromTx(tx),
 		TimeoutHeight: tx.GetTimeoutHeight(),
+		Timestamp:     time.Time{},
 	}
 }
 
@@ -169,3 +172,4 @@ func (t *Tx) String() string {
 func (t *Tx) WithHeight(v int64) *Tx                        { t.Height = v; return t }
 func (t *Tx) WithIndex(v int) *Tx                           { t.Index = v; return t }
 func (t *Tx) WithResult(v *abcitypes.ResponseDeliverTx) *Tx { t.Result = NewTxResult(v); return t }
+func (t *Tx) WithTimestamp(v time.Time) *Tx                 { t.Timestamp = v; return t }

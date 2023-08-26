@@ -113,7 +113,8 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 		dTx := types.NewTx(qBlock.Block.Txs[tIndex]).
 			WithHeight(qBlock.Block.Height).
 			WithIndex(tIndex).
-			WithResult(qBlockResults.TxsResults[tIndex])
+			WithResult(qBlockResults.TxsResults[tIndex]).
+			WithTimestamp(qBlock.Block.Time)
 		operations = append(operations, func(ctx mongo.SessionContext) error {
 			if _, err := database.TxInsertOne(ctx, db, dTx); err != nil {
 				return err
