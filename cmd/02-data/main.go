@@ -469,9 +469,9 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 				dSubscription := types.Subscription{
 					ID:              qSubscription.Id,
 					Owner:           qSubscription.Owner,
-					Node:            qSubscription.Node,
-					Price:           types.NewCoin(&qSubscription.Price),
-					Deposit:         types.NewCoin(&qSubscription.Deposit),
+					Node:            "",
+					Price:           nil,
+					Deposit:         nil,
 					Plan:            qSubscription.Plan,
 					Denom:           qSubscription.Denom,
 					Expiry:          qSubscription.Expiry,
@@ -531,6 +531,41 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 			default:
 
 			}
+		}
+	}
+
+	log.Println("EndBlockEventsLen", dBlock.Height, len(dBlock.EndBlockEvents))
+	for eIndex := 0; eIndex < len(dBlock.EndBlockEvents); eIndex++ {
+		log.Println("Type", eIndex, dBlock.EndBlockEvents[eIndex].Type)
+		switch dBlock.EndBlockEvents[eIndex].Type {
+		case "sentinel.node.v1.EventSetNodeStatus":
+			address := dBlock.EndBlockEvents[eIndex].Attributes["address"]
+
+			filter := bson.M{
+				"address": address,
+			}
+			update := bson.M{
+				"$set": bson.M{
+					"status":           dBlock.EndBlockEvents[eIndex].Attributes["status"],
+					"status_height":    dBlock.Height,
+					"status_timestamp": dBlock.Time,
+					"status_tx_hash":   "",
+				},
+			}
+			projection := bson.M{
+				"_id": 1,
+			}
+
+			operations = append(operations, func(ctx mongo.SessionContext) error {
+				opts := options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true)
+				if _, err := database.NodeFindOneAndUpdate(ctx, db, filter, update, opts); err != nil {
+					return err
+				}
+
+				return nil
+			})
+		default:
+
 		}
 	}
 
