@@ -1,9 +1,8 @@
-package types
+package models
 
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -14,11 +13,8 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.mongodb.org/mongo-driver/bson"
 
+	"github.com/sentinel-official/explorer/types"
 	"github.com/sentinel-official/explorer/utils"
-)
-
-var (
-	replacer = strings.NewReplacer(`"\"`, `"`, `\""`, `"`)
 )
 
 type Message struct {
@@ -42,7 +38,7 @@ func NewMessage(v sdk.Msg) *Message {
 		item.Type = srvMsg.Type()
 	}
 
-	buf, err := EncCfg.Marshaler.MarshalJSON(v)
+	buf, err := types.EncCfg.Marshaler.MarshalJSON(v)
 	if err != nil {
 		panic(err)
 	}
@@ -66,24 +62,24 @@ func NewMessages(v []sdk.Msg) Messages {
 }
 
 type TxResult struct {
-	Codespace string     `json:"codespace,omitempty" bson:"codespace"`
-	Code      uint32     `json:"code,omitempty" bson:"code"`
-	Events    ABCIEvents `json:"events,omitempty" bson:"events"`
-	GasUsed   int64      `json:"gas_used,omitempty" bson:"gas_used"`
-	GasWanted int64      `json:"gas_wanted,omitempty" bson:"gas_wanted"`
-	Info      string     `json:"info,omitempty" bson:"info"`
-	Log       string     `json:"logs,omitempty" bson:"log"`
+	Codespace string       `json:"codespace,omitempty" bson:"codespace"`
+	Code      uint32       `json:"code,omitempty" bson:"code"`
+	Events    types.Events `json:"events,omitempty" bson:"events"`
+	GasUsed   int64        `json:"gas_used,omitempty" bson:"gas_used"`
+	GasWanted int64        `json:"gas_wanted,omitempty" bson:"gas_wanted"`
+	Info      string       `json:"info,omitempty" bson:"info"`
+	Log       string       `json:"logs,omitempty" bson:"log"`
 }
 
 func NewTxResult(v *abcitypes.ResponseDeliverTx) *TxResult {
 	return &TxResult{
 		Codespace: v.Codespace,
 		Code:      v.Code,
-		Events:    NewABCIEvents(v.Events),
+		Events:    types.NewEventsFromABCIEvents(v.Events),
 		GasUsed:   v.GasUsed,
 		GasWanted: v.GasWanted,
 		Info:      v.Info,
-		Log:       replacer.Replace(v.Log),
+		Log:       types.Replacer.Replace(v.Log),
 	}
 }
 
@@ -127,7 +123,7 @@ func NewTxSignerInfosFromTx(v authsigning.Tx) TxSignerInfos {
 }
 
 type Tx struct {
-	Fee           Coins         `json:"fee,omitempty" bson:"fee"`
+	Fee           types.Coins   `json:"fee,omitempty" bson:"fee"`
 	GasLimit      uint64        `json:"gas_limit,omitempty" bson:"gas_limit"`
 	Granter       string        `json:"granter,omitempty" bson:"granter"`
 	Hash          string        `json:"hash,omitempty" bson:"hash"`
@@ -143,14 +139,14 @@ type Tx struct {
 }
 
 func NewTx(v tmtypes.Tx) *Tx {
-	t, err := EncCfg.TxConfig.TxDecoder()(v)
+	t, err := types.EncCfg.TxConfig.TxDecoder()(v)
 	if err != nil {
 		panic(err)
 	}
 
 	tx := t.(authsigning.Tx)
 	return &Tx{
-		Fee:           NewCoins(tx.GetFee()),
+		Fee:           types.NewCoins(tx.GetFee()),
 		GasLimit:      tx.GetGas(),
 		Granter:       tx.FeeGranter().String(),
 		Hash:          bytes.HexBytes(v.Hash()).String(),

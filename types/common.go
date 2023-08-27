@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/sentinel-official/hub"
@@ -11,19 +12,22 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type DatabaseOperation func(ctx mongo.SessionContext) error
-
-var (
-	EncCfg = hub.MakeEncodingConfig()
+type (
+	DatabaseOperation func(ctx mongo.SessionContext) error
 )
 
-type ABCIEvent struct {
+var (
+	Replacer = strings.NewReplacer(`"\"`, `"`, `\""`, `"`)
+	EncCfg   = hub.MakeEncodingConfig()
+)
+
+type Event struct {
 	Type       string            `json:"type,omitempty" bson:"type"`
 	Attributes map[string]string `json:"attributes,omitempty" bson:"attributes"`
 }
 
-func NewABCIEvent(v *abcitypes.Event) *ABCIEvent {
-	item := &ABCIEvent{
+func NewEventFromABCIEvent(v *abcitypes.Event) *Event {
+	item := &Event{
 		Type:       v.Type,
 		Attributes: make(map[string]string),
 	}
@@ -42,24 +46,8 @@ func NewABCIEvent(v *abcitypes.Event) *ABCIEvent {
 	return item
 }
 
-type ABCIEvents []*ABCIEvent
-
-func NewABCIEvents(v []abcitypes.Event) ABCIEvents {
-	items := make(ABCIEvents, 0, len(v))
-	for _, item := range v {
-		items = append(items, NewABCIEvent(&item))
-	}
-
-	return items
-}
-
-type StringEvent struct {
-	Type       string            `json:"type,omitempty" bson:"type"`
-	Attributes map[string]string `json:"attributes,omitempty" bson:"attributes"`
-}
-
-func NewStringEvent(v *sdk.StringEvent) *StringEvent {
-	item := &StringEvent{
+func NewEventFromStringEvent(v *sdk.StringEvent) *Event {
+	item := &Event{
 		Type:       v.Type,
 		Attributes: make(map[string]string),
 	}
@@ -71,21 +59,30 @@ func NewStringEvent(v *sdk.StringEvent) *StringEvent {
 	return item
 }
 
-type StringEvents []*StringEvent
+type Events []*Event
 
-func NewStringEvents(v []sdk.StringEvent) StringEvents {
-	items := make(StringEvents, 0, len(v))
+func NewEventsFromABCIEvents(v []abcitypes.Event) Events {
+	items := make(Events, 0, len(v))
 	for _, item := range v {
-		items = append(items, NewStringEvent(&item))
+		items = append(items, NewEventFromABCIEvent(&item))
 	}
 
 	return items
 }
 
-func (se StringEvents) Get(s string) (*StringEvent, error) {
-	for i := 0; i < len(se); i++ {
-		if se[i].Type == s {
-			return se[i], nil
+func NewEventsFromStringEvents(v []sdk.StringEvent) Events {
+	items := make(Events, 0, len(v))
+	for _, item := range v {
+		items = append(items, NewEventFromStringEvent(&item))
+	}
+
+	return items
+}
+
+func (e Events) Get(s string) (*Event, error) {
+	for i := 0; i < len(e); i++ {
+		if e[i].Type == s {
+			return e[i], nil
 		}
 	}
 
@@ -93,16 +90,16 @@ func (se StringEvents) Get(s string) (*StringEvent, error) {
 }
 
 type ABCIMessageLog struct {
-	Index  uint32       `json:"index,omitempty" bson:"index"`
-	Log    string       `json:"log,omitempty" bson:"log"`
-	Events StringEvents `json:"events,omitempty" bson:"events"`
+	Index  uint32 `json:"index,omitempty" bson:"index"`
+	Log    string `json:"log,omitempty" bson:"log"`
+	Events Events `json:"events,omitempty" bson:"events"`
 }
 
 func NewABCIMessageLog(v *sdk.ABCIMessageLog) *ABCIMessageLog {
 	return &ABCIMessageLog{
 		Index:  v.MsgIndex,
-		Log:    replacer.Replace(v.Log),
-		Events: NewStringEvents(v.Events),
+		Log:    Replacer.Replace(v.Log),
+		Events: NewEventsFromStringEvents(v.Events),
 	}
 }
 

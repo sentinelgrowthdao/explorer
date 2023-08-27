@@ -2,16 +2,13 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/sentinel-official/hub"
 	hubtypes "github.com/sentinel-official/hub/types"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -19,8 +16,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 
 	"github.com/sentinel-official/explorer/database"
-	"github.com/sentinel-official/explorer/querier"
+	"github.com/sentinel-official/explorer/models"
 	"github.com/sentinel-official/explorer/types"
+	nodetypes "github.com/sentinel-official/explorer/types/node"
+	providertypes "github.com/sentinel-official/explorer/types/provider"
+	sessiontypes "github.com/sentinel-official/explorer/types/session"
+	subscriptiontypes "github.com/sentinel-official/explorer/types/subscription"
 	"github.com/sentinel-official/explorer/utils"
 )
 
@@ -49,7 +50,7 @@ func init() {
 	flag.Parse()
 }
 
-func run(db *mongo.Database, q *querier.Querier, height int64) (operations []types.DatabaseOperation, err error) {
+func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation, err error) {
 	filter := bson.M{
 		"height": height,
 	}
@@ -90,31 +91,18 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 		txResultLog := types.NewABCIMessageLogs(dTxs[tIndex].Result.Log)
 		for mIndex := 0; mIndex < len(dTxs[tIndex].Messages); mIndex++ {
 			log.Println("Type", dTxs[tIndex].Messages[mIndex].Type)
-
 			switch dTxs[tIndex].Messages[mIndex].Type {
 			case "/sentinel.node.v1.MsgRegisterRequest", "/sentinel.node.v1.MsgService/MsgRegister":
-				from := dTxs[tIndex].Messages[mIndex].Data["from"].(string)
-				provider := dTxs[tIndex].Messages[mIndex].Data["provider"].(string)
-				remoteURL := dTxs[tIndex].Messages[mIndex].Data["remote_url"].(string)
-
-				buf, err := json.Marshal(dTxs[tIndex].Messages[mIndex].Data["price"])
+				msg, err := nodetypes.NewMsgRegisterRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
-				var price sdk.Coins
-				if err := json.Unmarshal(buf, &price); err != nil {
-					return nil, err
-				}
-
-				fromAddr := utils.MustAccAddressFromBech32(from)
-				nodeAddr := hubtypes.NodeAddress(fromAddr.Bytes())
-
-				dNode := types.Node{
-					Address:                nodeAddr.String(),
-					Provider:               provider,
-					Price:                  types.NewCoins(price),
-					RemoteURL:              remoteURL,
+				dNode := models.Node{
+					Address:                msg.NodeAddress().String(),
+					Provider:               msg.Provider,
+					Price:                  msg.Price,
+					RemoteURL:              msg.RemoteURL,
 					RegisterHeight:         dBlock.Height,
 					RegisterTimestamp:      dBlock.Time,
 					RegisterTxHash:         dTxs[tIndex].Hash,
@@ -144,29 +132,28 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 					return nil
 				})
 			case "/sentinel.node.v1.MsgUpdateRequest", "/sentinel.node.v1.MsgService/MsgUpdate":
-				from := dTxs[tIndex].Messages[mIndex].Data["from"].(string)
-				provider := dTxs[tIndex].Messages[mIndex].Data["provider"].(string)
-				remoteURL := dTxs[tIndex].Messages[mIndex].Data["remote_url"].(string)
-
-				buf, err := json.Marshal(dTxs[tIndex].Messages[mIndex].Data["price"])
+				msg, err := nodetypes.NewMsgUpdateRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
-				var price sdk.Coins
-				if err := json.Unmarshal(buf, &price); err != nil {
-					return nil, err
+				filter := bson.M{
+					"address": msg.From,
 				}
 
-				filter := bson.M{
-					"address": from,
+				updateSet := bson.M{}
+				if msg.Provider != "" {
+					updateSet["provider"], updateSet["price"] = msg.Provider, nil
 				}
+				if msg.Price != nil && len(msg.Price) > 0 {
+					updateSet["price"], updateSet["provider"] = msg.Price, ""
+				}
+				if msg.RemoteURL != "" {
+					updateSet["remote_url"] = msg.RemoteURL
+				}
+
 				update := bson.M{
-					"$set": bson.M{
-						"provider":   provider,
-						"price":      types.NewCoins(price),
-						"remote_url": remoteURL,
-					},
+					"$set": updateSet,
 				}
 				projection := bson.M{
 					"_id": 1,
@@ -181,15 +168,17 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 					return nil
 				})
 			case "/sentinel.node.v1.MsgSetStatusRequest", "/sentinel.node.v1.MsgService/MsgSetStatus":
-				from := dTxs[tIndex].Messages[mIndex].Data["from"].(string)
-				status := dTxs[tIndex].Messages[mIndex].Data["status"].(string)
+				msg, err := nodetypes.NewMsgSetStatusRequest(dTxs[tIndex].Messages[mIndex].Data)
+				if err != nil {
+					return nil, err
+				}
 
 				filter := bson.M{
-					"address": from,
+					"address": msg.From,
 				}
 				update := bson.M{
 					"$set": bson.M{
-						"status":           status,
+						"status":           msg.Status,
 						"status_height":    dBlock.Height,
 						"status_timestamp": dBlock.Time,
 						"status_tx_hash":   dTxs[tIndex].Hash,
@@ -216,21 +205,17 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 			case "/sentinel.plan.v1.MsgRemoveNodeRequest", "/sentinel.plan.v1.MsgService/MsgRemoveNode":
 				return nil, fmt.Errorf("implement me")
 			case "/sentinel.provider.v1.MsgRegisterRequest", "/sentinel.provider.v1.MsgService/MsgRegister":
-				from := dTxs[tIndex].Messages[mIndex].Data["from"].(string)
-				name := dTxs[tIndex].Messages[mIndex].Data["name"].(string)
-				identity := dTxs[tIndex].Messages[mIndex].Data["identity"].(string)
-				website := dTxs[tIndex].Messages[mIndex].Data["website"].(string)
-				description := dTxs[tIndex].Messages[mIndex].Data["description"].(string)
+				msg, err := providertypes.NewMsgRegisterRequest(dTxs[tIndex].Messages[mIndex].Data)
+				if err != nil {
+					return nil, err
+				}
 
-				fromAddr := utils.MustAccAddressFromBech32(from)
-				provAddr := hubtypes.ProvAddress(fromAddr.Bytes())
-
-				dProvider := types.Provider{
-					Address:           provAddr.String(),
-					Name:              name,
-					Identity:          identity,
-					Website:           website,
-					Description:       description,
+				dProvider := models.Provider{
+					Address:           msg.ProvAddress().String(),
+					Name:              msg.Name,
+					Identity:          msg.Identity,
+					Website:           msg.Website,
+					Description:       msg.Description,
 					RegisterHeight:    dBlock.Height,
 					RegisterTimestamp: dBlock.Time,
 					RegisterTxHash:    dTxs[tIndex].Hash,
@@ -244,27 +229,27 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 					return nil
 				})
 			case "/sentinel.provider.v1.MsgUpdateRequest", "/sentinel.provider.v1.MsgService/MsgUpdate":
-				from := dTxs[tIndex].Messages[mIndex].Data["from"].(string)
-				name := dTxs[tIndex].Messages[mIndex].Data["name"].(string)
-				identity := dTxs[tIndex].Messages[mIndex].Data["identity"].(string)
-				website := dTxs[tIndex].Messages[mIndex].Data["website"].(string)
-				description := dTxs[tIndex].Messages[mIndex].Data["description"].(string)
+				msg, err := providertypes.NewMsgUpdateRequest(dTxs[tIndex].Messages[mIndex].Data)
+				if err != nil {
+					return nil, err
+				}
 
 				filter := bson.M{
-					"address": from,
+					"address": msg.From,
 				}
+
 				updateSet := bson.M{}
-				if name != "" {
-					updateSet["name"] = name
+				if msg.Name != "" {
+					updateSet["name"] = msg.Name
 				}
-				if identity != "" {
-					updateSet["identity"] = identity
+				if msg.Identity != "" {
+					updateSet["identity"] = msg.Identity
 				}
-				if website != "" {
-					updateSet["website"] = website
+				if msg.Website != "" {
+					updateSet["website"] = msg.Website
 				}
-				if description != "" {
-					updateSet["description"] = description
+				if msg.Description != "" {
+					updateSet["description"] = msg.Description
 				}
 
 				update := bson.M{
@@ -283,29 +268,21 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 					return nil
 				})
 			case "/sentinel.session.v1.MsgStartRequest", "/sentinel.session.v1.MsgService/MsgStart":
-				from := dTxs[tIndex].Messages[mIndex].Data["from"].(string)
-				node := dTxs[tIndex].Messages[mIndex].Data["node"].(string)
-
-				subscription, err := strconv.ParseUint(dTxs[tIndex].Messages[mIndex].Data["id"].(string), 10, 64)
+				msg, err := sessiontypes.NewMsgStartRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
-				eStartSession, err := txResultLog[mIndex].Events.Get("sentinel.session.v1.EventStartSession")
+				eventStartSession, err := sessiontypes.NewEventStartSessionFromEvents(txResultLog[mIndex].Events)
 				if err != nil {
 					return nil, err
 				}
 
-				id, err := strconv.ParseUint(eStartSession.Attributes["id"], 10, 64)
-				if err != nil {
-					return nil, err
-				}
-
-				dSession := types.Session{
-					ID:              id,
-					Subscription:    subscription,
-					Address:         from,
-					Node:            node,
+				dSession := models.Session{
+					ID:              eventStartSession.ID,
+					Subscription:    msg.ID,
+					Address:         msg.From,
+					Node:            msg.Node,
 					Duration:        0,
 					Bandwidth:       nil,
 					StartHeight:     dBlock.Height,
@@ -329,33 +306,18 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 					return nil
 				})
 			case "/sentinel.session.v1.MsgUpdateRequest", "/sentinel.session.v1.MsgService/MsgUpdate":
-				id, err := strconv.ParseUint(dTxs[tIndex].Messages[mIndex].Data["proof"].(bson.M)["id"].(string), 10, 64)
+				msg, err := sessiontypes.NewMsgUpdateRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
-					return nil, err
-				}
-
-				duration, err := time.ParseDuration(dTxs[tIndex].Messages[mIndex].Data["proof"].(bson.M)["duration"].(string))
-				if err != nil {
-					return nil, err
-				}
-
-				buf, err := json.Marshal(dTxs[tIndex].Messages[mIndex].Data["proof"].(bson.M)["bandwidth"])
-				if err != nil {
-					return nil, err
-				}
-
-				var bandwidth hubtypes.Bandwidth
-				if err := json.Unmarshal(buf, &bandwidth); err != nil {
 					return nil, err
 				}
 
 				filter := bson.M{
-					"id": id,
+					"id": msg.ID,
 				}
 				update := bson.M{
 					"$set": bson.M{
-						"duration":  duration.Nanoseconds(),
-						"bandwidth": types.NewBandwidth(&bandwidth),
+						"duration":  msg.Duration,
+						"bandwidth": msg.Bandwidth,
 					},
 				}
 				projection := bson.M{
@@ -371,22 +333,17 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 					return nil
 				})
 			case "/sentinel.session.v1.MsgEndRequest", "/sentinel.session.v1.MsgService/MsgEnd":
-				id, err := strconv.ParseUint(dTxs[tIndex].Messages[mIndex].Data["id"].(string), 10, 64)
-				if err != nil {
-					return nil, err
-				}
-
-				rating, err := strconv.ParseUint(dTxs[tIndex].Messages[mIndex].Data["rating"].(string), 10, 64)
+				msg, err := sessiontypes.NewMsgEndRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
 				filter := bson.M{
-					"id": id,
+					"id": msg.ID,
 				}
 				update := bson.M{
 					"$set": bson.M{
-						"rating":           rating,
+						"rating":           msg.Rating,
 						"status":           hubtypes.StatusInactivePending.String(),
 						"status_height":    dBlock.Height,
 						"status_timestamp": dBlock.Time,
@@ -406,45 +363,17 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 					return nil
 				})
 			case "/sentinel.subscription.v1.MsgSubscribeToNodeRequest", "/sentinel.subscription.v1.MsgService/MsgSubscribeToNode":
-				eSubscribeToNode, err := txResultLog[mIndex].Events.Get("sentinel.subscription.v1.EventSubscribeToNode")
+				eventSubscribeToNode, err := subscriptiontypes.NewEventSubscribeToNodeFromEvents(txResultLog[mIndex].Events)
 				if err != nil {
 					return nil, err
 				}
 
-				id, err := strconv.ParseUint(eSubscribeToNode.Attributes["id"], 10, 64)
-				if err != nil {
-					return nil, err
-				}
-
-				owner := eSubscribeToNode.Attributes["owner"]
-				node := eSubscribeToNode.Attributes["node"]
-
-				buf, err := json.Marshal(eSubscribeToNode.Attributes["price"])
-				if err != nil {
-					return nil, err
-				}
-
-				var price sdk.Coin
-				if err := json.Unmarshal(buf, &price); err != nil {
-					return nil, err
-				}
-
-				buf, err = json.Marshal(eSubscribeToNode.Attributes["deposit"])
-				if err != nil {
-					return nil, err
-				}
-
-				var deposit sdk.Coin
-				if err := json.Unmarshal(buf, &deposit); err != nil {
-					return nil, err
-				}
-
-				dSubscription := types.Subscription{
-					ID:              id,
-					Owner:           owner,
-					Node:            node,
-					Price:           types.NewCoin(&price),
-					Deposit:         types.NewCoin(&deposit),
+				dSubscription := models.Subscription{
+					ID:              eventSubscribeToNode.ID,
+					Owner:           eventSubscribeToNode.Owner,
+					Node:            eventSubscribeToNode.Node,
+					Price:           eventSubscribeToNode.Price,
+					Deposit:         eventSubscribeToNode.Deposit,
 					Plan:            0,
 					Denom:           "",
 					Expiry:          time.Time{},
@@ -469,49 +398,21 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 					return nil
 				})
 			case "/sentinel.subscription.v1.MsgSubscribeToPlanRequest", "/sentinel.subscription.v1.MsgService/MsgSubscribeToPlan":
-				eSubscribeToPlan, err := txResultLog[mIndex].Events.Get("sentinel.subscription.v1.EventSubscribeToPlan")
+				eventSubscribeToPlan, err := subscriptiontypes.NewEventSubscribeToPlanFromEvents(txResultLog[mIndex].Events)
 				if err != nil {
 					return nil, err
 				}
 
-				id, err := strconv.ParseUint(eSubscribeToPlan.Attributes["id"], 10, 64)
-				if err != nil {
-					return nil, err
-				}
-
-				owner := eSubscribeToPlan.Attributes["owner"]
-				denom := eSubscribeToPlan.Attributes["denom"]
-
-				plan, err := strconv.ParseUint(eSubscribeToPlan.Attributes["plan"], 10, 64)
-				if err != nil {
-					return nil, err
-				}
-
-				expiry, err := time.Parse(time.RFC3339Nano, eSubscribeToPlan.Attributes["expiry"])
-				if err != nil {
-					return nil, err
-				}
-
-				buf, err := json.Marshal(eSubscribeToPlan.Attributes["price"])
-				if err != nil {
-					return nil, err
-				}
-
-				var payment sdk.Coin
-				if err := json.Unmarshal(buf, &payment); err != nil {
-					return nil, err
-				}
-
-				dSubscription := types.Subscription{
-					ID:              id,
-					Owner:           owner,
+				dSubscription := models.Subscription{
+					ID:              eventSubscribeToPlan.ID,
+					Owner:           eventSubscribeToPlan.Owner,
 					Node:            "",
 					Price:           nil,
 					Deposit:         nil,
-					Plan:            plan,
-					Denom:           denom,
-					Expiry:          expiry,
-					Payment:         types.NewCoin(&payment),
+					Plan:            eventSubscribeToPlan.Plan,
+					Denom:           eventSubscribeToPlan.Denom,
+					Expiry:          eventSubscribeToPlan.Expiry,
+					Payment:         eventSubscribeToPlan.Payment,
 					Free:            0,
 					StartHeight:     dBlock.Height,
 					StartTimestamp:  dBlock.Time,
@@ -532,13 +433,13 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 					return nil
 				})
 			case "/sentinel.subscription.v1.MsgCancelRequest", "/sentinel.subscription.v1.MsgService/MsgCancel":
-				id, err := strconv.ParseUint(dTxs[tIndex].Messages[mIndex].Data["id"].(string), 10, 64)
+				msg, err := subscriptiontypes.NewMsgCancelRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
 				filter := bson.M{
-					"id": id,
+					"id": msg.ID,
 				}
 				update := bson.M{
 					"$set": bson.M{
@@ -575,14 +476,17 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 		log.Println("Type", eIndex, dBlock.EndBlockEvents[eIndex].Type)
 		switch dBlock.EndBlockEvents[eIndex].Type {
 		case "sentinel.node.v1.EventSetNodeStatus":
-			address := dBlock.EndBlockEvents[eIndex].Attributes["address"]
+			event, err := nodetypes.NewEventSetNodeStatus(dBlock.EndBlockEvents[eIndex])
+			if err != nil {
+				return nil, err
+			}
 
 			filter := bson.M{
-				"address": address,
+				"address": event.Address,
 			}
 			update := bson.M{
 				"$set": bson.M{
-					"status":           dBlock.EndBlockEvents[eIndex].Attributes["status"],
+					"status":           event.Status,
 					"status_height":    dBlock.Height,
 					"status_timestamp": dBlock.Time,
 					"status_tx_hash":   "",
@@ -609,13 +513,6 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 }
 
 func main() {
-	encCfg := hub.MakeEncodingConfig()
-
-	q, err := querier.NewQuerier(&encCfg, rpcAddress, "/websocket")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	db, err := utils.PrepareDatabase(context.TODO(), appName, dbUsername, dbPassword, dbAddress, dbName)
 	if err != nil {
 		log.Fatalln(err)
@@ -634,7 +531,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	if dSyncStatus == nil {
-		dSyncStatus = &types.SyncStatus{
+		dSyncStatus = &models.SyncStatus{
 			AppName:   appName,
 			Height:    fromHeight - 1,
 			Timestamp: time.Time{},
@@ -646,7 +543,7 @@ func main() {
 		now := time.Now()
 		log.Println("Height", height)
 
-		operations, err := run(db, q, height)
+		operations, err := run(db, height)
 		if err != nil {
 			log.Fatalln(err)
 		}

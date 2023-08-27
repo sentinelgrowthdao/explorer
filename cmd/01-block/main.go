@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 
 	"github.com/sentinel-official/explorer/database"
+	"github.com/sentinel-official/explorer/models"
 	"github.com/sentinel-official/explorer/querier"
 	"github.com/sentinel-official/explorer/types"
 	"github.com/sentinel-official/explorer/utils"
@@ -62,7 +63,7 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 		update := bson.M{
 			"$set": bson.M{
 				"round":        qBlock.Block.LastCommit.Round,
-				"signatures":   types.NewCommitSignatures(qBlock.Block.LastCommit.Signatures),
+				"signatures":   models.NewCommitSignatures(qBlock.Block.LastCommit.Signatures),
 				"commit_hash":  qBlock.Block.LastCommitHash.String(),
 				"results_hash": qBlock.Block.LastResultsHash.String(),
 			},
@@ -93,7 +94,7 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 		prevBlockTime = dBlockPrev.Time
 	}
 
-	dBlock := types.NewBlock(qBlock.Block).
+	dBlock := models.NewBlock(qBlock.Block).
 		WithBlockID(&qBlock.BlockID).
 		WithDuration(qBlock.Block.Time.Sub(prevBlockTime)).
 		WithBeginBlockEvents(qBlockResults.BeginBlockEvents).
@@ -110,7 +111,7 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 
 	log.Println("TxsLen", len(qBlock.Block.Txs))
 	for tIndex := 0; tIndex < len(qBlock.Block.Txs); tIndex++ {
-		dTx := types.NewTx(qBlock.Block.Txs[tIndex]).
+		dTx := models.NewTx(qBlock.Block.Txs[tIndex]).
 			WithHeight(qBlock.Block.Height).
 			WithIndex(tIndex).
 			WithResult(qBlockResults.TxsResults[tIndex]).
@@ -153,7 +154,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	if dSyncStatus == nil {
-		dSyncStatus = &types.SyncStatus{
+		dSyncStatus = &models.SyncStatus{
 			AppName:   appName,
 			Height:    fromHeight - 1,
 			Timestamp: time.Time{},

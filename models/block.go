@@ -1,4 +1,4 @@
-package types
+package models
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmtypes "github.com/tendermint/tendermint/types"
 
+	"github.com/sentinel-official/explorer/types"
 	"github.com/sentinel-official/explorer/utils"
 )
 
@@ -90,14 +91,14 @@ func NewBlockConsensusParams(v *abcitypes.ConsensusParams) *BlockConsensusParams
 
 type Block struct {
 	AppHash            string                `json:"app_hash,omitempty" bson:"app_hash"`
-	BeginBlockEvents   ABCIEvents            `json:"begin_block_events,omitempty" bson:"begin_block_events"`
+	BeginBlockEvents   types.Events          `json:"begin_block_events,omitempty" bson:"begin_block_events"`
 	ChainID            string                `json:"chain_id,omitempty" bson:"chain_id"`
 	CommitHash         string                `json:"commit_hash,omitempty" bson:"commit_hash"`
 	ConsensusHash      string                `json:"consensus_hash,omitempty" bson:"consensus_hash"`
 	ConsensusParams    *BlockConsensusParams `json:"consensus_params,omitempty" bson:"consensus_params"`
 	DataHash           string                `json:"data_hash,omitempty" bson:"data_hash"`
 	Duration           int64                 `json:"duration,omitempty" bson:"duration"`
-	EndBlockEvents     ABCIEvents            `json:"end_block_events,omitempty" bson:"end_block_events"`
+	EndBlockEvents     types.Events          `json:"end_block_events,omitempty" bson:"end_block_events"`
 	EvidenceHash       string                `json:"evidence_hash,omitempty" bson:"evidence_hash"`
 	Height             int64                 `json:"height,omitempty" bson:"height"`
 	ID                 string                `json:"id,omitempty" bson:"id"`
@@ -156,12 +157,12 @@ func (b *Block) WithSignatures(v []tmtypes.CommitSig) *Block {
 }
 
 func (b *Block) WithBeginBlockEvents(v []abcitypes.Event) *Block {
-	b.BeginBlockEvents = NewABCIEvents(v)
+	b.BeginBlockEvents = types.NewEventsFromABCIEvents(v)
 	return b
 }
 
 func (b *Block) WithEndBlockEvents(v []abcitypes.Event) *Block {
-	b.EndBlockEvents = NewABCIEvents(v)
+	b.EndBlockEvents = types.NewEventsFromABCIEvents(v)
 	return b
 }
 
