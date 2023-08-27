@@ -416,22 +416,40 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 					return nil, err
 				}
 
-				qSubscription, err := q.QuerySubscription(id, dBlock.Height)
+				owner := eSubscribeToNode.Attributes["owner"]
+				node := eSubscribeToNode.Attributes["node"]
+
+				buf, err := json.Marshal(eSubscribeToNode.Attributes["price"])
 				if err != nil {
 					return nil, err
 				}
 
+				var price sdk.Coin
+				if err := json.Unmarshal(buf, &price); err != nil {
+					return nil, err
+				}
+
+				buf, err = json.Marshal(eSubscribeToNode.Attributes["deposit"])
+				if err != nil {
+					return nil, err
+				}
+
+				var deposit sdk.Coin
+				if err := json.Unmarshal(buf, &deposit); err != nil {
+					return nil, err
+				}
+
 				dSubscription := types.Subscription{
-					ID:              qSubscription.Id,
-					Owner:           qSubscription.Owner,
-					Node:            qSubscription.Node,
-					Price:           types.NewCoin(&qSubscription.Price),
-					Deposit:         types.NewCoin(&qSubscription.Deposit),
-					Plan:            qSubscription.Plan,
-					Denom:           qSubscription.Denom,
-					Expiry:          qSubscription.Expiry,
+					ID:              id,
+					Owner:           owner,
+					Node:            node,
+					Price:           types.NewCoin(&price),
+					Deposit:         types.NewCoin(&deposit),
+					Plan:            0,
+					Denom:           "",
+					Expiry:          time.Time{},
 					Payment:         nil,
-					Free:            qSubscription.Free.Int64(),
+					Free:            0,
 					StartHeight:     dBlock.Height,
 					StartTimestamp:  dBlock.Time,
 					StartTxHash:     dTxs[tIndex].Hash,
@@ -461,22 +479,40 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 					return nil, err
 				}
 
-				qSubscription, err := q.QuerySubscription(id, dBlock.Height)
+				owner := eSubscribeToPlan.Attributes["owner"]
+				denom := eSubscribeToPlan.Attributes["denom"]
+
+				plan, err := strconv.ParseUint(eSubscribeToPlan.Attributes["plan"], 10, 64)
 				if err != nil {
 					return nil, err
 				}
 
+				expiry, err := time.Parse(time.RFC3339Nano, eSubscribeToPlan.Attributes["expiry"])
+				if err != nil {
+					return nil, err
+				}
+
+				buf, err := json.Marshal(eSubscribeToPlan.Attributes["price"])
+				if err != nil {
+					return nil, err
+				}
+
+				var payment sdk.Coin
+				if err := json.Unmarshal(buf, &payment); err != nil {
+					return nil, err
+				}
+
 				dSubscription := types.Subscription{
-					ID:              qSubscription.Id,
-					Owner:           qSubscription.Owner,
+					ID:              id,
+					Owner:           owner,
 					Node:            "",
 					Price:           nil,
 					Deposit:         nil,
-					Plan:            qSubscription.Plan,
-					Denom:           qSubscription.Denom,
-					Expiry:          qSubscription.Expiry,
-					Payment:         nil,
-					Free:            qSubscription.Free.Int64(),
+					Plan:            plan,
+					Denom:           denom,
+					Expiry:          expiry,
+					Payment:         types.NewCoin(&payment),
+					Free:            0,
 					StartHeight:     dBlock.Height,
 					StartTimestamp:  dBlock.Time,
 					StartTxHash:     dTxs[tIndex].Hash,
