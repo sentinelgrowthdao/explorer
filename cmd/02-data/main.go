@@ -19,6 +19,7 @@ import (
 	"github.com/sentinel-official/explorer/models"
 	"github.com/sentinel-official/explorer/types"
 	nodetypes "github.com/sentinel-official/explorer/types/node"
+	plantypes "github.com/sentinel-official/explorer/types/plan"
 	providertypes "github.com/sentinel-official/explorer/types/provider"
 	sessiontypes "github.com/sentinel-official/explorer/types/session"
 	subscriptiontypes "github.com/sentinel-official/explorer/types/subscription"
@@ -197,13 +198,120 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					return nil
 				})
 			case "/sentinel.plan.v1.MsgAddRequest", "/sentinel.plan.v1.MsgService/MsgAdd":
-				return nil, fmt.Errorf("implement me")
+				msg, err := plantypes.NewMsgAddRequest(dTxs[tIndex].Messages[mIndex].Data)
+				if err != nil {
+					return nil, err
+				}
+
+				eventAdd, err := plantypes.NewEventAddFromEvents(txResultLog[mIndex].Events)
+				if err != nil {
+					return nil, err
+				}
+
+				dPlan := models.Plan{
+					ID:              eventAdd.ID,
+					ProviderAddress: msg.From,
+					Price:           msg.Price,
+					Validity:        msg.Validity,
+					Bytes:           msg.Bytes,
+					NodeAddresses:   []string{},
+					AddHeight:       dBlock.Height,
+					AddTimestamp:    dBlock.Time,
+					AddTxHash:       dTxs[tIndex].Hash,
+					Status:          hubtypes.StatusInactivePending.String(),
+					StatusHeight:    dBlock.Height,
+					StatusTimestamp: dBlock.Time,
+					StatusTxHash:    dTxs[tIndex].Hash,
+				}
+
+				operations = append(operations, func(ctx mongo.SessionContext) error {
+					if _, err := database.PlanInsertOne(ctx, db, &dPlan); err != nil {
+						return err
+					}
+
+					return nil
+				})
 			case "/sentinel.plan.v1.MsgSetStatusRequest", "/sentinel.plan.v1.MsgService/MsgSetStatus":
-				return nil, fmt.Errorf("implement me")
+				msg, err := plantypes.NewMsgSetStatusRequest(dTxs[tIndex].Messages[mIndex].Data)
+				if err != nil {
+					return nil, err
+				}
+
+				filter := bson.M{
+					"id": msg.ID,
+				}
+				update := bson.M{
+					"$set": bson.M{
+						"status":           msg.Status,
+						"status_height":    dBlock.Height,
+						"status_timestamp": dBlock.Time,
+						"status_tx_hash":   dTxs[tIndex].Index,
+					},
+				}
+				projection := bson.M{
+					"_id": 1,
+				}
+
+				operations = append(operations, func(ctx mongo.SessionContext) error {
+					opts := options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true)
+					if _, err := database.PlanFindOneAndUpdate(ctx, db, filter, update, opts); err != nil {
+						return err
+					}
+
+					return nil
+				})
 			case "/sentinel.plan.v1.MsgAddNodeRequest", "/sentinel.plan.v1.MsgService/MsgAddNode":
-				return nil, fmt.Errorf("implement me")
+				msg, err := plantypes.NewMsgAddNodeRequest(dTxs[tIndex].Messages[mIndex].Data)
+				if err != nil {
+					return nil, err
+				}
+
+				filter = bson.M{
+					"id": msg.ID,
+				}
+				update := bson.M{
+					"$push": bson.M{
+						"node_addresses": msg.Address,
+					},
+				}
+				projection = bson.M{
+					"_id": 1,
+				}
+
+				operations = append(operations, func(ctx mongo.SessionContext) error {
+					opts := options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true)
+					if _, err := database.PlanFindOneAndUpdate(ctx, db, filter, update, opts); err != nil {
+						return err
+					}
+
+					return nil
+				})
 			case "/sentinel.plan.v1.MsgRemoveNodeRequest", "/sentinel.plan.v1.MsgService/MsgRemoveNode":
-				return nil, fmt.Errorf("implement me")
+				msg, err := plantypes.NewMsgRemoveNodeRequest(dTxs[tIndex].Messages[mIndex].Data)
+				if err != nil {
+					return nil, err
+				}
+
+				filter = bson.M{
+					"id": msg.ID,
+				}
+				update := bson.M{
+					"$pull": bson.M{
+						"node_addresses": msg.Address,
+					},
+				}
+				projection = bson.M{
+					"_id": 1,
+				}
+
+				operations = append(operations, func(ctx mongo.SessionContext) error {
+					opts := options.FindOneAndUpdate().SetProjection(projection).SetUpsert(true)
+					if _, err := database.PlanFindOneAndUpdate(ctx, db, filter, update, opts); err != nil {
+						return err
+					}
+
+					return nil
+				})
 			case "/sentinel.provider.v1.MsgRegisterRequest", "/sentinel.provider.v1.MsgService/MsgRegister":
 				msg, err := providertypes.NewMsgRegisterRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
