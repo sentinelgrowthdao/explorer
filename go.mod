@@ -7,7 +7,7 @@ replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alp
 require (
 	github.com/cosmos/cosmos-sdk v0.42.5
 	github.com/gogo/protobuf v1.3.3
-	github.com/sentinel-official/hub v0.6.3
+	github.com/sentinel-official/hub v0.7.0
 	github.com/tendermint/tendermint v0.34.10
 	go.mongodb.org/mongo-driver v1.12.1
 	google.golang.org/grpc v1.38.0
