@@ -10,12 +10,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/sentinel-official/hub/params"
-	deposittypes "github.com/sentinel-official/hub/x/deposit/types"
-	nodetypes "github.com/sentinel-official/hub/x/node/types"
-	plantypes "github.com/sentinel-official/hub/x/plan/types"
-	providertypes "github.com/sentinel-official/hub/x/provider/types"
-	sessiontypes "github.com/sentinel-official/hub/x/session/types"
-	subscriptiontypes "github.com/sentinel-official/hub/x/subscription/types"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/client"
@@ -27,12 +21,6 @@ type Querier struct {
 	codec.Marshaler
 	codectypes.InterfaceRegistry
 	*tmhttp.HTTP
-	deposit      deposittypes.QueryServiceClient
-	node         nodetypes.QueryServiceClient
-	plan         plantypes.QueryServiceClient
-	provider     providertypes.QueryServiceClient
-	session      sessiontypes.QueryServiceClient
-	subscription subscriptiontypes.QueryServiceClient
 }
 
 func NewQuerier(encCfg *params.EncodingConfig, remote, wsEndpoint string) (q *Querier, err error) {
@@ -41,20 +29,11 @@ func NewQuerier(encCfg *params.EncodingConfig, remote, wsEndpoint string) (q *Qu
 		return nil, err
 	}
 
-	q = &Querier{
+	return &Querier{
 		Marshaler:         encCfg.Marshaler,
 		InterfaceRegistry: encCfg.InterfaceRegistry,
 		HTTP:              http,
-	}
-
-	q.deposit = deposittypes.NewQueryServiceClient(q)
-	q.node = nodetypes.NewQueryServiceClient(q)
-	q.plan = plantypes.NewQueryServiceClient(q)
-	q.provider = providertypes.NewQueryServiceClient(q)
-	q.session = sessiontypes.NewQueryServiceClient(q)
-	q.subscription = subscriptiontypes.NewQueryServiceClient(q)
-
-	return q, nil
+	}, nil
 }
 
 func (q *Querier) queryABCI(req *abcitypes.RequestQuery) (*abcitypes.ResponseQuery, error) {

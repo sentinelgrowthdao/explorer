@@ -2,6 +2,7 @@ package querier
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -9,16 +10,49 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	deposittypes "github.com/sentinel-official/hub/x/deposit/types"
+	vpntypes "github.com/sentinel-official/hub/x/vpn/types"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/sentinel-official/explorer/types"
 )
 
-func (q *Querier) QueryDeposit(addr sdk.AccAddress, height int64) (*deposittypes.Deposit, error) {
+func (q *Querier) ABCIQueryDeposit(addr sdk.AccAddress, height int64) (*deposittypes.Deposit, error) {
 	now := time.Now()
 	defer func() {
-		log.Println("QueryDeposit", height, addr.String(), time.Since(now))
+		log.Println("ABCIQueryDeposit", height, addr.String(), time.Since(now))
 	}()
 
-	res, err := q.deposit.QueryDeposit(
+	value, err := q.queryKey(
+		vpntypes.ModuleName,
+		append(
+			[]byte(deposittypes.ModuleName+"/"),
+			deposittypes.DepositKey(addr)...,
+		),
+		height,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if value == nil {
+		return nil, fmt.Errorf("nil value")
+	}
+
+	var item deposittypes.Deposit
+	if err := types.EncCfg.Marshaler.UnmarshalBinaryBare(value, &item); err != nil {
+		return nil, err
+	}
+
+	return &item, nil
+}
+
+func (q *Querier) GRPCQueryDeposit(addr sdk.AccAddress, height int64) (*deposittypes.Deposit, error) {
+	now := time.Now()
+	defer func() {
+		log.Println("GRPCQueryDeposit", height, addr.String(), time.Since(now))
+	}()
+
+	qsc := deposittypes.NewQueryServiceClient(q)
+	res, err := qsc.QueryDeposit(
 		metadata.AppendToOutgoingContext(
 			context.TODO(),
 			grpctypes.GRPCBlockHeightHeader,
