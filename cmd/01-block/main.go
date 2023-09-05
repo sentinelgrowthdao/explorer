@@ -36,7 +36,7 @@ var (
 
 func init() {
 	flag.Int64Var(&fromHeight, "from-height", 901_801, "")
-	flag.Int64Var(&toHeight, "to-height", 1_272_000, "")
+	flag.Int64Var(&toHeight, "to-height", 2_586_000, "")
 	flag.StringVar(&rpcAddress, "rpc-address", "http://127.0.0.1:26657", "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
