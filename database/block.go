@@ -44,3 +44,7 @@ func BlockFind(ctx context.Context, db *mongo.Database, filter bson.M, opts ...*
 
 	return v, nil
 }
+
+func BlockIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
+	return IndexesCreateMany(ctx, db.Collection(BlockCollectionName), models, opts...)
+}

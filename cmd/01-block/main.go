@@ -45,6 +45,60 @@ func init() {
 	flag.Parse()
 }
 
+func createIndexes(ctx context.Context, db *mongo.Database) error {
+	indexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "app_name", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err := database.SyncStatusIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "height", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.BlockIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "height", Value: 1},
+				bson.E{Key: "result.code", Value: 1},
+			},
+			Options: options.Index().
+				SetPartialFilterExpression(
+					bson.M{
+						"result.code": 0,
+					},
+				),
+		},
+	}
+
+	_, err = database.TxIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func run(db *mongo.Database, q *querier.Querier, height int64) (operations []types.DatabaseOperation, err error) {
 	qBlock, err := q.QueryBlock(context.TODO(), height)
 	if err != nil {
@@ -133,16 +187,20 @@ func main() {
 
 	q, err := querier.NewQuerier(&encCfg, rpcAddress, "/websocket")
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
 	db, err := utils.PrepareDatabase(context.TODO(), appName, dbUsername, dbPassword, dbAddress, dbName)
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
-	if err = db.Client().Ping(context.TODO(), nil); err != nil {
-		log.Fatalln(err)
+	if err := db.Client().Ping(context.TODO(), nil); err != nil {
+		log.Panicln(err)
+	}
+
+	if err := createIndexes(context.TODO(), db); err != nil {
+		log.Panicln(err)
 	}
 
 	filter := bson.M{
@@ -151,7 +209,7 @@ func main() {
 
 	dSyncStatus, err := database.SyncStatusFindOne(context.TODO(), db, filter)
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	if dSyncStatus == nil {
 		dSyncStatus = &models.SyncStatus{
@@ -168,7 +226,7 @@ func main() {
 
 		operations, err := run(db, q, height)
 		if err != nil {
-			log.Fatalln(err)
+			log.Panicln(err)
 		}
 
 		err = db.Client().UseSession(
@@ -224,7 +282,7 @@ func main() {
 		log.Println("Duration", time.Since(now))
 		log.Println()
 		if err != nil {
-			log.Fatalln(err)
+			log.Panicln(err)
 		}
 	}
 }

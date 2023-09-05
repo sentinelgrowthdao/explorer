@@ -44,3 +44,7 @@ func TxFind(ctx context.Context, db *mongo.Database, filter bson.M, opts ...*opt
 
 	return v, nil
 }
+
+func TxIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
+	return IndexesCreateMany(ctx, db.Collection(TxCollectionName), models, opts...)
+}

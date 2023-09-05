@@ -64,7 +64,6 @@ func NewEventSubscribeToNodeFromEvents(v types.Events) (*EventSubscribeToNode, e
 
 type EventSubscribeToPlan struct {
 	Owner   string
-	Denom   string
 	ID      uint64
 	Plan    uint64
 	Expiry  time.Time
@@ -99,7 +98,6 @@ func NewEventSubscribeToPlan(v *types.Event) (*EventSubscribeToPlan, error) {
 
 	return &EventSubscribeToPlan{
 		Owner:   v.Attributes["owner"],
-		Denom:   v.Attributes["denom"],
 		ID:      id,
 		Plan:    plan,
 		Expiry:  expiry,
@@ -114,4 +112,160 @@ func NewEventSubscribeToPlanFromEvents(v types.Events) (*EventSubscribeToPlan, e
 	}
 
 	return NewEventSubscribeToPlan(e)
+}
+
+type EventAddQuota struct {
+	ID        uint64
+	Address   string
+	Consumed  int64
+	Allocated int64
+	Free      int64
+}
+
+func NewEventAddQuota(v *types.Event) (*EventAddQuota, error) {
+	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	consumed, err := strconv.ParseInt(v.Attributes["consumed"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	allocated, err := strconv.ParseInt(v.Attributes["allocated"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	free, err := strconv.ParseInt(v.Attributes["free"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	return &EventAddQuota{
+		ID:        id,
+		Address:   v.Attributes["address"],
+		Consumed:  consumed,
+		Allocated: allocated,
+		Free:      free,
+	}, nil
+}
+
+func NewEventAddQuotaFromEvents(v types.Events) (*EventAddQuota, error) {
+	e, err := v.Get("sentinel.subscription.v1.EventAddQuota")
+	if err != nil {
+		return nil, err
+	}
+
+	return NewEventAddQuota(e)
+}
+
+type EventUpdateQuota struct {
+	ID        uint64
+	Address   string
+	Consumed  int64
+	Allocated int64
+	Free      int64
+}
+
+func NewEventUpdateQuota(v *types.Event) (*EventUpdateQuota, error) {
+	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	consumed, err := strconv.ParseInt(v.Attributes["consumed"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	allocated, err := strconv.ParseInt(v.Attributes["allocated"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	free, err := strconv.ParseInt(v.Attributes["free"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	return &EventUpdateQuota{
+		ID:        id,
+		Address:   v.Attributes["address"],
+		Consumed:  consumed,
+		Allocated: allocated,
+		Free:      free,
+	}, nil
+}
+
+func NewEventUpdateQuotaFromEvents(v types.Events) (*EventUpdateQuota, error) {
+	e, err := v.Get("sentinel.subscription.v1.EventUpdateQuota")
+	if err != nil {
+		return nil, err
+	}
+
+	return NewEventUpdateQuota(e)
+}
+
+type EventCancelSubscription struct {
+	ID     uint64
+	Status string
+}
+
+func NewEventCancelSubscription(v *types.Event) (*EventCancelSubscription, error) {
+	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	return &EventCancelSubscription{
+		ID:     id,
+		Status: v.Attributes["status"],
+	}, nil
+}
+
+func NewEventCancelSubscriptionFromEvents(v types.Events) (*EventCancelSubscription, error) {
+	e, err := v.Get("sentinel.subscription.v1.EventCancelSubscription")
+	if err != nil {
+		return nil, err
+	}
+
+	return NewEventCancelSubscription(e)
+}
+
+type EventRefund struct {
+	ID     uint64
+	Refund *types.Coin
+}
+
+func NewEventRefund(v *types.Event) (*EventRefund, error) {
+	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	buf, err := json.Marshal(v.Attributes["refund"])
+	if err != nil {
+		return nil, err
+	}
+
+	var refund sdk.Coin
+	if err := json.Unmarshal(buf, &refund); err != nil {
+		return nil, err
+	}
+
+	return &EventRefund{
+		ID:     id,
+		Refund: types.NewCoin(&refund),
+	}, nil
+}
+
+func NewEventRefundFromEvents(v types.Events) (*EventRefund, error) {
+	e, err := v.Get("sentinel.subscription.v1.EventRefund")
+	if err != nil {
+		return nil, err
+	}
+
+	return NewEventRefund(e)
 }

@@ -12,8 +12,8 @@ type Session struct {
 	Subscription uint64           `json:"subscription,omitempty" bson:"subscription"`
 	Address      string           `json:"address,omitempty" bson:"address"`
 	Node         string           `json:"node,omitempty" bson:"node"`
-	Duration     int64            `json:"duration,omitempty" bson:"duration"`
 	Bandwidth    *types.Bandwidth `json:"bandwidth,omitempty" bson:"bandwidth"`
+	Duration     int64            `json:"duration,omitempty" bson:"duration"`
 
 	StartHeight    int64     `json:"start_height,omitempty" bson:"start_height"`
 	StartTimestamp time.Time `json:"start_timestamp,omitempty" bson:"start_timestamp"`

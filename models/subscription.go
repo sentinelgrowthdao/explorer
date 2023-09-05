@@ -10,17 +10,17 @@ import (
 type Subscription struct {
 	ID    uint64 `json:"id,omitempty" bson:"id"`
 	Owner string `json:"owner,omitempty" bson:"owner"`
+	Free  int64  `json:"free,omitempty" bson:"free"`
 
 	Node    string      `json:"node,omitempty" bson:"node"`
 	Price   *types.Coin `json:"price,omitempty" bson:"price"`
 	Deposit *types.Coin `json:"deposit,omitempty" bson:"deposit"`
+	Refund  *types.Coin `json:"refund,omitempty" bson:"refund"`
 
 	Plan    uint64      `json:"plan,omitempty" bson:"plan"`
 	Denom   string      `json:"denom,omitempty" bson:"denom"`
 	Expiry  time.Time   `json:"expiry,omitempty" bson:"expiry"`
 	Payment *types.Coin `json:"payment,omitempty" bson:"payment"`
-
-	Free int64 `json:"free,omitempty" bson:"free"`
 
 	StartHeight    int64     `json:"start_height,omitempty" bson:"start_height"`
 	StartTimestamp time.Time `json:"start_timestamp,omitempty" bson:"start_timestamp"`

@@ -35,3 +35,7 @@ func SyncStatusFindOneAndUpdate(ctx context.Context, db *mongo.Database, filter,
 
 	return &v, nil
 }
+
+func SyncStatusIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
+	return IndexesCreateMany(ctx, db.Collection(SyncStatusCollectionName), models, opts...)
+}
