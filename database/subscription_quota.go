@@ -44,3 +44,7 @@ func SubscriptionQuotaFind(ctx context.Context, db *mongo.Database, filter bson.
 
 	return v, nil
 }
+
+func SubscriptionQuotaIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
+	return IndexesCreateMany(ctx, db.Collection(SubscriptionQuotaCollectionName), models, opts...)
+}

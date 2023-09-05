@@ -44,3 +44,7 @@ func PlanFind(ctx context.Context, db *mongo.Database, filter bson.M, opts ...*o
 
 	return v, nil
 }
+
+func PlanIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
+	return IndexesCreateMany(ctx, db.Collection(PlanCollectionName), models, opts...)
+}

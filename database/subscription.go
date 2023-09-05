@@ -44,3 +44,7 @@ func SubscriptionFind(ctx context.Context, db *mongo.Database, filter bson.M, op
 
 	return v, nil
 }
+
+func SubscriptionIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
+	return IndexesCreateMany(ctx, db.Collection(SubscriptionCollectionName), models, opts...)
+}

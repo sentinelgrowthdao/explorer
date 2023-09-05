@@ -44,3 +44,7 @@ func ProviderFind(ctx context.Context, db *mongo.Database, filter bson.M, opts .
 
 	return v, nil
 }
+
+func ProviderIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
+	return IndexesCreateMany(ctx, db.Collection(ProviderCollectionName), models, opts...)
+}

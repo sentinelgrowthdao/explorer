@@ -51,6 +51,166 @@ func init() {
 	flag.Parse()
 }
 
+func createIndexes(ctx context.Context, db *mongo.Database) error {
+	indexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "app_name", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err := database.SyncStatusIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "height", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.BlockIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "height", Value: 1},
+				bson.E{Key: "result.code", Value: 1},
+			},
+			Options: options.Index().
+				SetPartialFilterExpression(
+					bson.M{
+						"result.code": 0,
+					},
+				),
+		},
+	}
+
+	_, err = database.TxIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "address", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.DepositIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "address", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.NodeIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "id", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.PlanIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "address", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.ProviderIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "id", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.SessionIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "id", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.SubscriptionIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "id", Value: 1},
+				bson.E{Key: "address", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.SubscriptionQuotaIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation, err error) {
 	filter := bson.M{
 		"height": height,
@@ -1305,6 +1465,10 @@ func main() {
 	}
 
 	if err = db.Client().Ping(context.TODO(), nil); err != nil {
+		log.Panicln(err)
+	}
+
+	if err := createIndexes(context.TODO(), db); err != nil {
 		log.Panicln(err)
 	}
 

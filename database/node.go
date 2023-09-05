@@ -44,3 +44,7 @@ func NodeFind(ctx context.Context, db *mongo.Database, filter bson.M, opts ...*o
 
 	return v, nil
 }
+
+func NodeIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
+	return IndexesCreateMany(ctx, db.Collection(NodeCollectionName), models, opts...)
+}
