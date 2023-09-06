@@ -231,7 +231,7 @@ func NewEventRefund(v *types.Event) (*EventRefund, error) {
 	}
 
 	var refund sdk.Coin
-	if err := json.Unmarshal([]byte(v.Attributes["refund"]), &refund); err != nil {
+	if err := json.Unmarshal([]byte(v.Attributes["payment"]), &refund); err != nil {
 		return nil, err
 	}
 
