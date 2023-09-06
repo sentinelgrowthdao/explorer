@@ -70,13 +70,8 @@ func NewEventPay(v *types.Event) (*EventPay, error) {
 		return nil, err
 	}
 
-	buf, err := json.Marshal(v.Attributes["payment"])
-	if err != nil {
-		return nil, err
-	}
-
 	var payment sdk.Coin
-	if err := json.Unmarshal(buf, &payment); err != nil {
+	if err := json.Unmarshal([]byte(v.Attributes["payment"]), &payment); err != nil {
 		return nil, err
 	}
 

@@ -24,23 +24,13 @@ func NewEventSubscribeToNode(v *types.Event) (*EventSubscribeToNode, error) {
 		return nil, err
 	}
 
-	buf, err := json.Marshal(v.Attributes["price"])
-	if err != nil {
-		return nil, err
-	}
-
 	var price sdk.Coin
-	if err := json.Unmarshal(buf, &price); err != nil {
-		return nil, err
-	}
-
-	buf, err = json.Marshal(v.Attributes["deposit"])
-	if err != nil {
+	if err := json.Unmarshal([]byte(v.Attributes["price"]), &price); err != nil {
 		return nil, err
 	}
 
 	var deposit sdk.Coin
-	if err := json.Unmarshal(buf, &deposit); err != nil {
+	if err := json.Unmarshal([]byte(v.Attributes["deposit"]), &deposit); err != nil {
 		return nil, err
 	}
 
@@ -86,13 +76,8 @@ func NewEventSubscribeToPlan(v *types.Event) (*EventSubscribeToPlan, error) {
 		return nil, err
 	}
 
-	buf, err := json.Marshal(v.Attributes["price"])
-	if err != nil {
-		return nil, err
-	}
-
 	var payment sdk.Coin
-	if err := json.Unmarshal(buf, &payment); err != nil {
+	if err := json.Unmarshal([]byte(v.Attributes["price"]), &payment); err != nil {
 		return nil, err
 	}
 
@@ -245,13 +230,8 @@ func NewEventRefund(v *types.Event) (*EventRefund, error) {
 		return nil, err
 	}
 
-	buf, err := json.Marshal(v.Attributes["refund"])
-	if err != nil {
-		return nil, err
-	}
-
 	var refund sdk.Coin
-	if err := json.Unmarshal(buf, &refund); err != nil {
+	if err := json.Unmarshal([]byte(v.Attributes["refund"]), &refund); err != nil {
 		return nil, err
 	}
 

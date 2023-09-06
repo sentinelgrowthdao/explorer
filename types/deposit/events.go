@@ -16,23 +16,13 @@ type EventAdd struct {
 }
 
 func NewEventAdd(v *types.Event) (*EventAdd, error) {
-	buf, err := json.Marshal(v.Attributes["previous"])
-	if err != nil {
-		return nil, err
-	}
-
 	var previous sdk.Coins
-	if err := json.Unmarshal(buf, &previous); err != nil {
-		return nil, err
-	}
-
-	buf, err = json.Marshal(v.Attributes["coins"])
-	if err != nil {
+	if err := json.Unmarshal([]byte(v.Attributes["previous"]), &previous); err != nil {
 		return nil, err
 	}
 
 	var coins sdk.Coins
-	if err := json.Unmarshal(buf, &coins); err != nil {
+	if err := json.Unmarshal([]byte(v.Attributes["coins"]), &coins); err != nil {
 		return nil, err
 	}
 
@@ -61,23 +51,13 @@ type EventSubtract struct {
 }
 
 func NewEventSubtract(v *types.Event) (*EventSubtract, error) {
-	buf, err := json.Marshal(v.Attributes["previous"])
-	if err != nil {
-		return nil, err
-	}
-
 	var previous sdk.Coins
-	if err := json.Unmarshal(buf, &previous); err != nil {
-		return nil, err
-	}
-
-	buf, err = json.Marshal(v.Attributes["coins"])
-	if err != nil {
+	if err := json.Unmarshal([]byte(v.Attributes["previous"]), &previous); err != nil {
 		return nil, err
 	}
 
 	var coins sdk.Coins
-	if err := json.Unmarshal(buf, &coins); err != nil {
+	if err := json.Unmarshal([]byte(v.Attributes["coins"]), &coins); err != nil {
 		return nil, err
 	}
 
