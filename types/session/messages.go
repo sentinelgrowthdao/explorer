@@ -66,7 +66,7 @@ func NewMsgUpdateRequest(v bson.M) (*MsgUpdateRequest, error) {
 
 type MsgEndRequest struct {
 	ID     uint64
-	Rating uint64
+	Rating int64
 }
 
 func NewMsgEndRequest(v bson.M) (*MsgEndRequest, error) {
@@ -75,7 +75,7 @@ func NewMsgEndRequest(v bson.M) (*MsgEndRequest, error) {
 		return nil, err
 	}
 
-	rating, err := strconv.ParseUint(v["rating"].(string), 10, 64)
+	rating, err := strconv.ParseInt(v["rating"].(string), 10, 64)
 	if err != nil {
 		return nil, err
 	}

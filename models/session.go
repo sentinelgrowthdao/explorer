@@ -23,7 +23,7 @@ type Session struct {
 	EndTxHash      string    `json:"end_tx_hash,omitempty" bson:"end_tx_hash"`
 
 	Payment *types.Coin `json:"payment,omitempty" bson:"payment"`
-	Rating  uint64      `json:"rating,omitempty" bson:"rating"`
+	Rating  int64       `json:"rating,omitempty" bson:"rating"`
 
 	Status          string    `json:"status,omitempty" bson:"status"`
 	StatusHeight    int64     `json:"status_height,omitempty" bson:"status_height"`

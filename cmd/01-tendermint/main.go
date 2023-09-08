@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	appName = "01-block"
+	appName = "01-tendermint"
 )
 
 var (
@@ -36,7 +36,7 @@ var (
 
 func init() {
 	flag.Int64Var(&fromHeight, "from-height", 901_801, "")
-	flag.Int64Var(&toHeight, "to-height", 2_586_000, "")
+	flag.Int64Var(&toHeight, "to-height", 5_125_000, "")
 	flag.StringVar(&rpcAddress, "rpc-address", "http://127.0.0.1:26657", "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
@@ -99,7 +99,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	return nil
 }
 
-func run(db *mongo.Database, q *querier.Querier, height int64) (operations []types.DatabaseOperation, err error) {
+func run(db *mongo.Database, q *querier.Querier, height int64) (ops []types.DatabaseOperation, err error) {
 	qBlock, err := q.QueryBlock(context.TODO(), height)
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 		return nil, err
 	}
 
-	operations = append(operations, func(ctx mongo.SessionContext) error {
+	ops = append(ops, func(ctx mongo.SessionContext) error {
 		filter := bson.M{
 			"height": height - 1,
 		}
@@ -155,7 +155,7 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 		WithEndBlockEvents(qBlockResults.EndBlockEvents).
 		WithBlockValidatorUpdates(qBlockResults.ValidatorUpdates).
 		WithBlockConsensusParams(qBlockResults.ConsensusParamUpdates)
-	operations = append(operations, func(ctx mongo.SessionContext) error {
+	ops = append(ops, func(ctx mongo.SessionContext) error {
 		if _, err := database.BlockInsertOne(ctx, db, dBlock); err != nil {
 			return err
 		}
@@ -170,7 +170,7 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 			WithIndex(tIndex).
 			WithResult(qBlockResults.TxsResults[tIndex]).
 			WithTimestamp(qBlock.Block.Time)
-		operations = append(operations, func(ctx mongo.SessionContext) error {
+		ops = append(ops, func(ctx mongo.SessionContext) error {
 			if _, err := database.TxInsertOne(ctx, db, dTx); err != nil {
 				return err
 			}
@@ -179,7 +179,7 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (operations []typ
 		})
 	}
 
-	return operations, nil
+	return ops, nil
 }
 
 func main() {
@@ -224,7 +224,7 @@ func main() {
 		now := time.Now()
 		log.Println("Height", height)
 
-		operations, err := run(db, q, height)
+		ops, err := run(db, q, height)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -248,9 +248,9 @@ func main() {
 					}
 				}()
 
-				log.Println("OperationsLen", len(operations))
-				for i := 0; i < len(operations); i++ {
-					if err := operations[i](ctx); err != nil {
+				log.Println("OperationsLen", len(ops))
+				for i := 0; i < len(ops); i++ {
+					if err := ops[i](ctx); err != nil {
 						return err
 					}
 				}

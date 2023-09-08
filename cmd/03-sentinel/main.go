@@ -16,6 +16,7 @@ import (
 
 	"github.com/sentinel-official/explorer/database"
 	"github.com/sentinel-official/explorer/models"
+	"github.com/sentinel-official/explorer/operations"
 	"github.com/sentinel-official/explorer/types"
 	deposittypes "github.com/sentinel-official/explorer/types/deposit"
 	nodetypes "github.com/sentinel-official/explorer/types/node"
@@ -27,7 +28,7 @@ import (
 )
 
 const (
-	appName = "02-data"
+	appName = "03-sentinel"
 )
 
 var (
@@ -42,7 +43,7 @@ var (
 
 func init() {
 	flag.Int64Var(&fromHeight, "from-height", 901_801, "")
-	flag.Int64Var(&toHeight, "to-height", 2_586_000, "")
+	flag.Int64Var(&toHeight, "to-height", 5_125_000, "")
 	flag.StringVar(&rpcAddress, "rpc-address", "http://127.0.0.1:26657", "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
@@ -211,7 +212,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	return nil
 }
 
-func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation, err error) {
+func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err error) {
 	filter := bson.M{
 		"height": height,
 	}
@@ -273,49 +274,17 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					StatusTxHash:      dTxs[tIndex].Hash,
 				}
 
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.NodeInsertOne(ctx, db, &dNode); err != nil {
-						return err
-					}
-
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewNodeRegisterOperation(
+						db, &dNode,
+					),
+				)
 			case "/sentinel.node.v1.MsgUpdateRequest", "/sentinel.node.v1.MsgService/MsgUpdate":
 				msg, err := nodetypes.NewMsgUpdateRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
-
-				filter1 := bson.M{
-					"address": msg.From,
-				}
-
-				updateSet1 := bson.M{}
-				if msg.Provider != "" {
-					updateSet1["provider"], updateSet1["price"] = msg.Provider, nil
-				}
-				if msg.Price != nil && len(msg.Price) > 0 {
-					updateSet1["price"], updateSet1["provider"] = msg.Price, ""
-				}
-				if msg.RemoteURL != "" {
-					updateSet1["remote_url"] = msg.RemoteURL
-				}
-
-				update1 := bson.M{
-					"$set": updateSet1,
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.NodeFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:        types.EventTypeNodeUpdateDetails,
@@ -327,42 +296,21 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					Price:       msg.Price,
 					RemoteURL:   msg.RemoteURL,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewNodeUpdateDetailsOperation(
+						db, msg.From, msg.Provider, msg.Price, msg.RemoteURL,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+				)
 			case "/sentinel.node.v1.MsgSetStatusRequest", "/sentinel.node.v1.MsgService/MsgSetStatus":
 				msg, err := nodetypes.NewMsgSetStatusRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
-
-				filter1 := bson.M{
-					"address": msg.From,
-				}
-				update1 := bson.M{
-					"$set": bson.M{
-						"status":           msg.Status,
-						"status_height":    dBlock.Height,
-						"status_timestamp": dBlock.Time,
-						"status_tx_hash":   dTxs[tIndex].Hash,
-					},
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.NodeFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:        types.EventTypeNodeUpdateStatus,
@@ -372,13 +320,17 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					NodeAddress: msg.From,
 					Status:      msg.Status,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewNodeUpdateStatusOperation(
+						db, msg.From, msg.Status, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+				)
+
 			case "/sentinel.plan.v1.MsgAddRequest", "/sentinel.plan.v1.MsgService/MsgAdd":
 				msg, err := plantypes.NewMsgAddRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
@@ -406,42 +358,17 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					StatusTxHash:    dTxs[tIndex].Hash,
 				}
 
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.PlanInsertOne(ctx, db, &dPlan); err != nil {
-						return err
-					}
-
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewPlanCreateOperation(
+						db, &dPlan,
+					),
+				)
 			case "/sentinel.plan.v1.MsgSetStatusRequest", "/sentinel.plan.v1.MsgService/MsgSetStatus":
 				msg, err := plantypes.NewMsgSetStatusRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
-
-				filter1 := bson.M{
-					"id": msg.ID,
-				}
-				update1 := bson.M{
-					"$set": bson.M{
-						"status":           msg.Status,
-						"status_height":    dBlock.Height,
-						"status_timestamp": dBlock.Time,
-						"status_tx_hash":   dTxs[tIndex].Index,
-					},
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.PlanFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:      types.EventTypePlanUpdateStatus,
@@ -451,39 +378,21 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					PlanID:    msg.ID,
 					Status:    msg.Status,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewPlanUpdateStatusOperation(
+						db, msg.ID, msg.Status, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+				)
 			case "/sentinel.plan.v1.MsgAddNodeRequest", "/sentinel.plan.v1.MsgService/MsgAddNode":
 				msg, err := plantypes.NewMsgAddNodeRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
-
-				filter1 := bson.M{
-					"id": msg.ID,
-				}
-				update1 := bson.M{
-					"$push": bson.M{
-						"node_addresses": msg.Address,
-					},
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.PlanFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:        types.EventTypePlanAddNode,
@@ -493,39 +402,21 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					PlanID:      msg.ID,
 					NodeAddress: msg.Address,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewPlanAddNodeOperation(
+						db, msg.ID, msg.Address,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+				)
 			case "/sentinel.plan.v1.MsgRemoveNodeRequest", "/sentinel.plan.v1.MsgService/MsgRemoveNode":
 				msg, err := plantypes.NewMsgRemoveNodeRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
-
-				filter1 := bson.M{
-					"id": msg.ID,
-				}
-				update1 := bson.M{
-					"$pull": bson.M{
-						"node_addresses": msg.Address,
-					},
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.PlanFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:        types.EventTypePlanRemoveNode,
@@ -535,13 +426,16 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					PlanID:      msg.ID,
 					NodeAddress: msg.Address,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewPlanRemoveNodeOperation(
+						db, msg.ID, msg.Address,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+				)
 			case "/sentinel.provider.v1.MsgRegisterRequest", "/sentinel.provider.v1.MsgService/MsgRegister":
 				msg, err := providertypes.NewMsgRegisterRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
@@ -559,52 +453,17 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					RegisterTxHash:    dTxs[tIndex].Hash,
 				}
 
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.ProviderInsertOne(ctx, db, &dProvider); err != nil {
-						return err
-					}
-
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewProviderRegisterOperation(
+						db, &dProvider,
+					),
+				)
 			case "/sentinel.provider.v1.MsgUpdateRequest", "/sentinel.provider.v1.MsgService/MsgUpdate":
 				msg, err := providertypes.NewMsgUpdateRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
-
-				filter1 := bson.M{
-					"address": msg.From,
-				}
-
-				updateSet1 := bson.M{}
-				if msg.Name != "" {
-					updateSet1["name"] = msg.Name
-				}
-				if msg.Identity != "" {
-					updateSet1["identity"] = msg.Identity
-				}
-				if msg.Website != "" {
-					updateSet1["website"] = msg.Website
-				}
-				if msg.Description != "" {
-					updateSet1["description"] = msg.Description
-				}
-
-				update1 := bson.M{
-					"$set": updateSet1,
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.ProviderFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:        types.EventTypeProviderUpdateDetails,
@@ -617,13 +476,16 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					Website:     msg.Website,
 					Description: msg.Description,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewProviderUpdateOperation(
+						db, msg.From, msg.Name, msg.Identity, msg.Website, msg.Description,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+				)
 			case "/sentinel.session.v1.MsgStartRequest", "/sentinel.session.v1.MsgService/MsgStart":
 				msg, err := sessiontypes.NewMsgStartRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
@@ -655,40 +517,18 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					StatusTimestamp: dBlock.Time,
 					StatusTxHash:    dTxs[tIndex].Hash,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.SessionInsertOne(ctx, db, &dSession); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewSessionStartOperation(
+						db, &dSession,
+					),
+				)
 			case "/sentinel.session.v1.MsgUpdateRequest", "/sentinel.session.v1.MsgService/MsgUpdate":
 				msg, err := sessiontypes.NewMsgUpdateRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
-
-				filter1 := bson.M{
-					"id": msg.ID,
-				}
-				update1 := bson.M{
-					"$set": bson.M{
-						"bandwidth": msg.Bandwidth,
-						"duration":  msg.Duration,
-					},
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.SessionFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:      types.EventTypeSessionUpdateDetails,
@@ -699,43 +539,21 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					Bandwidth: msg.Bandwidth,
 					Duration:  msg.Duration,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewSessionUpdateDetailsOperation(
+						db, msg.ID, msg.Bandwidth, msg.Duration, nil, -1,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+				)
 			case "/sentinel.session.v1.MsgEndRequest", "/sentinel.session.v1.MsgService/MsgEnd":
 				msg, err := sessiontypes.NewMsgEndRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
-
-				filter1 := bson.M{
-					"id": msg.ID,
-				}
-				update1 := bson.M{
-					"$set": bson.M{
-						"rating":           msg.Rating,
-						"status":           hubtypes.StatusInactivePending.String(),
-						"status_height":    dBlock.Height,
-						"status_timestamp": dBlock.Time,
-						"status_tx_hash":   dTxs[tIndex].Index,
-					},
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.SessionFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:      types.EventTypeSessionUpdateStatus,
@@ -745,15 +563,31 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					SessionID: msg.ID,
 					Status:    hubtypes.StatusInactivePending.String(),
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewSessionUpdateDetailsOperation(
+						db, msg.ID, nil, -1, nil, msg.Rating,
+					),
+					operations.NewSessionUpdateStatusOperation(
+						db, msg.ID, hubtypes.StatusInactivePending.String(), dBlock.Height, dBlock.Time, dTxs[tIndex].Hash,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+				)
 			case "/sentinel.subscription.v1.MsgSubscribeToNodeRequest", "/sentinel.subscription.v1.MsgService/MsgSubscribeToNode":
 				eventSubscribeToNode, err := subscriptiontypes.NewEventSubscribeToNodeFromEvents(txResultLog[mIndex].Events)
+				if err != nil {
+					return nil, err
+				}
+
+				eventAddQuota, err := subscriptiontypes.NewEventAddQuotaFromEvents(txResultLog[mIndex].Events)
+				if err != nil {
+					return nil, err
+				}
+
+				eventAddDeposit, err := deposittypes.NewEventAddFromEvents(txResultLog[mIndex].Events)
 				if err != nil {
 					return nil, err
 				}
@@ -781,18 +615,6 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					StatusTimestamp: dBlock.Time,
 					StatusTxHash:    dTxs[tIndex].Hash,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.SubscriptionInsertOne(ctx, db, &dSubscription); err != nil {
-						return err
-					}
-
-					return nil
-				})
-
-				eventAddQuota, err := subscriptiontypes.NewEventAddQuotaFromEvents(txResultLog[mIndex].Events)
-				if err != nil {
-					return nil, err
-				}
 
 				dSubscriptionQuota := models.SubscriptionQuota{
 					ID:        eventAddQuota.ID,
@@ -800,13 +622,6 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					Allocated: eventAddQuota.Allocated,
 					Consumed:  eventAddQuota.Consumed,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.SubscriptionQuotaInsertOne(ctx, db, &dSubscriptionQuota); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:           types.EventTypeSubscriptionQuotaUpdateDetails,
@@ -818,60 +633,41 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					Allocated:      eventAddQuota.Allocated,
 					Consumed:       eventAddQuota.Consumed,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
-
-					return nil
-				})
-
-				eventAdd, err := deposittypes.NewEventAddFromEvents(txResultLog[mIndex].Events)
-				if err != nil {
-					return nil, err
-				}
-
-				filter1 := bson.M{
-					"address": eventAdd.Address,
-				}
-				update1 := bson.M{
-					"$set": bson.M{
-						"coins":     eventAdd.Current,
-						"height":    dBlock.Height,
-						"timestamp": dBlock.Time,
-						"tx_hash":   dTxs[tIndex].Hash,
-					},
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.DepositFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent2 := models.Event{
 					Type:       types.EventTypeDepositAdd,
 					Height:     dBlock.Height,
 					Timestamp:  dBlock.Time,
 					TxHash:     dTxs[tIndex].Hash,
-					AccAddress: eventAdd.Address,
-					Coins:      eventAdd.Coins,
+					AccAddress: eventAddDeposit.Address,
+					Coins:      eventAddDeposit.Coins,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent2); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewSubscriptionCreateOperation(
+						db, &dSubscription,
+					),
+					operations.NewSubscriptionQuotaAddOperation(
+						db, &dSubscriptionQuota,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+					operations.NewDepositUpdateOperation(
+						db, eventAddDeposit.Address, eventAddDeposit.Current, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent2,
+					),
+				)
 			case "/sentinel.subscription.v1.MsgSubscribeToPlanRequest", "/sentinel.subscription.v1.MsgService/MsgSubscribeToPlan":
 				eventSubscribeToPlan, err := subscriptiontypes.NewEventSubscribeToPlanFromEvents(txResultLog[mIndex].Events)
+				if err != nil {
+					return nil, err
+				}
+
+				eventAddQuota, err := subscriptiontypes.NewEventAddQuotaFromEvents(txResultLog[mIndex].Events)
 				if err != nil {
 					return nil, err
 				}
@@ -899,18 +695,6 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					StatusTimestamp: dBlock.Time,
 					StatusTxHash:    dTxs[tIndex].Hash,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.SubscriptionInsertOne(ctx, db, &dSubscription); err != nil {
-						return err
-					}
-
-					return nil
-				})
-
-				eventAddQuota, err := subscriptiontypes.NewEventAddQuotaFromEvents(txResultLog[mIndex].Events)
-				if err != nil {
-					return nil, err
-				}
 
 				dSubscriptionQuota := models.SubscriptionQuota{
 					ID:        eventAddQuota.ID,
@@ -918,13 +702,6 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					Allocated: eventAddQuota.Allocated,
 					Consumed:  eventAddQuota.Consumed,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.SubscriptionQuotaInsertOne(ctx, db, &dSubscriptionQuota); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:           types.EventTypeSubscriptionQuotaUpdateDetails,
@@ -936,42 +713,24 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					Allocated:      eventAddQuota.Allocated,
 					Consumed:       eventAddQuota.Consumed,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewSubscriptionCreateOperation(
+						db, &dSubscription,
+					),
+					operations.NewSubscriptionQuotaAddOperation(
+						db, &dSubscriptionQuota,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+				)
 			case "/sentinel.subscription.v1.MsgCancelRequest", "/sentinel.subscription.v1.MsgService/MsgCancel":
 				msg, err := subscriptiontypes.NewMsgCancelRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
-
-				filter1 := bson.M{
-					"id": msg.ID,
-				}
-				update1 := bson.M{
-					"$set": bson.M{
-						"status":           hubtypes.StatusInactivePending.String(),
-						"status_height":    dBlock.Height,
-						"status_timestamp": dBlock.Time,
-						"status_tx_hash":   dTxs[tIndex].Index,
-					},
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.SubscriptionFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:           types.EventTypeSubscriptionUpdateStatus,
@@ -981,13 +740,16 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					SubscriptionID: msg.ID,
 					Status:         hubtypes.StatusInactivePending.String(),
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewSubscriptionUpdateStatusOperation(
+						db, msg.ID, hubtypes.StatusInactivePending.String(), dBlock.Height, dBlock.Time, dTxs[tIndex].Hash,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+				)
 			case "/sentinel.subscription.v1.MsgAddQuotaRequest", "/sentinel.subscription.v1.MsgService/MsgAddQuota":
 				eventAddQuota, err := subscriptiontypes.NewEventAddQuotaFromEvents(txResultLog[mIndex].Events)
 				if err != nil {
@@ -1000,13 +762,6 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					Consumed:  eventAddQuota.Consumed,
 					Allocated: eventAddQuota.Allocated,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.SubscriptionQuotaInsertOne(ctx, db, &dSubscriptionQuota); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:           types.EventTypeSubscriptionQuotaUpdateDetails,
@@ -1018,34 +773,6 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					Allocated:      eventAddQuota.Allocated,
 					Consumed:       eventAddQuota.Consumed,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
-
-					return nil
-				})
-
-				filter1 := bson.M{
-					"id": eventAddQuota.ID,
-				}
-				update1 := bson.M{
-					"$set": bson.M{
-						"free": eventAddQuota.Free,
-					},
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.SubscriptionFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent2 := models.Event{
 					Type:           types.EventTypeSubscriptionUpdateDetails,
@@ -1055,40 +782,27 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					SubscriptionID: eventAddQuota.ID,
 					Free:           eventAddQuota.Free,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent2); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewSubscriptionQuotaAddOperation(
+						db, &dSubscriptionQuota,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+					operations.NewSubscriptionUpdateDetailsOperation(
+						db, eventAddQuota.ID, eventAddQuota.Free, nil,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent2,
+					),
+				)
 			case "/sentinel.subscription.v1.MsgUpdateQuotaRequest", "/sentinel.subscription.v1.MsgService/MsgUpdateQuota":
 				eventUpdateQuota, err := subscriptiontypes.NewEventUpdateQuotaFromEvents(txResultLog[mIndex].Events)
 				if err != nil {
 					return nil, err
 				}
-
-				filter1 := bson.M{
-					"id":      eventUpdateQuota.ID,
-					"address": eventUpdateQuota.Address,
-				}
-				update1 := bson.M{
-					"$set": bson.M{
-						"allocated": eventUpdateQuota.Allocated,
-					},
-				}
-				projection1 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-					if _, err := database.SubscriptionQuotaFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent1 := models.Event{
 					Type:           types.EventTypeSubscriptionQuotaUpdateDetails,
@@ -1100,34 +814,6 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					Allocated:      eventUpdateQuota.Allocated,
 					Consumed:       eventUpdateQuota.Consumed,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-						return err
-					}
-
-					return nil
-				})
-
-				filter2 := bson.M{
-					"id": eventUpdateQuota.ID,
-				}
-				update2 := bson.M{
-					"$set": bson.M{
-						"free": eventUpdateQuota.Free,
-					},
-				}
-				projection2 := bson.M{
-					"_id": 1,
-				}
-
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					opts := options.FindOneAndUpdate().SetProjection(projection2).SetUpsert(true)
-					if _, err := database.SubscriptionFindOneAndUpdate(ctx, db, filter2, update2, opts); err != nil {
-						return err
-					}
-
-					return nil
-				})
 
 				dEvent2 := models.Event{
 					Type:           types.EventTypeSubscriptionUpdateDetails,
@@ -1137,13 +823,22 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 					SubscriptionID: eventUpdateQuota.ID,
 					Free:           eventUpdateQuota.Free,
 				}
-				operations = append(operations, func(ctx mongo.SessionContext) error {
-					if _, err := database.EventInsertOne(ctx, db, &dEvent2); err != nil {
-						return err
-					}
 
-					return nil
-				})
+				ops = append(
+					ops,
+					operations.NewSubscriptionQuotaUpdateOperation(
+						db, eventUpdateQuota.ID, eventUpdateQuota.Address, eventUpdateQuota.Allocated, eventUpdateQuota.Consumed,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent1,
+					),
+					operations.NewSubscriptionUpdateDetailsOperation(
+						db, eventUpdateQuota.ID, eventUpdateQuota.Free, nil,
+					),
+					operations.NewEventSaveOperation(
+						db, &dEvent2,
+					),
+				)
 			default:
 
 			}
@@ -1160,30 +855,6 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 				return nil, err
 			}
 
-			filter1 := bson.M{
-				"address": event.Address,
-			}
-			update1 := bson.M{
-				"$set": bson.M{
-					"coins":     event.Current,
-					"height":    dBlock.Height,
-					"timestamp": dBlock.Time,
-					"tx_hash":   "",
-				},
-			}
-			projection1 := bson.M{
-				"_id": 1,
-			}
-
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-				if _, err := database.DepositFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-					return err
-				}
-
-				return nil
-			})
-
 			dEvent1 := models.Event{
 				Type:       types.EventTypeDepositSubtract,
 				Height:     dBlock.Height,
@@ -1192,42 +863,21 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 				AccAddress: event.Address,
 				Coins:      event.Coins,
 			}
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-					return err
-				}
 
-				return nil
-			})
+			ops = append(
+				ops,
+				operations.NewDepositUpdateOperation(
+					db, event.Address, event.Current, dBlock.Height, dBlock.Time, "",
+				),
+				operations.NewEventSaveOperation(
+					db, &dEvent1,
+				),
+			)
 		case "sentinel.node.v1.EventSetNodeStatus":
 			event, err := nodetypes.NewEventSetNodeStatus(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
-
-			filter1 := bson.M{
-				"address": event.Address,
-			}
-			update1 := bson.M{
-				"$set": bson.M{
-					"status":           event.Status,
-					"status_height":    dBlock.Height,
-					"status_timestamp": dBlock.Time,
-					"status_tx_hash":   "",
-				},
-			}
-			projection1 := bson.M{
-				"_id": 1,
-			}
-
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-				if _, err := database.NodeFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-					return err
-				}
-
-				return nil
-			})
 
 			dEvent1 := models.Event{
 				Type:        types.EventTypeNodeUpdateStatus,
@@ -1237,51 +887,21 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 				NodeAddress: event.Address,
 				Status:      event.Status,
 			}
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-					return err
-				}
 
-				return nil
-			})
+			ops = append(
+				ops,
+				operations.NewNodeUpdateStatusOperation(
+					db, event.Address, event.Status, dBlock.Height, dBlock.Time, "",
+				),
+				operations.NewEventSaveOperation(
+					db, &dEvent1,
+				),
+			)
 		case "sentinel.session.v1.EventEndSession":
 			event, err := sessiontypes.NewEventEndSession(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
-
-			filter1 := bson.M{
-				"id": event.ID,
-			}
-
-			updateSet1 := bson.M{
-				"rating":           0,
-				"status":           event.Status,
-				"status_height":    dBlock.Height,
-				"status_timestamp": dBlock.Time,
-				"status_tx_hash":   "",
-			}
-			if event.Status == hubtypes.StatusInactive.String() {
-				updateSet1["end_height"] = dBlock.Height
-				updateSet1["end_timestamp"] = dBlock.Time
-				updateSet1["end_tx_hash"] = ""
-			}
-
-			update1 := bson.M{
-				"$set": updateSet1,
-			}
-			projection1 := bson.M{
-				"_id": 1,
-			}
-
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-				if _, err := database.SessionFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-					return err
-				}
-
-				return nil
-			})
 
 			dEvent1 := models.Event{
 				Type:      types.EventTypeSessionUpdateStatus,
@@ -1291,77 +911,33 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 				SessionID: event.ID,
 				Status:    event.Status,
 			}
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-					return err
-				}
 
-				return nil
-			})
+			ops = append(
+				ops,
+				operations.NewSessionUpdateStatusOperation(
+					db, event.ID, event.Status, dBlock.Height, dBlock.Time, "",
+				),
+				operations.NewEventSaveOperation(
+					db, &dEvent1,
+				),
+			)
 		case "sentinel.session.v1.EventPay":
 			event, err := sessiontypes.NewEventPay(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
 
-			filter1 := bson.M{
-				"id": event.ID,
-			}
-
-			update1 := bson.M{
-				"$set": bson.M{
-					"payment": event.Payment,
-				},
-			}
-			projection1 := bson.M{
-				"_id": 1,
-			}
-
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-				if _, err := database.SessionFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-					return err
-				}
-
-				return nil
-			})
+			ops = append(
+				ops,
+				operations.NewSessionUpdateDetailsOperation(
+					db, event.ID, nil, -1, event.Payment, -1,
+				),
+			)
 		case "sentinel.subscription.v1.EventCancelSubscription":
 			event, err := subscriptiontypes.NewEventCancelSubscription(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
-
-			filter1 := bson.M{
-				"id": event.ID,
-			}
-
-			updateSet1 := bson.M{
-				"status":           event.Status,
-				"status_height":    dBlock.Height,
-				"status_timestamp": dBlock.Time,
-				"status_tx_hash":   "",
-			}
-			if event.Status == hubtypes.StatusInactive.String() {
-				updateSet1["end_height"] = dBlock.Height
-				updateSet1["end_timestamp"] = dBlock.Time
-				updateSet1["end_tx_hash"] = ""
-			}
-
-			update1 := bson.M{
-				"$set": updateSet1,
-			}
-			projection1 := bson.M{
-				"_id": 1,
-			}
-
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-				if _, err := database.SubscriptionFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-					return err
-				}
-
-				return nil
-			})
 
 			dEvent1 := models.Event{
 				Type:           types.EventTypeSubscriptionUpdateStatus,
@@ -1371,67 +947,33 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 				SubscriptionID: event.ID,
 				Status:         event.Status,
 			}
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-					return err
-				}
 
-				return nil
-			})
+			ops = append(
+				ops,
+				operations.NewSubscriptionUpdateStatusOperation(
+					db, event.ID, event.Status, dBlock.Height, dBlock.Time, "",
+				),
+				operations.NewEventSaveOperation(
+					db, &dEvent1,
+				),
+			)
 		case "sentinel.subscription.v1.EventRefund":
 			event, err := subscriptiontypes.NewEventRefund(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
 
-			filter1 := bson.M{
-				"id": event.ID,
-			}
-
-			update1 := bson.M{
-				"$set": bson.M{
-					"refund": event.Refund,
-				},
-			}
-			projection1 := bson.M{
-				"_id": 1,
-			}
-
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-				if _, err := database.SubscriptionFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-					return err
-				}
-
-				return nil
-			})
+			ops = append(
+				ops,
+				operations.NewSubscriptionUpdateDetailsOperation(
+					db, event.ID, -1, event.Refund,
+				),
+			)
 		case "sentinel.subscription.v1.EventUpdateQuota":
 			event, err := subscriptiontypes.NewEventUpdateQuota(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
-
-			filter1 := bson.M{
-				"id":      event.ID,
-				"address": event.Address,
-			}
-			update1 := bson.M{
-				"$set": bson.M{
-					"consumed": event.Consumed,
-				},
-			}
-			projection1 := bson.M{
-				"_id": 1,
-			}
-
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				opts := options.FindOneAndUpdate().SetProjection(projection1).SetUpsert(true)
-				if _, err := database.SubscriptionQuotaFindOneAndUpdate(ctx, db, filter1, update1, opts); err != nil {
-					return err
-				}
-
-				return nil
-			})
 
 			dEvent1 := models.Event{
 				Type:           types.EventTypeSubscriptionQuotaUpdateDetails,
@@ -1443,19 +985,22 @@ func run(db *mongo.Database, height int64) (operations []types.DatabaseOperation
 				Allocated:      event.Allocated,
 				Consumed:       event.Consumed,
 			}
-			operations = append(operations, func(ctx mongo.SessionContext) error {
-				if _, err := database.EventInsertOne(ctx, db, &dEvent1); err != nil {
-					return err
-				}
 
-				return nil
-			})
+			ops = append(
+				ops,
+				operations.NewSubscriptionQuotaUpdateOperation(
+					db, event.ID, event.Address, event.Allocated, event.Consumed,
+				),
+				operations.NewEventSaveOperation(
+					db, &dEvent1,
+				),
+			)
 		default:
 
 		}
 	}
 
-	return operations, nil
+	return ops, nil
 }
 
 func main() {
@@ -1493,7 +1038,7 @@ func main() {
 		now := time.Now()
 		log.Println("Height", height)
 
-		operations, err := run(db, height)
+		ops, err := run(db, height)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -1517,9 +1062,9 @@ func main() {
 					}
 				}()
 
-				log.Println("OperationsLen", len(operations))
-				for i := 0; i < len(operations); i++ {
-					if err := operations[i](ctx); err != nil {
+				log.Println("OperationsLen", len(ops))
+				for i := 0; i < len(ops); i++ {
+					if err := ops[i](ctx); err != nil {
 						return err
 					}
 				}
