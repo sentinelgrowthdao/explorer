@@ -6,26 +6,26 @@ import (
 	"github.com/sentinel-official/explorer/types"
 )
 
-type EventAdd struct {
+type EventAddPlan struct {
 	ID uint64
 }
 
-func NewEventAdd(v *types.Event) (*EventAdd, error) {
+func NewEventAddPlan(v *types.Event) (*EventAddPlan, error) {
 	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	return &EventAdd{
+	return &EventAddPlan{
 		ID: id,
 	}, nil
 }
 
-func NewEventAddFromEvents(v types.Events) (*EventAdd, error) {
-	e, err := v.Get("sentinel.plan.v1.EventAdd")
+func NewEventAddPlanFromEvents(v types.Events) (*EventAddPlan, error) {
+	e, err := v.Get("sentinel.plan.v1.EventAddPlan")
 	if err != nil {
 		return nil, err
 	}
 
-	return NewEventAdd(e)
+	return NewEventAddPlan(e)
 }

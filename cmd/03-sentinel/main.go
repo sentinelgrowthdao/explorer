@@ -337,13 +337,13 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					return nil, err
 				}
 
-				eventAdd, err := plantypes.NewEventAddFromEvents(txResultLog[mIndex].Events)
+				eventAddPlan, err := plantypes.NewEventAddPlanFromEvents(txResultLog[mIndex].Events)
 				if err != nil {
 					return nil, err
 				}
 
 				dPlan := models.Plan{
-					ID:              eventAdd.ID,
+					ID:              eventAddPlan.ID,
 					ProviderAddress: msg.From,
 					Price:           msg.Price,
 					Validity:        msg.Validity,
