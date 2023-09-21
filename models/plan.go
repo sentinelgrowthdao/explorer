@@ -11,8 +11,8 @@ type Plan struct {
 	ID              uint64      `json:"id,omitempty" bson:"id"`
 	ProviderAddress string      `json:"provider_address,omitempty" bson:"provider_address"`
 	Price           types.Coins `json:"price,omitempty" bson:"price"`
+	Bytes           string      `json:"bytes,omitempty" bson:"bytes"`
 	Validity        int64       `json:"validity,omitempty" bson:"validity"`
-	Bytes           int64       `json:"bytes,omitempty" bson:"bytes"`
 	NodeAddresses   []string    `json:"node_addresses,omitempty" bson:"node_addresses"`
 
 	AddHeight    int64     `json:"add_height,omitempty" bson:"add_height"`

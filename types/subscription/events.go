@@ -2,8 +2,6 @@ package subscription
 
 import (
 	"encoding/json"
-	"fmt"
-	"math/big"
 	"strconv"
 	"time"
 
@@ -104,9 +102,9 @@ func NewEventSubscribeToPlanFromEvents(v types.Events) (*EventSubscribeToPlan, e
 type EventAddQuota struct {
 	ID        uint64
 	Address   string
-	Consumed  *big.Int
-	Allocated *big.Int
-	Free      *big.Int
+	Allocated string
+	Consumed  string
+	Free      string
 }
 
 func NewEventAddQuota(v *types.Event) (*EventAddQuota, error) {
@@ -115,27 +113,12 @@ func NewEventAddQuota(v *types.Event) (*EventAddQuota, error) {
 		return nil, err
 	}
 
-	consumed, ok := sdk.NewIntFromString(v.Attributes["consumed"])
-	if !ok {
-		return nil, fmt.Errorf("failed to parse Int from string")
-	}
-
-	allocated, ok := sdk.NewIntFromString(v.Attributes["allocated"])
-	if !ok {
-		return nil, fmt.Errorf("failed to parse Int from string")
-	}
-
-	free, ok := sdk.NewIntFromString(v.Attributes["free"])
-	if !ok {
-		return nil, fmt.Errorf("failed to parse Int from string")
-	}
-
 	return &EventAddQuota{
 		ID:        id,
 		Address:   v.Attributes["address"],
-		Consumed:  consumed.BigInt(),
-		Allocated: allocated.BigInt(),
-		Free:      free.BigInt(),
+		Allocated: v.Attributes["allocated"],
+		Consumed:  v.Attributes["consumed"],
+		Free:      v.Attributes["free"],
 	}, nil
 }
 
@@ -151,9 +134,9 @@ func NewEventAddQuotaFromEvents(v types.Events) (*EventAddQuota, error) {
 type EventUpdateQuota struct {
 	ID        uint64
 	Address   string
-	Consumed  *big.Int
-	Allocated *big.Int
-	Free      *big.Int
+	Allocated string
+	Consumed  string
+	Free      string
 }
 
 func NewEventUpdateQuota(v *types.Event) (*EventUpdateQuota, error) {
@@ -162,27 +145,12 @@ func NewEventUpdateQuota(v *types.Event) (*EventUpdateQuota, error) {
 		return nil, err
 	}
 
-	consumed, ok := sdk.NewIntFromString(v.Attributes["consumed"])
-	if !ok {
-		return nil, fmt.Errorf("failed to parse Int from string")
-	}
-
-	allocated, ok := sdk.NewIntFromString(v.Attributes["allocated"])
-	if !ok {
-		return nil, fmt.Errorf("failed to parse Int from string")
-	}
-
-	free, ok := sdk.NewIntFromString(v.Attributes["free"])
-	if !ok {
-		return nil, fmt.Errorf("failed to parse Int from string")
-	}
-
 	return &EventUpdateQuota{
 		ID:        id,
 		Address:   v.Attributes["address"],
-		Consumed:  consumed.BigInt(),
-		Allocated: allocated.BigInt(),
-		Free:      free.BigInt(),
+		Allocated: v.Attributes["allocated"],
+		Consumed:  v.Attributes["consumed"],
+		Free:      v.Attributes["free"],
 	}, nil
 }
 
