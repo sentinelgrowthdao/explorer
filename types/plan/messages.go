@@ -14,8 +14,8 @@ import (
 type MsgAddRequest struct {
 	From     string
 	Price    types.Coins
+	Bytes    string
 	Validity int64
-	Bytes    int64
 }
 
 func NewMsgAddRequest(v bson.M) (*MsgAddRequest, error) {
@@ -34,16 +34,11 @@ func NewMsgAddRequest(v bson.M) (*MsgAddRequest, error) {
 		return nil, err
 	}
 
-	bytes, err := strconv.ParseInt(v["bytes"].(string), 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
 	return &MsgAddRequest{
 		From:     v["from"].(string),
 		Price:    types.NewCoins(price),
+		Bytes:    v["bytes"].(string),
 		Validity: validity.Nanoseconds(),
-		Bytes:    bytes,
 	}, nil
 }
 

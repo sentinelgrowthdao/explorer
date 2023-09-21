@@ -25,7 +25,7 @@ type MsgAddQuotaRequest struct {
 	From    string
 	ID      uint64
 	Address string
-	Bytes   int64
+	Bytes   string
 }
 
 func NewMsgAddQuotaRequest(v bson.M) (*MsgAddQuotaRequest, error) {
@@ -34,16 +34,11 @@ func NewMsgAddQuotaRequest(v bson.M) (*MsgAddQuotaRequest, error) {
 		return nil, err
 	}
 
-	bytes, err := strconv.ParseInt(v["bytes"].(string), 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
 	return &MsgAddQuotaRequest{
 		From:    v["from"].(string),
 		ID:      id,
 		Address: v["address"].(string),
-		Bytes:   bytes,
+		Bytes:   v["bytes"].(string),
 	}, nil
 }
 
@@ -51,7 +46,7 @@ type MsgUpdateQuotaRequest struct {
 	From    string
 	ID      uint64
 	Address string
-	Bytes   int64
+	Bytes   string
 }
 
 func NewMsgUpdateQuotaRequest(v bson.M) (*MsgUpdateQuotaRequest, error) {
@@ -60,15 +55,10 @@ func NewMsgUpdateQuotaRequest(v bson.M) (*MsgUpdateQuotaRequest, error) {
 		return nil, err
 	}
 
-	bytes, err := strconv.ParseInt(v["bytes"].(string), 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
 	return &MsgUpdateQuotaRequest{
 		From:    v["from"].(string),
 		ID:      id,
 		Address: v["address"].(string),
-		Bytes:   bytes,
+		Bytes:   v["bytes"].(string),
 	}, nil
 }

@@ -966,7 +966,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 			ops = append(
 				ops,
 				operations.NewSubscriptionUpdateDetailsOperation(
-					db, event.ID, nil, event.Refund,
+					db, event.ID, "", event.Refund,
 				),
 			)
 		case "sentinel.subscription.v1.EventUpdateQuota":

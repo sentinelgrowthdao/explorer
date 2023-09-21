@@ -121,13 +121,13 @@ func NewABCIMessageLogs(s string) ABCIMessageLogs {
 
 type Coin struct {
 	Denom  string `json:"denom,omitempty" bson:"denom"`
-	Amount int64  `json:"amount,omitempty" bson:"amount"`
+	Amount string `json:"amount,omitempty" bson:"amount"`
 }
 
 func NewCoin(v *sdk.Coin) *Coin {
 	return &Coin{
 		Denom:  v.Denom,
-		Amount: v.Amount.Int64(),
+		Amount: v.Amount.String(),
 	}
 }
 
@@ -143,13 +143,13 @@ func NewCoins(v sdk.Coins) Coins {
 }
 
 type Bandwidth struct {
-	Upload   int64 `json:"upload,omitempty" bson:"upload"`
-	Download int64 `json:"download,omitempty" bson:"download"`
+	Upload   string `json:"upload,omitempty" bson:"upload"`
+	Download string `json:"download,omitempty" bson:"download"`
 }
 
 func NewBandwidth(v *hubtypes.Bandwidth) *Bandwidth {
 	return &Bandwidth{
-		Upload:   v.Upload.Int64(),
-		Download: v.Download.Int64(),
+		Upload:   v.Upload.String(),
+		Download: v.Download.String(),
 	}
 }

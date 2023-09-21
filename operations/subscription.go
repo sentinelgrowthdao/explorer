@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"math/big"
 	"time"
 
 	hubtypes "github.com/sentinel-official/hub/types"
@@ -29,7 +28,7 @@ func NewSubscriptionCreateOperation(
 
 func NewSubscriptionUpdateDetailsOperation(
 	db *mongo.Database,
-	id uint64, free *big.Int, refund *types.Coin,
+	id uint64, free string, refund *types.Coin,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
@@ -37,7 +36,7 @@ func NewSubscriptionUpdateDetailsOperation(
 		}
 
 		updateSet := bson.M{}
-		if free != nil {
+		if free != "" {
 			updateSet["free"] = free
 		}
 		if refund != nil {
