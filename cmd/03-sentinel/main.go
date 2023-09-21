@@ -7,7 +7,6 @@ import (
 	"log"
 	"time"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	hubtypes "github.com/sentinel-official/hub/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -967,7 +966,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 			ops = append(
 				ops,
 				operations.NewSubscriptionUpdateDetailsOperation(
-					db, event.ID, sdk.Int{}, event.Refund,
+					db, event.ID, nil, event.Refund,
 				),
 			)
 		case "sentinel.subscription.v1.EventUpdateQuota":

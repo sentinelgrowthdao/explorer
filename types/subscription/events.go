@@ -3,6 +3,7 @@ package subscription
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
 	"time"
 
@@ -103,9 +104,9 @@ func NewEventSubscribeToPlanFromEvents(v types.Events) (*EventSubscribeToPlan, e
 type EventAddQuota struct {
 	ID        uint64
 	Address   string
-	Consumed  sdk.Int
-	Allocated sdk.Int
-	Free      sdk.Int
+	Consumed  *big.Int
+	Allocated *big.Int
+	Free      *big.Int
 }
 
 func NewEventAddQuota(v *types.Event) (*EventAddQuota, error) {
@@ -132,9 +133,9 @@ func NewEventAddQuota(v *types.Event) (*EventAddQuota, error) {
 	return &EventAddQuota{
 		ID:        id,
 		Address:   v.Attributes["address"],
-		Consumed:  consumed,
-		Allocated: allocated,
-		Free:      free,
+		Consumed:  consumed.BigInt(),
+		Allocated: allocated.BigInt(),
+		Free:      free.BigInt(),
 	}, nil
 }
 
@@ -150,9 +151,9 @@ func NewEventAddQuotaFromEvents(v types.Events) (*EventAddQuota, error) {
 type EventUpdateQuota struct {
 	ID        uint64
 	Address   string
-	Consumed  sdk.Int
-	Allocated sdk.Int
-	Free      sdk.Int
+	Consumed  *big.Int
+	Allocated *big.Int
+	Free      *big.Int
 }
 
 func NewEventUpdateQuota(v *types.Event) (*EventUpdateQuota, error) {
@@ -179,9 +180,9 @@ func NewEventUpdateQuota(v *types.Event) (*EventUpdateQuota, error) {
 	return &EventUpdateQuota{
 		ID:        id,
 		Address:   v.Attributes["address"],
-		Consumed:  consumed,
-		Allocated: allocated,
-		Free:      free,
+		Consumed:  consumed.BigInt(),
+		Allocated: allocated.BigInt(),
+		Free:      free.BigInt(),
 	}, nil
 }
 
