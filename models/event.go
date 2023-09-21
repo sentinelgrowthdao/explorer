@@ -1,9 +1,8 @@
 package models
 
 import (
+	"math/big"
 	"time"
-
-	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/sentinel-official/explorer/types"
 	"github.com/sentinel-official/explorer/utils"
@@ -16,13 +15,13 @@ type Event struct {
 	TxHash    string    `json:"tx_hash,omitempty" bson:"tx_hash"`
 
 	AccAddress     string           `json:"acc_address,omitempty" bson:"acc_address,omitempty"`
-	Allocated      sdk.Int          `bson:"allocated,omitempty" bson:"allocated,omitempty"`
+	Allocated      *big.Int         `bson:"allocated,omitempty" bson:"allocated,omitempty"`
 	Bandwidth      *types.Bandwidth `json:"bandwidth,omitempty" bson:"bandwidth,omitempty"`
 	Coins          types.Coins      `json:"coins,omitempty" bson:"coins,omitempty"`
-	Consumed       sdk.Int          `json:"consumed,omitempty" bson:"consumed,omitempty"`
+	Consumed       *big.Int         `json:"consumed,omitempty" bson:"consumed,omitempty"`
 	Description    string           `json:"description,omitempty" bson:"description,omitempty"`
 	Duration       int64            `json:"duration,omitempty" bson:"duration,omitempty"`
-	Free           sdk.Int          `json:"free,omitempty" bson:"free,omitempty"`
+	Free           *big.Int         `json:"free,omitempty" bson:"free,omitempty"`
 	Identity       string           `json:"identity,omitempty" bson:"identity,omitempty"`
 	Name           string           `json:"name,omitempty" bson:"name,omitempty"`
 	NodeAddress    string           `json:"node_address,omitempty" bson:"node_address,omitempty"`
