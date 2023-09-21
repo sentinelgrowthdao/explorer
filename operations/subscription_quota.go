@@ -1,6 +1,7 @@
 package operations
 
 import (
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -25,7 +26,7 @@ func NewSubscriptionQuotaAddOperation(
 
 func NewSubscriptionQuotaUpdateOperation(
 	db *mongo.Database,
-	id uint64, address string, allocated, consumed int64,
+	id uint64, address string, allocated, consumed sdk.Int,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{

@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -102,9 +103,9 @@ func NewEventSubscribeToPlanFromEvents(v types.Events) (*EventSubscribeToPlan, e
 type EventAddQuota struct {
 	ID        uint64
 	Address   string
-	Consumed  int64
-	Allocated int64
-	Free      int64
+	Consumed  sdk.Int
+	Allocated sdk.Int
+	Free      sdk.Int
 }
 
 func NewEventAddQuota(v *types.Event) (*EventAddQuota, error) {
@@ -113,19 +114,19 @@ func NewEventAddQuota(v *types.Event) (*EventAddQuota, error) {
 		return nil, err
 	}
 
-	consumed, err := strconv.ParseInt(v.Attributes["consumed"], 10, 64)
-	if err != nil {
-		return nil, err
+	consumed, ok := sdk.NewIntFromString(v.Attributes["consumed"])
+	if !ok {
+		return nil, fmt.Errorf("failed to parse Int from string")
 	}
 
-	allocated, err := strconv.ParseInt(v.Attributes["allocated"], 10, 64)
-	if err != nil {
-		return nil, err
+	allocated, ok := sdk.NewIntFromString(v.Attributes["allocated"])
+	if !ok {
+		return nil, fmt.Errorf("failed to parse Int from string")
 	}
 
-	free, err := strconv.ParseInt(v.Attributes["free"], 10, 64)
-	if err != nil {
-		return nil, err
+	free, ok := sdk.NewIntFromString(v.Attributes["free"])
+	if !ok {
+		return nil, fmt.Errorf("failed to parse Int from string")
 	}
 
 	return &EventAddQuota{
@@ -149,9 +150,9 @@ func NewEventAddQuotaFromEvents(v types.Events) (*EventAddQuota, error) {
 type EventUpdateQuota struct {
 	ID        uint64
 	Address   string
-	Consumed  int64
-	Allocated int64
-	Free      int64
+	Consumed  sdk.Int
+	Allocated sdk.Int
+	Free      sdk.Int
 }
 
 func NewEventUpdateQuota(v *types.Event) (*EventUpdateQuota, error) {
@@ -160,19 +161,19 @@ func NewEventUpdateQuota(v *types.Event) (*EventUpdateQuota, error) {
 		return nil, err
 	}
 
-	consumed, err := strconv.ParseInt(v.Attributes["consumed"], 10, 64)
-	if err != nil {
-		return nil, err
+	consumed, ok := sdk.NewIntFromString(v.Attributes["consumed"])
+	if !ok {
+		return nil, fmt.Errorf("failed to parse Int from string")
 	}
 
-	allocated, err := strconv.ParseInt(v.Attributes["allocated"], 10, 64)
-	if err != nil {
-		return nil, err
+	allocated, ok := sdk.NewIntFromString(v.Attributes["allocated"])
+	if !ok {
+		return nil, fmt.Errorf("failed to parse Int from string")
 	}
 
-	free, err := strconv.ParseInt(v.Attributes["free"], 10, 64)
-	if err != nil {
-		return nil, err
+	free, ok := sdk.NewIntFromString(v.Attributes["free"])
+	if !ok {
+		return nil, fmt.Errorf("failed to parse Int from string")
 	}
 
 	return &EventUpdateQuota{

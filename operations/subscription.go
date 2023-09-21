@@ -3,6 +3,7 @@ package operations
 import (
 	"time"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	hubtypes "github.com/sentinel-official/hub/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -28,7 +29,7 @@ func NewSubscriptionCreateOperation(
 
 func NewSubscriptionUpdateDetailsOperation(
 	db *mongo.Database,
-	id uint64, free int64, refund *types.Coin,
+	id uint64, free sdk.Int, refund *types.Coin,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
@@ -36,7 +37,7 @@ func NewSubscriptionUpdateDetailsOperation(
 		}
 
 		updateSet := bson.M{}
-		if free != -1 {
+		if !free.IsNil() {
 			updateSet["free"] = free
 		}
 		if refund != nil {
