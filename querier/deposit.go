@@ -38,7 +38,7 @@ func (q *Querier) ABCIQueryDeposit(addr sdk.AccAddress, height int64) (*depositt
 	}
 
 	var item deposittypes.Deposit
-	if err := types.EncCfg.Marshaler.UnmarshalBinaryBare(value, &item); err != nil {
+	if err := types.EncCfg.Marshaler.Unmarshal(value, &item); err != nil {
 		return nil, err
 	}
 

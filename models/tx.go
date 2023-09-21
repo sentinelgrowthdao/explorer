@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -26,16 +25,6 @@ func NewMessage(v sdk.Msg) *Message {
 	item := &Message{
 		Data: bson.M{},
 		Type: utils.MsgTypeURL(v),
-	}
-
-	srvMsg, ok := v.(sdk.ServiceMsg)
-	if ok {
-		v, ok = srvMsg.Request.(sdk.Msg)
-		if !ok {
-			panic(fmt.Errorf("ServiceMsg is not sdk.Msg; type= %s", srvMsg.Type()))
-		}
-
-		item.Type = srvMsg.Type()
 	}
 
 	buf, err := types.EncCfg.Marshaler.MarshalJSON(v)

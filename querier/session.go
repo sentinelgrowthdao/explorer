@@ -37,7 +37,7 @@ func (q *Querier) ABCIQuerySession(id uint64, height int64) (*sessiontypes.Sessi
 	}
 
 	var item sessiontypes.Session
-	if err := types.EncCfg.Marshaler.UnmarshalBinaryBare(value, &item); err != nil {
+	if err := types.EncCfg.Marshaler.Unmarshal(value, &item); err != nil {
 		return nil, err
 	}
 

@@ -38,7 +38,7 @@ func (q *Querier) ABCIQueryProvider(addr hubtypes.ProvAddress, height int64) (*p
 	}
 
 	var item providertypes.Provider
-	if err := types.EncCfg.Marshaler.UnmarshalBinaryBare(value, &item); err != nil {
+	if err := types.EncCfg.Marshaler.Unmarshal(value, &item); err != nil {
 		return nil, err
 	}
 

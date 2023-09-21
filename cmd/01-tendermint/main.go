@@ -185,7 +185,7 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (ops []types.Data
 func main() {
 	encCfg := hub.MakeEncodingConfig()
 
-	q, err := querier.NewQuerier(&encCfg, rpcAddress, "/websocket")
+	q, err := querier.NewQuerier(encCfg.InterfaceRegistry, rpcAddress, "/websocket")
 	if err != nil {
 		log.Panicln(err)
 	}
