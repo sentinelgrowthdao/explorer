@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	appName = "03-sentinel"
+	appName = "03_sentinelhub"
 )
 
 var (

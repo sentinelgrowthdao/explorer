@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	appName = "01-tendermint"
+	appName = "01_tendermint"
 )
 
 var (

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	appName = "00-api_server"
+	appName = "00_api-server"
 )
 
 var (
