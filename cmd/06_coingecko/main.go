@@ -1,6 +1,6 @@
 package main
 
-const appName = "02-cosmos"
+const appName = "06_coingecko"
 
 func main() {
 

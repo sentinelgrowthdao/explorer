@@ -1,6 +1,6 @@
 package main
 
-const appName = "04-statistics"
+const appName = "02_cosmos-sdk"
 
 func main() {
 
