@@ -44,3 +44,16 @@ func EventFind(ctx context.Context, db *mongo.Database, filter bson.M, opts ...*
 
 	return v, nil
 }
+
+func EventIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
+	return IndexesCreateMany(ctx, db.Collection(EventCollectionName), models, opts...)
+}
+
+func EventAggregate(ctx context.Context, db *mongo.Database, pipeline []bson.M, opts ...*options.AggregateOptions) ([]bson.M, error) {
+	var v []bson.M
+	if err := Aggregate(ctx, db.Collection(EventCollectionName), pipeline, &v, opts...); err != nil {
+		return nil, err
+	}
+
+	return v, nil
+}
