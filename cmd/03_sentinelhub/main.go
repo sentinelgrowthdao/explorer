@@ -217,7 +217,6 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 	projection := bson.M{
 		"end_block_events": 1,
 		"height":           1,
-		"num_txs":          1,
 		"time":             1,
 	}
 
@@ -227,9 +226,6 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 	}
 	if dBlock == nil {
 		return nil, fmt.Errorf("block %d does not exist", height)
-	}
-	if dBlock.NumTxs == 0 {
-		return nil, nil
 	}
 
 	filter = bson.M{
