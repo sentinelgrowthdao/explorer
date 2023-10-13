@@ -31,6 +31,7 @@ func NewMsgStartRequest(v bson.M) (*MsgStartRequest, error) {
 }
 
 type MsgUpdateRequest struct {
+	From      string
 	ID        uint64
 	Duration  int64
 	Bandwidth *types.Bandwidth
@@ -58,6 +59,7 @@ func NewMsgUpdateRequest(v bson.M) (*MsgUpdateRequest, error) {
 	}
 
 	return &MsgUpdateRequest{
+		From:      v["from"].(string),
 		ID:        id,
 		Duration:  duration.Nanoseconds(),
 		Bandwidth: types.NewBandwidth(&bandwidth),
