@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -10,6 +11,8 @@ import (
 	hubtypes "github.com/sentinel-official/hub/types"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"go.mongodb.org/mongo-driver/mongo"
+
+	"github.com/sentinel-official/explorer/utils"
 )
 
 type (
@@ -131,7 +134,27 @@ func NewCoin(v *sdk.Coin) *Coin {
 	}
 }
 
+func (c *Coin) Add(v string) *Coin {
+	a1 := utils.MustIntFromString(c.Amount)
+	a2 := utils.MustIntFromString(v)
+
+	c.Amount = a1.Add(a2).String()
+	return c
+}
+
 type Coins []*Coin
+
+func (c Coins) Len() int           { return len(c) }
+func (c Coins) Less(i, j int) bool { return c[i].Denom < c[j].Denom }
+func (c Coins) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+func (c Coins) Sort() Coins        { sort.Sort(c); return c }
+func (c Coins) IsSorted() bool     { return sort.IsSorted(c) }
+
+func (c Coins) IndexOf(v string) int {
+	return sort.Search(c.Len(), func(i int) bool {
+		return c[i].Denom >= v
+	})
+}
 
 func NewCoins(v sdk.Coins) Coins {
 	items := make(Coins, 0, v.Len())
@@ -139,7 +162,20 @@ func NewCoins(v sdk.Coins) Coins {
 		items = append(items, NewCoin(&c))
 	}
 
-	return items
+	return items.Sort()
+}
+
+func (c Coins) Add(v ...*Coin) Coins {
+	if !c.IsSorted() {
+		panic("coins must be sorted")
+	}
+
+	for i := 0; i < len(v); i++ {
+		index := c.IndexOf(v[i].Denom)
+		c[index] = c[index].Add(v[i].Amount)
+	}
+
+	return c
 }
 
 type Bandwidth struct {
@@ -148,8 +184,36 @@ type Bandwidth struct {
 }
 
 func NewBandwidth(v *hubtypes.Bandwidth) *Bandwidth {
+	if v == nil {
+		return &Bandwidth{}
+	}
+
 	return &Bandwidth{
 		Upload:   v.Upload.String(),
 		Download: v.Download.String(),
 	}
+}
+
+func (b *Bandwidth) Add(v *Bandwidth) *Bandwidth {
+	bu := utils.MustIntFromString(b.Upload)
+	bd := utils.MustIntFromString(b.Download)
+
+	vu := utils.MustIntFromString(v.Upload)
+	vd := utils.MustIntFromString(v.Download)
+
+	b.Upload = bu.Add(vu).String()
+	b.Download = bd.Add(vd).String()
+	return b
+}
+
+func (b *Bandwidth) Sub(v *Bandwidth) *Bandwidth {
+	bu := utils.MustIntFromString(b.Upload)
+	bd := utils.MustIntFromString(b.Download)
+
+	vu := utils.MustIntFromString(v.Upload)
+	vd := utils.MustIntFromString(v.Download)
+
+	b.Upload = bu.Sub(vu).String()
+	b.Download = bd.Sub(vd).String()
+	return b
 }
