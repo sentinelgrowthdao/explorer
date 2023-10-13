@@ -215,9 +215,10 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 		"height": height,
 	}
 	projection := bson.M{
-		"height":           1,
-		"time":             1,
 		"end_block_events": 1,
+		"height":           1,
+		"num_txs":          1,
+		"time":             1,
 	}
 
 	dBlock, err := database.BlockFindOne(context.TODO(), db, filter, options.FindOne().SetProjection(projection))
@@ -226,6 +227,9 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 	}
 	if dBlock == nil {
 		return nil, fmt.Errorf("block %d does not exist", height)
+	}
+	if dBlock.NumTxs == 0 {
+		return nil, nil
 	}
 
 	filter = bson.M{
@@ -1041,6 +1045,12 @@ func main() {
 			log.Panicln(err)
 		}
 
+		log.Println("OperationsLen", len(ops))
+		if len(ops) == 0 {
+			height++
+			continue
+		}
+
 		err = db.Client().UseSession(
 			context.TODO(),
 			func(ctx mongo.SessionContext) error {
@@ -1060,7 +1070,6 @@ func main() {
 					}
 				}()
 
-				log.Println("OperationsLen", len(ops))
 				for i := 0; i < len(ops); i++ {
 					if err := ops[i](ctx); err != nil {
 						return err
