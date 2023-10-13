@@ -1,6 +1,6 @@
 package main
 
-const appName = "06_coingecko"
+const appName = "07_coingecko"
 
 func main() {
 
