@@ -229,6 +229,12 @@ func main() {
 			log.Panicln(err)
 		}
 
+		log.Println("OperationsLen", len(ops))
+		if len(ops) == 0 {
+			height++
+			continue
+		}
+
 		err = db.Client().UseSession(
 			context.TODO(),
 			func(ctx mongo.SessionContext) error {
@@ -248,7 +254,6 @@ func main() {
 					}
 				}()
 
-				log.Println("OperationsLen", len(ops))
 				for i := 0; i < len(ops); i++ {
 					if err := ops[i](ctx); err != nil {
 						return err
