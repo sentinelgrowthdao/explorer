@@ -1,10 +1,38 @@
 package subscription
 
 import (
+	"encoding/json"
 	"strconv"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"go.mongodb.org/mongo-driver/bson"
+
+	"github.com/sentinel-official/explorer/types"
 )
+
+type MsgSubscribeToNodeRequest struct {
+	From    string
+	Address string
+	Deposit *types.Coin
+}
+
+func NewMsgSubscribeToNodeRequest(v bson.M) (*MsgSubscribeToNodeRequest, error) {
+	buf, err := json.Marshal([]byte(v["deposit"].(string)))
+	if err != nil {
+		return nil, err
+	}
+
+	var deposit sdk.Coin
+	if err := json.Unmarshal(buf, &deposit); err != nil {
+		return nil, err
+	}
+
+	return &MsgSubscribeToNodeRequest{
+		From:    v["from"].(string),
+		Address: v["address"].(string),
+		Deposit: types.NewCoin(&deposit),
+	}, nil
+}
 
 type MsgCancelRequest struct {
 	ID uint64
