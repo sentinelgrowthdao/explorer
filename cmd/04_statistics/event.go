@@ -120,8 +120,6 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 	)
 
 	for i := 0; i < len(items); i++ {
-		fmt.Println(i, utils.MustMarshalIndentToString(items[i]))
-
 		dayTimestamp := utils.DayDate(items[i].Timestamp)
 		if _, ok := d[dayTimestamp]; !ok {
 			d[dayTimestamp] = NewEventStatistics("day")
