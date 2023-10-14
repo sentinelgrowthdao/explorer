@@ -10,7 +10,7 @@ import (
 type Subscription struct {
 	ID    uint64 `json:"id,omitempty" bson:"id"`
 	Owner string `json:"owner,omitempty" bson:"owner"`
-	Free  int64  `json:"free,omitempty" bson:"free"`
+	Free  string `json:"free,omitempty" bson:"free"`
 
 	Node    string      `json:"node,omitempty" bson:"node"`
 	Price   *types.Coin `json:"price,omitempty" bson:"price"`

@@ -593,7 +593,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 				dSubscription := models.Subscription{
 					ID:              eventSubscribeToNode.ID,
 					Owner:           eventSubscribeToNode.Owner,
-					Free:            0,
+					Free:            "",
 					Node:            eventSubscribeToNode.Node,
 					Price:           eventSubscribeToNode.Price,
 					Deposit:         eventSubscribeToNode.Deposit,
@@ -673,7 +673,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 				dSubscription := models.Subscription{
 					ID:              eventSubscribeToPlan.ID,
 					Owner:           eventSubscribeToPlan.Owner,
-					Free:            0,
+					Free:            "",
 					Node:            "",
 					Price:           nil,
 					Deposit:         nil,
