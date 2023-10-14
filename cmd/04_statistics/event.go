@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	hubtypes "github.com/sentinel-official/hub/types"
@@ -72,6 +73,8 @@ func (es *EventStatistics) Result(timestamp time.Time) []bson.M {
 }
 
 func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
+	log.Println("StatisticsFromEvents")
+
 	filter := bson.M{
 		"type": bson.M{
 			"$in": []string{
@@ -117,6 +120,8 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 	)
 
 	for i := 0; i < len(items); i++ {
+		fmt.Println(i, utils.MustMarshalIndentToString(items[i]))
+
 		dayTimestamp := utils.DayDate(items[i].Timestamp)
 		if _, ok := d[dayTimestamp]; !ok {
 			d[dayTimestamp] = NewEventStatistics("day")
