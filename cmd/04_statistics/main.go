@@ -10,6 +10,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/sentinel-official/explorer/database"
 	"github.com/sentinel-official/explorer/utils"
@@ -102,11 +103,31 @@ func main() {
 		log.Panicln(err)
 	}
 
+	now := time.Now()
+
 	if err := createIndexes(context.TODO(), db); err != nil {
 		log.Panicln(err)
 	}
 
-	now := time.Now()
+	filter := bson.M{}
+	projection := bson.M{
+		"_id":       0,
+		"height":    1,
+		"timestamp": 1,
+	}
+	_sort := bson.D{
+		bson.E{Key: "height", Value: -1},
+	}
+
+	dBlocks, err := database.BlockFind(context.TODO(), db, filter, options.Find().SetProjection(projection).SetSort(_sort).SetLimit(1))
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	var endTimestamp time.Time
+	if len(dBlocks) > 0 {
+		endTimestamp = dBlocks[0].Time
+	}
 
 	events, err := StatisticsFromEvents(context.TODO(), db)
 	if err != nil {
@@ -118,12 +139,12 @@ func main() {
 		log.Panicln(err)
 	}
 
-	sessions, err := StatisticsFromSessions(context.TODO(), db)
+	sessions, err := StatisticsFromSessions(context.TODO(), db, endTimestamp)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	subscriptions, err := StatisticsFromSubscriptions(context.TODO(), db)
+	subscriptions, err := StatisticsFromSubscriptions(context.TODO(), db, endTimestamp)
 	if err != nil {
 		log.Panicln(err)
 	}

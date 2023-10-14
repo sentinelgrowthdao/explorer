@@ -59,14 +59,10 @@ func (ss *SessionStatistics) Result(timestamp time.Time) []bson.M {
 	}
 }
 
-func StatisticsFromSessions(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
+func StatisticsFromSessions(ctx context.Context, db *mongo.Database, endTimestamp time.Time) (result []bson.M, err error) {
 	log.Println("StatisticsFromSessions")
 
-	filter := bson.M{
-		"start_timestamp": bson.M{
-			"$exists": true,
-		},
-	}
+	filter := bson.M{}
 	projection := bson.M{}
 	sort := bson.D{
 		bson.E{Key: "start_timestamp", Value: 1},
@@ -85,6 +81,10 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database) (result []b
 	)
 
 	for i := 0; i < len(items); i++ {
+		if items[i].EndTimestamp.IsZero() {
+			items[i].EndTimestamp = endTimestamp
+		}
+
 		dayStartTimestamp, dayEndTimestamp := utils.DayDate(items[i].StartTimestamp), utils.DayDate(items[i].EndTimestamp)
 		weekStartTimestamp, weekEndTimestamp := utils.ISOWeekDate(items[i].StartTimestamp), utils.ISOWeekDate(items[i].EndTimestamp)
 		monthStartTimestamp, monthEndTimestamp := utils.MonthDate(items[i].StartTimestamp), utils.MonthDate(items[i].EndTimestamp)
