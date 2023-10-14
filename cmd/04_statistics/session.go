@@ -161,10 +161,10 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database) (result []b
 			y[yearEndTimestamp].EndSession += 1
 		}
 		if items[i].Payment != nil {
-			d[dayEndTimestamp].SessionPayment = d[dayStartTimestamp].SessionPayment.Add(items[i].Payment)
-			w[weekEndTimestamp].SessionPayment = w[weekStartTimestamp].SessionPayment.Add(items[i].Payment)
-			m[monthEndTimestamp].SessionPayment = m[monthStartTimestamp].SessionPayment.Add(items[i].Payment)
-			y[yearEndTimestamp].SessionPayment = y[yearStartTimestamp].SessionPayment.Add(items[i].Payment)
+			d[dayEndTimestamp].SessionPayment = d[dayEndTimestamp].SessionPayment.Add(items[i].Payment)
+			w[weekEndTimestamp].SessionPayment = w[weekEndTimestamp].SessionPayment.Add(items[i].Payment)
+			m[monthEndTimestamp].SessionPayment = m[monthEndTimestamp].SessionPayment.Add(items[i].Payment)
+			y[yearEndTimestamp].SessionPayment = y[yearEndTimestamp].SessionPayment.Add(items[i].Payment)
 		}
 		if !items[i].StartTimestamp.IsZero() {
 			d[dayStartTimestamp].StartSession += 1

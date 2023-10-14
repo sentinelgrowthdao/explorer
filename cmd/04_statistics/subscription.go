@@ -176,16 +176,16 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database) (resul
 			y[yearStartTimestamp].StartSubscription += 1
 		}
 		if items[i].Deposit != nil {
-			d[dayEndTimestamp].SubscriptionDeposit = d[dayStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
-			w[weekEndTimestamp].SubscriptionDeposit = w[weekStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
-			m[monthEndTimestamp].SubscriptionDeposit = m[monthStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
-			y[yearEndTimestamp].SubscriptionDeposit = y[yearStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
+			d[dayStartTimestamp].SubscriptionDeposit = d[dayStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
+			w[weekStartTimestamp].SubscriptionDeposit = w[weekStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
+			m[monthStartTimestamp].SubscriptionDeposit = m[monthStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
+			y[yearStartTimestamp].SubscriptionDeposit = y[yearStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
 		}
 		if items[i].Payment != nil {
-			d[dayEndTimestamp].SubscriptionPayment = d[dayStartTimestamp].SubscriptionPayment.Add(items[i].Payment)
-			w[weekEndTimestamp].SubscriptionPayment = w[weekStartTimestamp].SubscriptionPayment.Add(items[i].Payment)
-			m[monthEndTimestamp].SubscriptionPayment = m[monthStartTimestamp].SubscriptionPayment.Add(items[i].Payment)
-			y[yearEndTimestamp].SubscriptionPayment = y[yearStartTimestamp].SubscriptionPayment.Add(items[i].Payment)
+			d[dayEndTimestamp].SubscriptionPayment = d[dayEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
+			w[weekEndTimestamp].SubscriptionPayment = w[weekEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
+			m[monthEndTimestamp].SubscriptionPayment = m[monthEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
+			y[yearEndTimestamp].SubscriptionPayment = y[yearEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
 		}
 	}
 
