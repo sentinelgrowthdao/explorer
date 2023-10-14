@@ -287,7 +287,7 @@ func NewNodeStatisticUpdateSessionDetails(
 			"duration":  1,
 			"timestamp": 1,
 		}
-		sort := bson.A{
+		sort := bson.D{
 			bson.E{Key: "timestamp", Value: -1},
 		}
 		findOpts := options.Find().

@@ -7,13 +7,10 @@ import (
 	"log"
 	"time"
 
-	hubtypes "github.com/sentinel-official/hub/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/sentinel-official/explorer/database"
-	"github.com/sentinel-official/explorer/types"
 	"github.com/sentinel-official/explorer/utils"
 )
 
@@ -41,25 +38,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{
 			Keys: bson.D{
 				bson.E{Key: "type", Value: 1},
-				bson.E{Key: "status", Value: 1},
 			},
-			Options: options.Index().
-				SetPartialFilterExpression(
-					bson.M{
-						"type": bson.M{
-							"$in": bson.A{
-								types.EventTypeNodeUpdateStatus,
-								types.EventTypeSessionUpdateDetails,
-							},
-						},
-						"status": bson.M{
-							"$in": bson.A{
-								bson.M{"$exists": false},
-								hubtypes.StatusActive.String(),
-							},
-						},
-					},
-				),
 		},
 	}
 
