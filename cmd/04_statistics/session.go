@@ -72,10 +72,10 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database) (result []b
 	}
 
 	var (
-		d map[time.Time]*SessionStatistics
-		w map[time.Time]*SessionStatistics
-		m map[time.Time]*SessionStatistics
-		y map[time.Time]*SessionStatistics
+		d = make(map[time.Time]*SessionStatistics)
+		w = make(map[time.Time]*SessionStatistics)
+		m = make(map[time.Time]*SessionStatistics)
+		y = make(map[time.Time]*SessionStatistics)
 	)
 
 	for i := 0; i < len(items); i++ {
