@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"sort"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -38,11 +39,52 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{
 			Keys: bson.D{
 				bson.E{Key: "type", Value: 1},
+				bson.E{Key: "status", Value: 1},
+				bson.E{Key: "timestamp", Value: 1},
 			},
 		},
 	}
 
 	_, err := database.EventIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "register_timestamp", Value: 1},
+			},
+		},
+	}
+
+	_, err = database.NodeIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "start_timestamp", Value: 1},
+			},
+		},
+	}
+
+	_, err = database.SessionIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "start_timestamp", Value: 1},
+			},
+		},
+	}
+
+	_, err = database.SubscriptionIndexesCreateMany(ctx, db, indexes)
 	if err != nil {
 		return err
 	}
@@ -90,6 +132,10 @@ func main() {
 	result = append(result, nodes...)
 	result = append(result, sessions...)
 	result = append(result, subscriptions...)
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i]["timestamp"].(time.Time).After(result[j]["timestamp"].(time.Time))
+	})
 
 	fmt.Println(utils.MustMarshalIndentToString(result))
 

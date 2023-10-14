@@ -91,15 +91,7 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 			},
 		},
 	}
-	projection := bson.M{
-		"_id":          0,
-		"bandwidth":    1,
-		"duration":     1,
-		"node_address": 1,
-		"session_id":   1,
-		"timestamp":    1,
-		"type":         1,
-	}
+	projection := bson.M{}
 	sort := bson.D{
 		bson.E{Key: "timestamp", Value: 1},
 	}
