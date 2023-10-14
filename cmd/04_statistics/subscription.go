@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -95,8 +94,6 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database) (resul
 	)
 
 	for i := 0; i < len(items); i++ {
-		fmt.Println(i, utils.MustMarshalIndentToString(items[i]))
-
 		dayStartTimestamp, dayEndTimestamp := utils.DayDate(items[i].StartTimestamp), utils.DayDate(items[i].EndTimestamp)
 		weekStartTimestamp, weekEndTimestamp := utils.ISOWeekDate(items[i].StartTimestamp), utils.ISOWeekDate(items[i].EndTimestamp)
 		monthStartTimestamp, monthEndTimestamp := utils.MonthDate(items[i].StartTimestamp), utils.MonthDate(items[i].EndTimestamp)
