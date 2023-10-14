@@ -92,6 +92,39 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database) (resul
 
 	for i := 0; i < len(items); i++ {
 		dayStartTimestamp, dayEndTimestamp := utils.DayDate(items[i].StartTimestamp), utils.DayDate(items[i].EndTimestamp)
+		weekStartTimestamp, weekEndTimestamp := utils.ISOWeekDate(items[i].StartTimestamp), utils.ISOWeekDate(items[i].EndTimestamp)
+		monthStartTimestamp, monthEndTimestamp := utils.MonthDate(items[i].StartTimestamp), utils.MonthDate(items[i].EndTimestamp)
+		yearStartTimestamp, yearEndTimestamp := utils.YearDate(items[i].StartTimestamp), utils.YearDate(items[i].EndTimestamp)
+
+		if !items[i].StartTimestamp.IsZero() {
+			if _, ok := d[dayStartTimestamp]; !ok {
+				d[dayStartTimestamp] = NewSubscriptionStatistics("day")
+			}
+			if _, ok := w[weekStartTimestamp]; !ok {
+				w[weekStartTimestamp] = NewSubscriptionStatistics("week")
+			}
+			if _, ok := m[monthStartTimestamp]; !ok {
+				m[monthStartTimestamp] = NewSubscriptionStatistics("month")
+			}
+			if _, ok := y[yearStartTimestamp]; !ok {
+				y[yearStartTimestamp] = NewSubscriptionStatistics("year")
+			}
+		}
+		if !items[i].EndTimestamp.IsZero() {
+			if _, ok := d[dayEndTimestamp]; !ok {
+				d[dayEndTimestamp] = NewSubscriptionStatistics("day")
+			}
+			if _, ok := w[weekEndTimestamp]; !ok {
+				w[weekEndTimestamp] = NewSubscriptionStatistics("week")
+			}
+			if _, ok := m[monthEndTimestamp]; !ok {
+				m[monthEndTimestamp] = NewSubscriptionStatistics("month")
+			}
+			if _, ok := y[yearEndTimestamp]; !ok {
+				y[yearEndTimestamp] = NewSubscriptionStatistics("year")
+			}
+		}
+
 		for t := dayStartTimestamp; !t.After(dayEndTimestamp); t = t.AddDate(0, 0, 1) {
 			if _, ok := d[t]; !ok {
 				d[t] = NewSubscriptionStatistics("day")
@@ -100,7 +133,6 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database) (resul
 			d[t].ActiveSubscription += 1
 		}
 
-		weekStartTimestamp, weekEndTimestamp := utils.ISOWeekDate(items[i].StartTimestamp), utils.ISOWeekDate(items[i].EndTimestamp)
 		for t := weekStartTimestamp; !t.After(weekEndTimestamp); t = t.AddDate(0, 0, 7) {
 			if _, ok := w[t]; !ok {
 				w[t] = NewSubscriptionStatistics("week")
@@ -109,7 +141,6 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database) (resul
 			w[t].ActiveSubscription += 1
 		}
 
-		monthStartTimestamp, monthEndTimestamp := utils.MonthDate(items[i].StartTimestamp), utils.MonthDate(items[i].EndTimestamp)
 		for t := monthStartTimestamp; !t.After(monthEndTimestamp); t = t.AddDate(0, 1, 0) {
 			if _, ok := m[t]; !ok {
 				m[t] = NewSubscriptionStatistics("month")
@@ -118,7 +149,6 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database) (resul
 			m[t].ActiveSubscription += 1
 		}
 
-		yearStartTimestamp, yearEndTimestamp := utils.YearDate(items[i].StartTimestamp), utils.YearDate(items[i].EndTimestamp)
 		for t := yearStartTimestamp; !t.After(yearEndTimestamp); t = t.AddDate(1, 0, 0) {
 			if _, ok := y[t]; !ok {
 				y[t] = NewSubscriptionStatistics("year")
