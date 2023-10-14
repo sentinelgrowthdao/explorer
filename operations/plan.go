@@ -65,7 +65,7 @@ func NewPlanAddNodeOperation(
 			"id": id,
 		}
 		update := bson.M{
-			"$push": bson.M{
+			"$addToSet": bson.M{
 				"node_addresses": address,
 			},
 		}
@@ -93,7 +93,7 @@ func NewPlanRemoveNodeOperation(
 			"id": id,
 		}
 		update := bson.M{
-			"$pop": bson.M{
+			"$pull": bson.M{
 				"node_addresses": address,
 			},
 		}
