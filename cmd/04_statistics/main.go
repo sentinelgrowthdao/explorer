@@ -111,9 +111,9 @@ func main() {
 
 	filter := bson.M{}
 	projection := bson.M{
-		"_id":       0,
-		"height":    1,
-		"timestamp": 1,
+		"_id":    0,
+		"height": 1,
+		"time":   1,
 	}
 	_sort := bson.D{
 		bson.E{Key: "height", Value: -1},
@@ -124,9 +124,9 @@ func main() {
 		log.Panicln(err)
 	}
 
-	var endTimestamp time.Time
+	var maxTimestamp time.Time
 	if len(dBlocks) > 0 {
-		endTimestamp = dBlocks[0].Time
+		maxTimestamp = dBlocks[0].Time
 	}
 
 	events, err := StatisticsFromEvents(context.TODO(), db)
@@ -139,12 +139,12 @@ func main() {
 		log.Panicln(err)
 	}
 
-	sessions, err := StatisticsFromSessions(context.TODO(), db, endTimestamp)
+	sessions, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	subscriptions, err := StatisticsFromSubscriptions(context.TODO(), db, endTimestamp)
+	subscriptions, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp)
 	if err != nil {
 		log.Panicln(err)
 	}

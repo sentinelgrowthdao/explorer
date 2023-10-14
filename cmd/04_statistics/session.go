@@ -59,8 +59,8 @@ func (ss *SessionStatistics) Result(timestamp time.Time) []bson.M {
 	}
 }
 
-func StatisticsFromSessions(ctx context.Context, db *mongo.Database, endTimestamp time.Time) (result []bson.M, err error) {
-	log.Println("StatisticsFromSessions")
+func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time) (result []bson.M, err error) {
+	log.Println("StatisticsFromSubscriptions", minTimestamp, maxTimestamp)
 
 	filter := bson.M{}
 	projection := bson.M{}
@@ -81,44 +81,17 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, endTimestam
 	)
 
 	for i := 0; i < len(items); i++ {
+		startTimestamp := items[i].StartTimestamp
+		if items[i].StartTimestamp.IsZero() {
+			startTimestamp = minTimestamp
+		}
+
+		endTimestamp := items[i].EndTimestamp
 		if items[i].EndTimestamp.IsZero() {
-			items[i].EndTimestamp = endTimestamp
+			endTimestamp = maxTimestamp
 		}
 
-		dayStartTimestamp, dayEndTimestamp := utils.DayDate(items[i].StartTimestamp), utils.DayDate(items[i].EndTimestamp)
-		weekStartTimestamp, weekEndTimestamp := utils.ISOWeekDate(items[i].StartTimestamp), utils.ISOWeekDate(items[i].EndTimestamp)
-		monthStartTimestamp, monthEndTimestamp := utils.MonthDate(items[i].StartTimestamp), utils.MonthDate(items[i].EndTimestamp)
-		yearStartTimestamp, yearEndTimestamp := utils.YearDate(items[i].StartTimestamp), utils.YearDate(items[i].EndTimestamp)
-
-		if !items[i].StartTimestamp.IsZero() {
-			if _, ok := d[dayStartTimestamp]; !ok {
-				d[dayStartTimestamp] = NewSessionStatistics("day")
-			}
-			if _, ok := w[weekStartTimestamp]; !ok {
-				w[weekStartTimestamp] = NewSessionStatistics("week")
-			}
-			if _, ok := m[monthStartTimestamp]; !ok {
-				m[monthStartTimestamp] = NewSessionStatistics("month")
-			}
-			if _, ok := y[yearStartTimestamp]; !ok {
-				y[yearStartTimestamp] = NewSessionStatistics("year")
-			}
-		}
-		if !items[i].EndTimestamp.IsZero() {
-			if _, ok := d[dayEndTimestamp]; !ok {
-				d[dayEndTimestamp] = NewSessionStatistics("day")
-			}
-			if _, ok := w[weekEndTimestamp]; !ok {
-				w[weekEndTimestamp] = NewSessionStatistics("week")
-			}
-			if _, ok := m[monthEndTimestamp]; !ok {
-				m[monthEndTimestamp] = NewSessionStatistics("month")
-			}
-			if _, ok := y[yearEndTimestamp]; !ok {
-				y[yearEndTimestamp] = NewSessionStatistics("year")
-			}
-		}
-
+		dayStartTimestamp, dayEndTimestamp := utils.DayDate(startTimestamp), utils.DayDate(endTimestamp)
 		for t := dayStartTimestamp; !t.After(dayEndTimestamp); t = t.AddDate(0, 0, 1) {
 			if _, ok := d[t]; !ok {
 				d[t] = NewSessionStatistics("day")
@@ -127,6 +100,7 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, endTimestam
 			d[t].ActiveSession += 1
 		}
 
+		weekStartTimestamp, weekEndTimestamp := utils.ISOWeekDate(startTimestamp), utils.ISOWeekDate(endTimestamp)
 		for t := weekStartTimestamp; !t.After(weekEndTimestamp); t = t.AddDate(0, 0, 7) {
 			if _, ok := w[t]; !ok {
 				w[t] = NewSessionStatistics("week")
@@ -135,6 +109,7 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, endTimestam
 			w[t].ActiveSession += 1
 		}
 
+		monthStartTimestamp, monthEndTimestamp := utils.MonthDate(startTimestamp), utils.MonthDate(endTimestamp)
 		for t := monthStartTimestamp; !t.After(monthEndTimestamp); t = t.AddDate(0, 1, 0) {
 			if _, ok := m[t]; !ok {
 				m[t] = NewSessionStatistics("month")
@@ -143,6 +118,7 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, endTimestam
 			m[t].ActiveSession += 1
 		}
 
+		yearStartTimestamp, yearEndTimestamp := utils.YearDate(startTimestamp), utils.YearDate(endTimestamp)
 		for t := yearStartTimestamp; !t.After(yearEndTimestamp); t = t.AddDate(1, 0, 0) {
 			if _, ok := y[t]; !ok {
 				y[t] = NewSessionStatistics("year")
