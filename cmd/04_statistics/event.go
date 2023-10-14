@@ -74,15 +74,17 @@ func (es *EventStatistics) Result(timestamp time.Time) []bson.M {
 func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
 	filter := bson.M{
 		"type": bson.M{
-			"$in": bson.A{
+			"$in": []string{
 				types.EventTypeNodeUpdateStatus,
 				types.EventTypeSessionUpdateDetails,
 			},
 		},
-		"status": bson.M{
-			"$in": bson.A{
-				bson.M{"$exists": false},
-				hubtypes.StatusActive.String(),
+		"$or": []bson.M{
+			{
+				"status": bson.M{"$exists": false},
+			},
+			{
+				"status": hubtypes.StatusActive.String(),
 			},
 		},
 	}
@@ -95,7 +97,7 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 		"timestamp":    1,
 		"type":         1,
 	}
-	sort := bson.A{
+	sort := bson.D{
 		bson.E{Key: "timestamp", Value: 1},
 	}
 	opts := options.Find().
