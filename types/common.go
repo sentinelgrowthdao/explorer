@@ -138,6 +138,13 @@ func (c *Coin) String() string {
 	return fmt.Sprintf("%s%s;", c.Amount, c.Denom)
 }
 
+func (c *Coin) Copy() *Coin {
+	return &Coin{
+		Denom:  c.Denom,
+		Amount: c.Amount,
+	}
+}
+
 func (c *Coin) Add(v string) *Coin {
 	a1 := utils.MustIntFromString(c.Amount)
 	a2 := utils.MustIntFromString(v)
@@ -169,15 +176,20 @@ func NewCoins(v sdk.Coins) Coins {
 	return items.Sort()
 }
 
+func (c Coins) Copy() (n Coins) {
+	for i := 0; i < len(c); i++ {
+		n = append(n, c[i].Copy())
+	}
+
+	return n
+}
+
 func (c Coins) Add(v ...*Coin) (n Coins) {
 	if !c.IsSorted() {
 		panic("coins must be sorted")
 	}
 
-	for i := 0; i < len(c); i++ {
-		n = append(n, c[i])
-	}
-
+	n = c.Copy()
 	for i := 0; i < len(v); i++ {
 		index := n.IndexOf(v[i].Denom)
 		if index < len(n) && n[index].Denom == v[i].Denom {
