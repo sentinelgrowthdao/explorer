@@ -110,10 +110,10 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 	}
 
 	var (
-		d map[time.Time]*EventStatistics
-		w map[time.Time]*EventStatistics
-		m map[time.Time]*EventStatistics
-		y map[time.Time]*EventStatistics
+		d = make(map[time.Time]*EventStatistics)
+		w = make(map[time.Time]*EventStatistics)
+		m = make(map[time.Time]*EventStatistics)
+		y = make(map[time.Time]*EventStatistics)
 	)
 
 	for i := 0; i < len(items); i++ {

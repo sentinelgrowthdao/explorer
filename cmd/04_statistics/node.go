@@ -47,10 +47,10 @@ func StatisticsFromNodes(ctx context.Context, db *mongo.Database) (result []bson
 	}
 
 	var (
-		d map[time.Time]*NodeStatistics
-		w map[time.Time]*NodeStatistics
-		m map[time.Time]*NodeStatistics
-		y map[time.Time]*NodeStatistics
+		d = make(map[time.Time]*NodeStatistics)
+		w = make(map[time.Time]*NodeStatistics)
+		m = make(map[time.Time]*NodeStatistics)
+		y = make(map[time.Time]*NodeStatistics)
 	)
 
 	for i := 0; i < len(items); i++ {

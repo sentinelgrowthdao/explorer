@@ -134,6 +134,10 @@ func NewCoin(v *sdk.Coin) *Coin {
 	}
 }
 
+func (c *Coin) String() string {
+	return fmt.Sprintf("%s%s;", c.Amount, c.Denom)
+}
+
 func (c *Coin) Add(v string) *Coin {
 	a1 := utils.MustIntFromString(c.Amount)
 	a2 := utils.MustIntFromString(v)
@@ -165,17 +169,25 @@ func NewCoins(v sdk.Coins) Coins {
 	return items.Sort()
 }
 
-func (c Coins) Add(v ...*Coin) Coins {
+func (c Coins) Add(v ...*Coin) (n Coins) {
 	if !c.IsSorted() {
 		panic("coins must be sorted")
 	}
 
-	for i := 0; i < len(v); i++ {
-		index := c.IndexOf(v[i].Denom)
-		c[index] = c[index].Add(v[i].Amount)
+	for i := 0; i < len(c); i++ {
+		n = append(n, c[i])
 	}
 
-	return c
+	for i := 0; i < len(v); i++ {
+		index := n.IndexOf(v[i].Denom)
+		if index < len(n) && n[index].Denom == v[i].Denom {
+			n[index] = n[index].Add(v[i].Amount)
+		} else {
+			n = append(n, v[i]).Sort()
+		}
+	}
+
+	return n
 }
 
 type Bandwidth struct {

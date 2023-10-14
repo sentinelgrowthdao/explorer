@@ -79,10 +79,10 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database) (resul
 	}
 
 	var (
-		d map[time.Time]*SubscriptionStatistics
-		w map[time.Time]*SubscriptionStatistics
-		m map[time.Time]*SubscriptionStatistics
-		y map[time.Time]*SubscriptionStatistics
+		d = make(map[time.Time]*SubscriptionStatistics)
+		w = make(map[time.Time]*SubscriptionStatistics)
+		m = make(map[time.Time]*SubscriptionStatistics)
+		y = make(map[time.Time]*SubscriptionStatistics)
 	)
 
 	for i := 0; i < len(items); i++ {
