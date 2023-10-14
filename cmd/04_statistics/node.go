@@ -40,8 +40,11 @@ func (ss *NodeStatistics) Result(timestamp time.Time) []bson.M {
 func StatisticsFromNodes(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
 	filter := bson.M{}
 	projection := bson.M{}
+	sort := bson.D{
+		bson.E{Key: "register_timestamp", Value: 1},
+	}
 
-	items, err := database.NodeFind(ctx, db, filter, options.Find().SetProjection(projection))
+	items, err := database.NodeFind(ctx, db, filter, options.Find().SetProjection(projection).SetSort(sort))
 	if err != nil {
 		return nil, err
 	}

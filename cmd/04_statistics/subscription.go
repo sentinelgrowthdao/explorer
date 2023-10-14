@@ -26,7 +26,9 @@ type (
 
 func NewSubscriptionStatistics(timeframe string) *SubscriptionStatistics {
 	return &SubscriptionStatistics{
-		Timeframe: timeframe,
+		Timeframe:           timeframe,
+		SubscriptionDeposit: types.NewCoins(nil),
+		SubscriptionPayment: types.NewCoins(nil),
 	}
 }
 
@@ -72,8 +74,11 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database) (resul
 		},
 	}
 	projection := bson.M{}
+	sort := bson.D{
+		bson.E{Key: "start_timestamp", Value: 1},
+	}
 
-	items, err := database.SubscriptionFind(ctx, db, filter, options.Find().SetProjection(projection))
+	items, err := database.SubscriptionFind(ctx, db, filter, options.Find().SetProjection(projection).SetSort(sort))
 	if err != nil {
 		return nil, err
 	}
