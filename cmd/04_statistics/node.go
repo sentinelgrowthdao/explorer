@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -38,6 +40,8 @@ func (ss *NodeStatistics) Result(timestamp time.Time) []bson.M {
 }
 
 func StatisticsFromNodes(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
+	log.Println("StatisticsFromNodes")
+
 	filter := bson.M{}
 	projection := bson.M{}
 	sort := bson.D{
@@ -57,6 +61,8 @@ func StatisticsFromNodes(ctx context.Context, db *mongo.Database) (result []bson
 	)
 
 	for i := 0; i < len(items); i++ {
+		fmt.Println(i, utils.MustMarshalIndentToString(items[i]))
+
 		dayRegisterTimestamp := utils.DayDate(items[i].RegisterTimestamp)
 		if _, ok := d[dayRegisterTimestamp]; !ok {
 			d[dayRegisterTimestamp] = NewNodeStatistics("day")
