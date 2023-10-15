@@ -76,18 +76,13 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 	log.Println("StatisticsFromEvents")
 
 	filter := bson.M{
-		"type": bson.M{
-			"$in": []string{
-				types.EventTypeNodeUpdateStatus,
-				types.EventTypeSessionUpdateDetails,
-			},
-		},
 		"$or": []bson.M{
 			{
-				"status": bson.M{"$exists": false},
+				"type":   types.EventTypeNodeUpdateStatus,
+				"status": hubtypes.StatusActive.String(),
 			},
 			{
-				"status": hubtypes.StatusActive.String(),
+				"type": types.EventTypeSessionUpdateDetails,
 			},
 		},
 	}

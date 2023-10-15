@@ -40,6 +40,12 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{
 			Keys: bson.D{
 				bson.E{Key: "type", Value: 1},
+				bson.E{Key: "timestamp", Value: 1},
+			},
+		},
+		{
+			Keys: bson.D{
+				bson.E{Key: "type", Value: 1},
 				bson.E{Key: "status", Value: 1},
 				bson.E{Key: "timestamp", Value: 1},
 			},

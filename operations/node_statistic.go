@@ -295,11 +295,11 @@ func NewNodeStatisticUpdateSessionDetails(
 		}
 
 		filter = bson.M{
-			"type": types.EventTypeSessionUpdateDetails,
+			"session_id": id,
+			"type":       types.EventTypeSessionUpdateDetails,
 			"timestamp": bson.M{
 				"$lt": timestamp,
 			},
-			"session_id": id,
 		}
 		projection = bson.M{
 			"_id":       0,
