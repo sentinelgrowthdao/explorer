@@ -36,8 +36,8 @@ var (
 )
 
 func init() {
-	flag.Int64Var(&fromHeight, "from-height", 5_125_000, "")
-	flag.Int64Var(&toHeight, "to-height", 9_348_475, "")
+	flag.Int64Var(&fromHeight, "from-height", 901_801, "")
+	flag.Int64Var(&toHeight, "to-height", 5_125_000, "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
 	flag.StringVar(&dbUsername, "db-username", "", "")
@@ -87,6 +87,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 		log.Println("TxHash", dTxs[tIndex].Hash)
 		log.Println("MessagesLen", tIndex, len(dTxs[tIndex].Messages))
 
+		txResultLog := types.NewABCIMessageLogs(dTxs[tIndex].Result.Log)
 		for mIndex := 0; mIndex < len(dTxs[tIndex].Messages); mIndex++ {
 			log.Println("Type", dTxs[tIndex].Messages[mIndex].Type)
 			switch dTxs[tIndex].Messages[mIndex].Type {
@@ -120,10 +121,18 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					return nil, err
 				}
 
+				event, err := subscriptiontypes.NewEventAddQuotaFromEvents(txResultLog[mIndex].Events)
+				if err != nil {
+					return nil, err
+				}
+
 				ops = append(
 					ops,
 					operations.NewNodeStatisticUpdateSubscriptionStartCount(
 						db, msg.Address, utils.DayDate(dBlock.Time), 1,
+					),
+					operations.NewNodeStatisticUpdateSubscriptionBytes(
+						db, msg.Address, utils.DayDate(dBlock.Time), utils.MustIntFromString(event.Allocated),
 					),
 				)
 			default:
@@ -156,7 +165,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 			ops = append(
 				ops,
-				operations.NewNodeStatisticUpdateSubscriptionEarningsForBytes(
+				operations.NewNodeStatisticUpdateEarningsForBytes(
 					db, utils.DayDate(dBlock.Time), event.ID, event.Payment,
 				),
 			)
@@ -220,6 +229,12 @@ func main() {
 			log.Panicln(err)
 		}
 
+		log.Println("OperationsLen", len(ops))
+		if len(ops) == 0 {
+			height++
+			continue
+		}
+
 		err = db.Client().UseSession(
 			context.TODO(),
 			func(ctx mongo.SessionContext) error {
@@ -239,7 +254,6 @@ func main() {
 					}
 				}()
 
-				log.Println("OperationsLen", len(ops))
 				for i := 0; i < len(ops); i++ {
 					if err := ops[i](ctx); err != nil {
 						return err
