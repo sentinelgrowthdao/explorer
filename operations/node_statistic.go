@@ -198,6 +198,9 @@ func NewNodeStatisticUpdateEarningsForBytes(
 		if item == nil {
 			item = models.NewNodeStatistic()
 		}
+		if item.EarningsForBytes == nil {
+			item.EarningsForBytes = types.NewCoins(nil)
+		}
 
 		update := bson.M{
 			"$set": bson.M{
@@ -286,6 +289,9 @@ func NewNodeStatisticUpdateSessionDetails(
 		}
 		if item == nil {
 			item = models.NewNodeStatistic()
+		}
+		if item.SessionBandwidth == nil {
+			item.SessionBandwidth = types.NewBandwidth(nil)
 		}
 
 		filter = bson.M{
