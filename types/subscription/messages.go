@@ -17,7 +17,7 @@ type MsgSubscribeToNodeRequest struct {
 }
 
 func NewMsgSubscribeToNodeRequest(v bson.M) (*MsgSubscribeToNodeRequest, error) {
-	buf, err := json.Marshal([]byte(v["deposit"].(string)))
+	buf, err := json.Marshal(v["deposit"])
 	if err != nil {
 		return nil, err
 	}
