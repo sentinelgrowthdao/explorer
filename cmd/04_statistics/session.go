@@ -63,7 +63,12 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 	log.Println("StatisticsFromSubscriptions", minTimestamp, maxTimestamp)
 
 	filter := bson.M{}
-	projection := bson.M{}
+	projection := bson.M{
+		"_id":             0,
+		"end_timestamp":   1,
+		"payment":         1,
+		"start_timestamp": 1,
+	}
 	sort := bson.D{
 		bson.E{Key: "start_timestamp", Value: 1},
 	}
