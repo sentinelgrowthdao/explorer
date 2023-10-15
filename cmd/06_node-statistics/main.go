@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	hubtypes "github.com/sentinel-official/hub/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -196,6 +197,9 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 			if err != nil {
 				return nil, err
 			}
+			if event.Status != hubtypes.StatusInactive.String() {
+				continue
+			}
 
 			ops = append(
 				ops,
@@ -219,6 +223,9 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 			event, err := subscriptiontypes.NewEventCancelSubscription(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
+			}
+			if event.Status != hubtypes.StatusInactive.String() {
+				continue
 			}
 
 			ops = append(
