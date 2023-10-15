@@ -42,7 +42,10 @@ func StatisticsFromNodes(ctx context.Context, db *mongo.Database) (result []bson
 	log.Println("StatisticsFromNodes")
 
 	filter := bson.M{}
-	projection := bson.M{}
+	projection := bson.M{
+		"_id":                0,
+		"register_timestamp": 1,
+	}
 	sort := bson.D{
 		bson.E{Key: "register_timestamp", Value: 1},
 	}
