@@ -14,6 +14,7 @@ import (
 	depositapi "github.com/sentinel-official/explorer/api/deposit"
 	nodeapi "github.com/sentinel-official/explorer/api/node"
 	sessionapi "github.com/sentinel-official/explorer/api/session"
+	statisticsapi "github.com/sentinel-official/explorer/api/statistics"
 	subscriptionapi "github.com/sentinel-official/explorer/api/subscription"
 	txapi "github.com/sentinel-official/explorer/api/tx"
 	"github.com/sentinel-official/explorer/utils"
@@ -59,6 +60,7 @@ func main() {
 	depositapi.RegisterRoutes(router, db)
 	nodeapi.RegisterRoutes(router, db)
 	sessionapi.RegisterRoutes(router, db)
+	statisticsapi.RegisterRoutes(router, db)
 	subscriptionapi.RegisterRoutes(router, db)
 	txapi.RegisterRoutes(router, db)
 

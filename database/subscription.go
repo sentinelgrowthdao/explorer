@@ -48,3 +48,7 @@ func SubscriptionFind(ctx context.Context, db *mongo.Database, filter bson.M, op
 func SubscriptionIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
 	return IndexesCreateMany(ctx, db.Collection(SubscriptionCollectionName), models, opts...)
 }
+
+func SubscriptionCountDocuments(ctx context.Context, db *mongo.Database, filter bson.M, opts ...*options.CountOptions) (int64, error) {
+	return CountDocuments(ctx, db.Collection(SubscriptionCollectionName), filter, opts...)
+}
