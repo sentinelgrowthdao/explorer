@@ -50,21 +50,6 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	indexes := []mongo.IndexModel{
 		{
 			Keys: bson.D{
-				bson.E{Key: "session_id", Value: 1},
-				bson.E{Key: "type", Value: 1},
-				bson.E{Key: "timestamp", Value: 1},
-			},
-		},
-	}
-
-	_, err := database.EventIndexesCreateMany(ctx, db, indexes)
-	if err != nil {
-		return err
-	}
-
-	indexes = []mongo.IndexModel{
-		{
-			Keys: bson.D{
 				bson.E{Key: "address", Value: 1},
 				bson.E{Key: "timestamp", Value: 1},
 			},
@@ -73,7 +58,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		},
 	}
 
-	_, err = database.NodeStatisticIndexesCreateMany(ctx, db, indexes)
+	_, err := database.NodeStatisticIndexesCreateMany(ctx, db, indexes)
 	if err != nil {
 		return err
 	}
