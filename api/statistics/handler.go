@@ -82,11 +82,11 @@ func HandlerGetStatistics(db *mongo.Database) gin.HandlerFunc {
 	}
 }
 
-func handleAverage(db *mongo.Database, tag, unwind, _id, value string, req *RequestGetStatistics) ([]bson.M, error) {
+func handleAverage(db *mongo.Database, t, unwind, _id, value string, req *RequestGetStatistics) ([]bson.M, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				"tag":       tag,
+				"type":      t,
 				"timeframe": req.Query.Timeframe,
 				"timestamp": bson.M{
 					"$gte": req.Query.FromTimestamp,
@@ -115,9 +115,9 @@ func handleAverage(db *mongo.Database, tag, unwind, _id, value string, req *Requ
 	return database.StatisticAggregate(context.TODO(), db, pipeline)
 }
 
-func handleHistorical(db *mongo.Database, tag string, req *RequestGetStatistics) ([]bson.M, error) {
+func handleHistorical(db *mongo.Database, t string, req *RequestGetStatistics) ([]bson.M, error) {
 	filter := bson.M{
-		"tag":       tag,
+		"type":      t,
 		"timeframe": req.Query.Timeframe,
 		"timestamp": bson.M{
 			"$gte": req.Query.FromTimestamp,
@@ -138,11 +138,11 @@ func handleHistorical(db *mongo.Database, tag string, req *RequestGetStatistics)
 	return database.StatisticFind(context.TODO(), db, filter, opts)
 }
 
-func handleTotal(db *mongo.Database, tag, unwind string, _id, value string, req *RequestGetStatistics) ([]bson.M, error) {
+func handleTotal(db *mongo.Database, t, unwind string, _id, value string, req *RequestGetStatistics) ([]bson.M, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				"tag":       tag,
+				"type":      t,
 				"timeframe": req.Query.Timeframe,
 				"timestamp": bson.M{
 					"$gte": req.Query.FromTimestamp,
@@ -344,7 +344,7 @@ func handleTotalSessionBandwidth(db *mongo.Database, req *RequestGetStatistics) 
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				"tag":       types.StatisticTypeSessionBandwidth,
+				"type":      types.StatisticTypeSessionBandwidth,
 				"timeframe": req.Query.Timeframe,
 				"timestamp": bson.M{
 					"$gte": req.Query.FromTimestamp,
