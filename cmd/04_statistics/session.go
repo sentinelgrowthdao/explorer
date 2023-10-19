@@ -16,17 +16,20 @@ import (
 
 type (
 	SessionStatistics struct {
-		Timeframe      string
-		ActiveSession  int64
-		EndSession     int64
-		SessionPayment types.Coins
-		StartSession   int64
+		Timeframe            string
+		ActiveSession        int64
+		EndSession           int64
+		SessionPayment       types.Coins
+		SessionStakingReward types.Coins
+		StartSession         int64
 	}
 )
 
 func NewSessionStatistics(timeframe string) *SessionStatistics {
 	return &SessionStatistics{
-		Timeframe: timeframe,
+		Timeframe:            timeframe,
+		SessionPayment:       types.NewCoins(nil),
+		SessionStakingReward: types.NewCoins(nil),
 	}
 }
 
@@ -51,6 +54,12 @@ func (ss *SessionStatistics) Result(timestamp time.Time) []bson.M {
 			"value":     ss.SessionPayment,
 		},
 		{
+			"type":      types.StatisticTypeSessionStakingReward,
+			"timeframe": ss.Timeframe,
+			"timestamp": timestamp,
+			"value":     ss.SessionStakingReward,
+		},
+		{
 			"type":      types.StatisticTypeStartSession,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
@@ -67,6 +76,7 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 		"_id":             0,
 		"end_timestamp":   1,
 		"payment":         1,
+		"staking_reward":  1,
 		"start_timestamp": 1,
 	}
 	sort := bson.D{
@@ -143,6 +153,12 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 			w[weekEndTimestamp].SessionPayment = w[weekEndTimestamp].SessionPayment.Add(items[i].Payment)
 			m[monthEndTimestamp].SessionPayment = m[monthEndTimestamp].SessionPayment.Add(items[i].Payment)
 			y[yearEndTimestamp].SessionPayment = y[yearEndTimestamp].SessionPayment.Add(items[i].Payment)
+		}
+		if items[i].StakingReward != nil {
+			d[dayEndTimestamp].SessionStakingReward = d[dayEndTimestamp].SessionStakingReward.Add(items[i].StakingReward)
+			w[weekEndTimestamp].SessionStakingReward = w[weekEndTimestamp].SessionStakingReward.Add(items[i].StakingReward)
+			m[monthEndTimestamp].SessionStakingReward = m[monthEndTimestamp].SessionStakingReward.Add(items[i].StakingReward)
+			y[yearEndTimestamp].SessionStakingReward = y[yearEndTimestamp].SessionStakingReward.Add(items[i].StakingReward)
 		}
 		if !items[i].StartTimestamp.IsZero() {
 			d[dayStartTimestamp].StartSession += 1

@@ -509,6 +509,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					EndTimestamp:    time.Time{},
 					EndTxHash:       "",
 					Payment:         nil,
+					StakingReward:   nil,
 					Rating:          0,
 					Status:          hubtypes.StatusActive.String(),
 					StatusHeight:    dBlock.Height,
@@ -541,7 +542,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 				ops = append(
 					ops,
 					operations.NewSessionUpdateDetailsOperation(
-						db, msg.ID, msg.Bandwidth, msg.Duration, nil, -1,
+						db, msg.ID, msg.Bandwidth, msg.Duration, nil, nil, -1,
 					),
 					operations.NewEventSaveOperation(
 						db, &dEvent1,
@@ -565,7 +566,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 				ops = append(
 					ops,
 					operations.NewSessionUpdateDetailsOperation(
-						db, msg.ID, nil, -1, nil, msg.Rating,
+						db, msg.ID, nil, -1, nil, nil, msg.Rating,
 					),
 					operations.NewSessionUpdateStatusOperation(
 						db, msg.ID, hubtypes.StatusInactivePending.String(), dBlock.Height, dBlock.Time, dTxs[tIndex].Hash,
@@ -602,6 +603,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					Denom:           "",
 					Expiry:          time.Time{},
 					Payment:         nil,
+					StakingReward:   nil,
 					StartHeight:     dBlock.Height,
 					StartTimestamp:  dBlock.Time,
 					StartTxHash:     dTxs[tIndex].Hash,
@@ -682,6 +684,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					Denom:           eventSubscribeToPlan.Payment.Denom,
 					Expiry:          eventSubscribeToPlan.Expiry,
 					Payment:         eventSubscribeToPlan.Payment,
+					StakingReward:   eventSubscribeToPlan.StakingReward,
 					StartHeight:     dBlock.Height,
 					StartTimestamp:  dBlock.Time,
 					StartTxHash:     dTxs[tIndex].Hash,
@@ -928,7 +931,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 			ops = append(
 				ops,
 				operations.NewSessionUpdateDetailsOperation(
-					db, event.ID, nil, -1, event.Payment, -1,
+					db, event.ID, nil, -1, event.Payment, event.StakingReward, -1,
 				),
 			)
 		case "sentinel.subscription.v1.EventCancelSubscription":

@@ -17,10 +17,11 @@ type Subscription struct {
 	Deposit *types.Coin `json:"deposit,omitempty" bson:"deposit"`
 	Refund  *types.Coin `json:"refund,omitempty" bson:"refund"`
 
-	Plan    uint64      `json:"plan,omitempty" bson:"plan"`
-	Denom   string      `json:"denom,omitempty" bson:"denom"`
-	Expiry  time.Time   `json:"expiry,omitempty" bson:"expiry"`
-	Payment *types.Coin `json:"payment,omitempty" bson:"payment"`
+	Plan          uint64      `json:"plan,omitempty" bson:"plan"`
+	Denom         string      `json:"denom,omitempty" bson:"denom"`
+	Expiry        time.Time   `json:"expiry,omitempty" bson:"expiry"`
+	Payment       *types.Coin `json:"payment,omitempty" bson:"payment"`
+	StakingReward *types.Coin `json:"staking_reward,omitempty" bson:"staking_reward"`
 
 	StartHeight    int64     `json:"start_height,omitempty" bson:"start_height"`
 	StartTimestamp time.Time `json:"start_timestamp,omitempty" bson:"start_timestamp"`

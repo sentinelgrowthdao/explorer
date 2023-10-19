@@ -28,7 +28,7 @@ func NewSessionStartOperation(
 
 func NewSessionUpdateDetailsOperation(
 	db *mongo.Database,
-	id uint64, bandwidth *types.Bandwidth, duration int64, payment *types.Coin, rating int64,
+	id uint64, bandwidth *types.Bandwidth, duration int64, payment, stakingReward *types.Coin, rating int64,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
@@ -44,6 +44,9 @@ func NewSessionUpdateDetailsOperation(
 		}
 		if payment != nil {
 			updateSet["payment"] = payment
+		}
+		if stakingReward != nil {
+			updateSet["staking_reward"] = stakingReward
 		}
 		if rating != -1 {
 			updateSet["rating"] = rating

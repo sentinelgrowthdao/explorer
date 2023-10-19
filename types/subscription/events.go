@@ -53,11 +53,12 @@ func NewEventSubscribeToNodeFromEvents(v types.Events) (*EventSubscribeToNode, e
 }
 
 type EventSubscribeToPlan struct {
-	Owner   string
-	ID      uint64
-	Plan    uint64
-	Expiry  time.Time
-	Payment *types.Coin
+	Owner         string
+	ID            uint64
+	Plan          uint64
+	Expiry        time.Time
+	Payment       *types.Coin
+	StakingReward *types.Coin
 }
 
 func NewEventSubscribeToPlan(v *types.Event) (*EventSubscribeToPlan, error) {
@@ -77,16 +78,22 @@ func NewEventSubscribeToPlan(v *types.Event) (*EventSubscribeToPlan, error) {
 	}
 
 	var payment sdk.Coin
-	if err := json.Unmarshal([]byte(v.Attributes["price"]), &payment); err != nil {
+	if err := json.Unmarshal([]byte(v.Attributes["payment"]), &payment); err != nil {
+		return nil, err
+	}
+
+	var stakingReward sdk.Coin
+	if err := json.Unmarshal([]byte(v.Attributes["staking_reward"]), &stakingReward); err != nil {
 		return nil, err
 	}
 
 	return &EventSubscribeToPlan{
-		Owner:   v.Attributes["owner"],
-		ID:      id,
-		Plan:    plan,
-		Expiry:  expiry,
-		Payment: types.NewCoin(&payment),
+		Owner:         v.Attributes["owner"],
+		ID:            id,
+		Plan:          plan,
+		Expiry:        expiry,
+		Payment:       types.NewCoin(&payment),
+		StakingReward: types.NewCoin(&stakingReward),
 	}, nil
 }
 

@@ -60,8 +60,9 @@ func NewEventEndSessionFromEvents(v types.Events) (*EventEndSession, error) {
 }
 
 type EventPay struct {
-	ID      uint64
-	Payment *types.Coin
+	ID            uint64
+	Payment       *types.Coin
+	StakingReward *types.Coin
 }
 
 func NewEventPay(v *types.Event) (*EventPay, error) {
@@ -75,9 +76,15 @@ func NewEventPay(v *types.Event) (*EventPay, error) {
 		return nil, err
 	}
 
+	var stakingReward sdk.Coin
+	if err := json.Unmarshal([]byte(v.Attributes["staking_reward"]), &stakingReward); err != nil {
+		return nil, err
+	}
+
 	return &EventPay{
-		ID:      id,
-		Payment: types.NewCoin(&payment),
+		ID:            id,
+		Payment:       types.NewCoin(&payment),
+		StakingReward: types.NewCoin(&stakingReward),
 	}, nil
 }
 
