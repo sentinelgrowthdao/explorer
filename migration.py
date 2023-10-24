@@ -98,17 +98,6 @@ for item in cursor:
 
 # -------------------------------------------------------------------------------------------------------------------- #
 
-db["node_statistics"].update_many(
-    {},
-    {
-        "$rename": {
-            "address": "addr",
-        },
-    },
-)
-
-# -------------------------------------------------------------------------------------------------------------------- #
-
 db["plans"].update_many(
     {},
     {
@@ -213,6 +202,17 @@ for item in cursor:
             "status": "inactive",
         }
     )
+    db["node_statistics"].find_one_and_update(
+        {
+            "address": item["node_addr"],
+            "timestamp": TIMESTAMP.date(),
+        },
+        {
+            "$inc": {
+                "session_end_count": 1
+            },
+        },
+    )
 
 # -------------------------------------------------------------------------------------------------------------------- #
 
@@ -285,7 +285,7 @@ db["subscriptions"].update_many(
         },
     },
 )
-cursor1 = db["subscriptions"].find({"status": {"$ne": "inactive"}})
+cursor1 = db["subscriptions"].find({"plan_id": 0, "status": {"$ne": "inactive"}})
 for item in cursor1:
     cursor2 = db["sessions"].find(
         {
@@ -325,6 +325,17 @@ for item in cursor1:
             "tx_hash": "",
             "session_id": item["id"],
             "status": "inactive",
+        },
+    )
+    db["node_statistics"].find_one_and_update(
+        {
+            "address": item["node_addr"],
+            "timestamp": TIMESTAMP.date(),
+        },
+        {
+            "$inc": {
+                "subscription_end_count": 1
+            },
         },
     )
 
@@ -384,6 +395,17 @@ db["subscription_allocations"].update_many(
             "address": "acc_addr",
             "allocated": "granted_bytes",
             "consumed": "utilised_bytes",
+        },
+    },
+)
+
+# -------------------------------------------------------------------------------------------------------------------- #
+
+db["node_statistics"].update_many(
+    {},
+    {
+        "$rename": {
+            "address": "addr",
         },
     },
 )
