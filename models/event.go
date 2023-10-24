@@ -19,7 +19,7 @@ type Event struct {
 	Description    string           `json:"description,omitempty" bson:"description,omitempty"`
 	Duration       int64            `json:"duration,omitempty" bson:"duration,omitempty"`
 	GigabytePrices types.Coins      `json:"gigabyte_prices,omitempty" bson:"gigabyte_prices,omitempty"`
-	GrantedBytes   string           `bson:"granted_bytes,omitempty" bson:"granted_bytes,omitempty"`
+	GrantedBytes   string           `json:"granted_bytes,omitempty" bson:"granted_bytes,omitempty"`
 	HourlyPrices   types.Coins      `json:"hourly_prices,omitempty" bson:"hourly_prices,omitempty"`
 	Identity       string           `json:"identity,omitempty" bson:"identity,omitempty"`
 	Name           string           `json:"name,omitempty" bson:"name,omitempty"`
