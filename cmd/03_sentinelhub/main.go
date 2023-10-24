@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"time"
 
 	hubtypes "github.com/sentinel-official/hub/types"
@@ -41,8 +42,8 @@ var (
 )
 
 func init() {
-	flag.Int64Var(&fromHeight, "from-height", 9_348_475, "")
-	flag.Int64Var(&toHeight, "to-height", 12_310_005, "")
+	flag.Int64Var(&fromHeight, "from-height", 12_310_005, "")
+	flag.Int64Var(&toHeight, "to-height", math.MaxInt64, "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
 	flag.StringVar(&dbUsername, "db-username", "", "")
@@ -104,7 +105,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	indexes = []mongo.IndexModel{
 		{
 			Keys: bson.D{
-				bson.E{Key: "address", Value: 1},
+				bson.E{Key: "addr", Value: 1},
 			},
 			Options: options.Index().
 				SetUnique(true),
@@ -119,7 +120,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	indexes = []mongo.IndexModel{
 		{
 			Keys: bson.D{
-				bson.E{Key: "address", Value: 1},
+				bson.E{Key: "addr", Value: 1},
 			},
 			Options: options.Index().
 				SetUnique(true),
@@ -149,7 +150,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	indexes = []mongo.IndexModel{
 		{
 			Keys: bson.D{
-				bson.E{Key: "address", Value: 1},
+				bson.E{Key: "addr", Value: 1},
 			},
 			Options: options.Index().
 				SetUnique(true),
@@ -195,14 +196,14 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{
 			Keys: bson.D{
 				bson.E{Key: "id", Value: 1},
-				bson.E{Key: "address", Value: 1},
+				bson.E{Key: "addr", Value: 1},
 			},
 			Options: options.Index().
 				SetUnique(true),
 		},
 	}
 
-	_, err = database.SubscriptionQuotaIndexesCreateMany(ctx, db, indexes)
+	_, err = database.SubscriptionAllocationIndexesCreateMany(ctx, db, indexes)
 	if err != nil {
 		return err
 	}
@@ -215,9 +216,10 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 		"height": height,
 	}
 	projection := bson.M{
-		"end_block_events": 1,
-		"height":           1,
-		"time":             1,
+		"begin_block_events": 1,
+		"end_block_events":   1,
+		"height":             1,
+		"time":               1,
 	}
 
 	dBlock, err := database.BlockFindOne(context.TODO(), db, filter, options.FindOne().SetProjection(projection))
@@ -226,6 +228,36 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 	}
 	if dBlock == nil {
 		return nil, fmt.Errorf("block %d does not exist", height)
+	}
+
+	log.Println("BeginBlockEventsLen", dBlock.Height, len(dBlock.BeginBlockEvents))
+	for eIndex := 0; eIndex < len(dBlock.BeginBlockEvents); eIndex++ {
+		log.Println("Type", eIndex, dBlock.BeginBlockEvents[eIndex].Type)
+		switch dBlock.BeginBlockEvents[eIndex].Type {
+		case "sentinel.subscription.v2.EventPayForPayout":
+			event, err := subscriptiontypes.NewEventPayForPayout(dBlock.BeginBlockEvents[eIndex])
+			if err != nil {
+				return nil, err
+			}
+
+			dSubscriptionPayout := models.SubscriptionPayout{
+				ID:            event.ID,
+				AccAddr:       event.Address,
+				NodeAddr:      event.NodeAddress,
+				Payment:       event.Payment,
+				StakingReward: event.StakingReward,
+				Height:        dBlock.Height,
+				Timestamp:     dBlock.Time,
+				TxHash:        "",
+			}
+
+			ops = append(
+				ops,
+				operations.NewSubscriptionPayoutCreate(db, &dSubscriptionPayout),
+			)
+		default:
+
+		}
 	}
 
 	filter = bson.M{
@@ -252,16 +284,16 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 		for mIndex := 0; mIndex < len(dTxs[tIndex].Messages); mIndex++ {
 			log.Println("Type", dTxs[tIndex].Messages[mIndex].Type)
 			switch dTxs[tIndex].Messages[mIndex].Type {
-			case "/sentinel.node.v1.MsgRegisterRequest", "/sentinel.node.v1.MsgService/MsgRegister":
+			case "/sentinel.node.v2.MsgRegisterRequest", "/sentinel.node.v2.MsgService/MsgRegister":
 				msg, err := nodetypes.NewMsgRegisterRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
 				dNode := models.Node{
-					Address:           msg.NodeAddress().String(),
-					Provider:          msg.Provider,
-					Price:             msg.Price,
+					Addr:              msg.NodeAddr().String(),
+					GigabytePrices:    msg.GigabytePrices,
+					HourlyPrices:      msg.HourlyPrices,
 					RemoteURL:         msg.RemoteURL,
 					RegisterHeight:    dBlock.Height,
 					RegisterTimestamp: dBlock.Time,
@@ -274,82 +306,154 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 				ops = append(
 					ops,
-					operations.NewNodeRegisterOperation(
-						db, &dNode,
-					),
+					operations.NewNodeRegister(db, &dNode),
 				)
-			case "/sentinel.node.v1.MsgUpdateRequest", "/sentinel.node.v1.MsgService/MsgUpdate":
-				msg, err := nodetypes.NewMsgUpdateRequest(dTxs[tIndex].Messages[mIndex].Data)
+			case "/sentinel.node.v2.MsgUpdateDetailsRequest", "/sentinel.node.v2.MsgService/MsgUpdateDetails":
+				msg, err := nodetypes.NewMsgUpdateDetailsRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
 				dEvent1 := models.Event{
-					Type:        types.EventTypeNodeUpdateDetails,
-					Height:      dBlock.Height,
-					Timestamp:   dBlock.Time,
-					TxHash:      dTxs[tIndex].Hash,
-					NodeAddress: msg.From,
-					ProvAddress: msg.Provider,
-					Price:       msg.Price,
-					RemoteURL:   msg.RemoteURL,
+					Type:           types.EventTypeNodeUpdateDetails,
+					Height:         dBlock.Height,
+					Timestamp:      dBlock.Time,
+					TxHash:         dTxs[tIndex].Hash,
+					NodeAddr:       msg.From,
+					GigabytePrices: msg.GigabytePrices,
+					HourlyPrices:   msg.HourlyPrices,
+					RemoteURL:      msg.RemoteURL,
 				}
 
 				ops = append(
 					ops,
-					operations.NewNodeUpdateDetailsOperation(
-						db, msg.From, msg.Provider, msg.Price, msg.RemoteURL,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
+					operations.NewNodeUpdateDetails(db, msg.From, msg.GigabytePrices, msg.HourlyPrices, msg.RemoteURL),
+					operations.NewEventCreate(db, &dEvent1),
 				)
-			case "/sentinel.node.v1.MsgSetStatusRequest", "/sentinel.node.v1.MsgService/MsgSetStatus":
-				msg, err := nodetypes.NewMsgSetStatusRequest(dTxs[tIndex].Messages[mIndex].Data)
+			case "/sentinel.node.v2.MsgUpdateStatusRequest", "/sentinel.node.v2.MsgService/MsgUpdateStatus":
+				msg, err := nodetypes.NewMsgUpdateStatusRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
 				dEvent1 := models.Event{
-					Type:        types.EventTypeNodeUpdateStatus,
-					Height:      dBlock.Height,
-					Timestamp:   dBlock.Time,
-					TxHash:      dTxs[tIndex].Hash,
-					NodeAddress: msg.From,
-					Status:      msg.Status,
+					Type:      types.EventTypeNodeUpdateStatus,
+					Height:    dBlock.Height,
+					Timestamp: dBlock.Time,
+					TxHash:    dTxs[tIndex].Hash,
+					NodeAddr:  msg.From,
+					Status:    msg.Status,
 				}
 
 				ops = append(
 					ops,
-					operations.NewNodeUpdateStatusOperation(
-						db, msg.From, msg.Status, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
+					operations.NewNodeUpdateStatus(db, msg.From, msg.Status, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash),
+					operations.NewEventCreate(db, &dEvent1),
 				)
-
-			case "/sentinel.plan.v1.MsgAddRequest", "/sentinel.plan.v1.MsgService/MsgAdd":
-				msg, err := plantypes.NewMsgAddRequest(dTxs[tIndex].Messages[mIndex].Data)
+			case "/sentinel.node.v2.MsgSubscribeRequest", "/sentinel.node.v2.MsgService/MsgSubscribe":
+				msg, err := nodetypes.NewMsgSubscribeRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
-				eventAddPlan, err := plantypes.NewEventAddPlanFromEvents(txResultLog[mIndex].Events)
+				_, eventAdd, err := deposittypes.NewEventAddFromEvents(txResultLog[mIndex].Events)
+				if err != nil {
+					return nil, err
+				}
+
+				_, eventCreateSubscription, err := nodetypes.NewEventCreateSubscriptionFromEvents(txResultLog[mIndex].Events)
+				if err != nil {
+					return nil, err
+				}
+
+				_, eventAllocate, err := subscriptiontypes.NewEventAllocateFromEvents(txResultLog[mIndex].Events)
+				if err != nil {
+					return nil, err
+				}
+
+				inactiveAt := dBlock.Time.Add(90 * 24 * time.Hour)
+				if msg.Hours != 0 {
+					inactiveAt = dBlock.Time.Add(time.Duration(msg.Hours) * time.Hour)
+				}
+
+				dSubscription := models.Subscription{
+					ID:              eventCreateSubscription.ID,
+					AccAddr:         msg.From,
+					NodeAddr:        msg.NodeAddress,
+					Gigabytes:       msg.Gigabytes,
+					Hours:           msg.Hours,
+					Price:           nil,
+					Deposit:         eventAdd.Coins[0],
+					Refund:          nil,
+					InactiveAt:      inactiveAt,
+					StartHeight:     dBlock.Height,
+					StartTimestamp:  dBlock.Time,
+					StartTxHash:     dTxs[tIndex].Hash,
+					EndHeight:       0,
+					EndTimestamp:    time.Time{},
+					EndTxHash:       "",
+					Status:          hubtypes.StatusActive.String(),
+					StatusHeight:    dBlock.Height,
+					StatusTimestamp: dBlock.Time,
+					StatusTxHash:    dTxs[tIndex].Hash,
+				}
+
+				dSubscriptionAllocation := models.SubscriptionAllocation{
+					ID:            eventAllocate.ID,
+					AccAddr:       eventAllocate.Address,
+					GrantedBytes:  eventAllocate.GrantedBytes,
+					UtilisedBytes: eventAllocate.UtilisedBytes,
+				}
+
+				dEvent1 := models.Event{
+					Type:           types.EventTypeSubscriptionAllocationUpdateDetails,
+					Height:         dBlock.Height,
+					Timestamp:      dBlock.Time,
+					TxHash:         dTxs[tIndex].Hash,
+					SubscriptionID: eventAllocate.ID,
+					AccAddr:        eventAllocate.Address,
+					GrantedBytes:   eventAllocate.GrantedBytes,
+					UtilisedBytes:  eventAllocate.UtilisedBytes,
+				}
+
+				dEvent2 := models.Event{
+					Type:      types.EventTypeDepositAdd,
+					Height:    dBlock.Height,
+					Timestamp: dBlock.Time,
+					TxHash:    dTxs[tIndex].Hash,
+					AccAddr:   eventAdd.Address,
+					Coins:     eventAdd.Coins,
+				}
+
+				ops = append(
+					ops,
+					operations.NewSubscriptionCreate(db, &dSubscription),
+					operations.NewSubscriptionAllocationCreate(db, &dSubscriptionAllocation),
+					operations.NewEventCreate(db, &dEvent1),
+					operations.NewDepositAdd(db, eventAdd.Address, eventAdd.Coins, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash),
+					operations.NewEventCreate(db, &dEvent2),
+				)
+			case "/sentinel.plan.v2.MsgCreateRequest", "/sentinel.plan.v2.MsgService/MsgCreate":
+				msg, err := plantypes.NewMsgCreateRequest(dTxs[tIndex].Messages[mIndex].Data)
+				if err != nil {
+					return nil, err
+				}
+
+				_, eventCreate, err := plantypes.NewEventCreateFromEvents(txResultLog[mIndex].Events)
 				if err != nil {
 					return nil, err
 				}
 
 				dPlan := models.Plan{
-					ID:              eventAddPlan.ID,
-					ProviderAddress: msg.From,
-					Price:           msg.Price,
-					Validity:        msg.Validity,
-					Bytes:           msg.Bytes,
-					NodeAddresses:   []string{},
-					AddHeight:       dBlock.Height,
-					AddTimestamp:    dBlock.Time,
-					AddTxHash:       dTxs[tIndex].Hash,
+					ID:              eventCreate.ID,
+					ProvAddr:        msg.From,
+					Prices:          msg.Prices,
+					Duration:        msg.Duration,
+					Gigabytes:       msg.Gigabytes,
+					NodeAddrs:       []string{},
+					CreateHeight:    dBlock.Height,
+					CreateTimestamp: dBlock.Time,
+					CreateTxHash:    dTxs[tIndex].Hash,
 					Status:          hubtypes.StatusInactive.String(),
 					StatusHeight:    dBlock.Height,
 					StatusTimestamp: dBlock.Time,
@@ -358,12 +462,10 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 				ops = append(
 					ops,
-					operations.NewPlanCreateOperation(
-						db, &dPlan,
-					),
+					operations.NewPlanCreate(db, &dPlan),
 				)
-			case "/sentinel.plan.v1.MsgSetStatusRequest", "/sentinel.plan.v1.MsgService/MsgSetStatus":
-				msg, err := plantypes.NewMsgSetStatusRequest(dTxs[tIndex].Messages[mIndex].Data)
+			case "/sentinel.plan.v2.MsgUpdateStatusRequest", "/sentinel.plan.v2.MsgService/MsgUpdateStatus":
+				msg, err := plantypes.NewMsgUpdateStatusRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
@@ -379,69 +481,122 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 				ops = append(
 					ops,
-					operations.NewPlanUpdateStatusOperation(
-						db, msg.ID, msg.Status, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
+					operations.NewPlanUpdateStatus(db, msg.ID, msg.Status, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash),
+					operations.NewEventCreate(db, &dEvent1),
 				)
-			case "/sentinel.plan.v1.MsgAddNodeRequest", "/sentinel.plan.v1.MsgService/MsgAddNode":
-				msg, err := plantypes.NewMsgAddNodeRequest(dTxs[tIndex].Messages[mIndex].Data)
+			case "/sentinel.plan.v2.MsgLinkNodeRequest", "/sentinel.plan.v2.MsgService/MsgLinkNode":
+				msg, err := plantypes.NewMsgLinkNodeRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
 				dEvent1 := models.Event{
-					Type:        types.EventTypePlanAddNode,
-					Height:      dBlock.Height,
-					Timestamp:   dBlock.Time,
-					TxHash:      dTxs[tIndex].Hash,
-					PlanID:      msg.ID,
-					NodeAddress: msg.Address,
+					Type:      types.EventTypePlanLinkNode,
+					Height:    dBlock.Height,
+					Timestamp: dBlock.Time,
+					TxHash:    dTxs[tIndex].Hash,
+					PlanID:    msg.ID,
+					NodeAddr:  msg.NodeAddress,
 				}
 
 				ops = append(
 					ops,
-					operations.NewPlanAddNodeOperation(
-						db, msg.ID, msg.Address,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
+					operations.NewPlanLinkNode(db, msg.ID, msg.NodeAddress),
+					operations.NewEventCreate(db, &dEvent1),
 				)
-			case "/sentinel.plan.v1.MsgRemoveNodeRequest", "/sentinel.plan.v1.MsgService/MsgRemoveNode":
-				msg, err := plantypes.NewMsgRemoveNodeRequest(dTxs[tIndex].Messages[mIndex].Data)
+			case "/sentinel.plan.v2.MsgUnlinkNodeRequest", "/sentinel.plan.v2.MsgService/MsgUnlinkNode":
+				msg, err := plantypes.NewMsgUnlinkNodeRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
 				dEvent1 := models.Event{
-					Type:        types.EventTypePlanRemoveNode,
-					Height:      dBlock.Height,
-					Timestamp:   dBlock.Time,
-					TxHash:      dTxs[tIndex].Hash,
-					PlanID:      msg.ID,
-					NodeAddress: msg.Address,
+					Type:      types.EventTypePlanUnlinkNode,
+					Height:    dBlock.Height,
+					Timestamp: dBlock.Time,
+					TxHash:    dTxs[tIndex].Hash,
+					PlanID:    msg.ID,
+					NodeAddr:  msg.NodeAddress,
 				}
 
 				ops = append(
 					ops,
-					operations.NewPlanRemoveNodeOperation(
-						db, msg.ID, msg.Address,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
+					operations.NewPlanUnlinkNode(db, msg.ID, msg.NodeAddress),
+					operations.NewEventCreate(db, &dEvent1),
 				)
-			case "/sentinel.provider.v1.MsgRegisterRequest", "/sentinel.provider.v1.MsgService/MsgRegister":
+			case "/sentinel.plan.v2.MsgSubscribeRequest", "/sentinel.plan.v2.MsgService/MsgSubscribe":
+				msg, err := plantypes.NewMsgSubscribeRequest(dTxs[tIndex].Messages[mIndex].Data)
+				if err != nil {
+					return nil, err
+				}
+
+				_, eventCreateSubscription, err := plantypes.NewEventCreateSubscriptionFromEvents(txResultLog[mIndex].Events)
+				if err != nil {
+					return nil, err
+				}
+
+				_, eventAllocate, err := subscriptiontypes.NewEventAllocateFromEvents(txResultLog[mIndex].Events)
+				if err != nil {
+					return nil, err
+				}
+
+				_, eventPayForPlan, err := subscriptiontypes.NewEventPayForPlanFromEvents(txResultLog[mIndex].Events)
+				if err != nil {
+					return nil, err
+				}
+
+				dSubscription := models.Subscription{
+					ID:              eventCreateSubscription.ID,
+					AccAddr:         msg.From,
+					PlanID:          msg.ID,
+					Price:           nil,
+					Payment:         eventPayForPlan.Payment,
+					StakingReward:   eventPayForPlan.StakingReward,
+					InactiveAt:      time.Time{},
+					StartHeight:     dBlock.Height,
+					StartTimestamp:  dBlock.Time,
+					StartTxHash:     dTxs[tIndex].Hash,
+					EndHeight:       0,
+					EndTimestamp:    time.Time{},
+					EndTxHash:       "",
+					Status:          hubtypes.StatusActive.String(),
+					StatusHeight:    dBlock.Height,
+					StatusTimestamp: dBlock.Time,
+					StatusTxHash:    dTxs[tIndex].Hash,
+				}
+
+				dSubscriptionAllocation := models.SubscriptionAllocation{
+					ID:            eventAllocate.ID,
+					AccAddr:       eventAllocate.Address,
+					GrantedBytes:  eventAllocate.GrantedBytes,
+					UtilisedBytes: eventAllocate.UtilisedBytes,
+				}
+
+				dEvent1 := models.Event{
+					Type:           types.EventTypeSubscriptionAllocationUpdateDetails,
+					Height:         dBlock.Height,
+					Timestamp:      dBlock.Time,
+					TxHash:         dTxs[tIndex].Hash,
+					SubscriptionID: eventAllocate.ID,
+					AccAddr:        eventAllocate.Address,
+					GrantedBytes:   eventAllocate.GrantedBytes,
+					UtilisedBytes:  eventAllocate.UtilisedBytes,
+				}
+
+				ops = append(
+					ops,
+					operations.NewSubscriptionCreate(db, &dSubscription),
+					operations.NewSubscriptionAllocationCreate(db, &dSubscriptionAllocation),
+					operations.NewEventCreate(db, &dEvent1),
+				)
+			case "/sentinel.provider.v2.MsgRegisterRequest", "/sentinel.provider.v2.MsgService/MsgRegister":
 				msg, err := providertypes.NewMsgRegisterRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
 				dProvider := models.Provider{
-					Address:           msg.ProvAddress().String(),
+					Addr:              msg.ProvAddr().String(),
 					Name:              msg.Name,
 					Identity:          msg.Identity,
 					Website:           msg.Website,
@@ -449,15 +604,17 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					RegisterHeight:    dBlock.Height,
 					RegisterTimestamp: dBlock.Time,
 					RegisterTxHash:    dTxs[tIndex].Hash,
+					Status:            hubtypes.StatusInactive.String(),
+					StatusHeight:      dBlock.Height,
+					StatusTimestamp:   dBlock.Time,
+					StatusTxHash:      dTxs[tIndex].Hash,
 				}
 
 				ops = append(
 					ops,
-					operations.NewProviderRegisterOperation(
-						db, &dProvider,
-					),
+					operations.NewProviderRegister(db, &dProvider),
 				)
-			case "/sentinel.provider.v1.MsgUpdateRequest", "/sentinel.provider.v1.MsgService/MsgUpdate":
+			case "/sentinel.provider.v2.MsgUpdateRequest", "/sentinel.provider.v2.MsgService/MsgUpdate":
 				msg, err := providertypes.NewMsgUpdateRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
@@ -468,49 +625,46 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					Height:      dBlock.Height,
 					Timestamp:   dBlock.Time,
 					TxHash:      dTxs[tIndex].Hash,
-					ProvAddress: msg.From,
+					ProvAddr:    msg.From,
 					Name:        msg.Name,
 					Identity:    msg.Identity,
 					Website:     msg.Website,
 					Description: msg.Description,
+					Status:      msg.Status,
 				}
 
 				ops = append(
 					ops,
-					operations.NewProviderUpdateOperation(
-						db, msg.From, msg.Name, msg.Identity, msg.Website, msg.Description,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
+					operations.NewProviderUpdate(db, msg.From, msg.Name, msg.Identity, msg.Website, msg.Description, msg.Status),
+					operations.NewEventCreate(db, &dEvent1),
 				)
-			case "/sentinel.session.v1.MsgStartRequest", "/sentinel.session.v1.MsgService/MsgStart":
+			case "/sentinel.session.v2.MsgStartRequest", "/sentinel.session.v2.MsgService/MsgStart":
 				msg, err := sessiontypes.NewMsgStartRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
-				eventStartSession, err := sessiontypes.NewEventStartSessionFromEvents(txResultLog[mIndex].Events)
+				_, eventStart, err := sessiontypes.NewEventStartFromEvents(txResultLog[mIndex].Events)
 				if err != nil {
 					return nil, err
 				}
 
 				dSession := models.Session{
-					ID:              eventStartSession.ID,
-					Subscription:    msg.ID,
-					Address:         msg.From,
-					Node:            msg.Node,
+					ID:              eventStart.ID,
+					SubscriptionID:  msg.ID,
+					AccAddr:         msg.From,
+					NodeAddr:        msg.NodeAddress,
 					Bandwidth:       nil,
 					Duration:        0,
+					Payment:         nil,
+					StakingReward:   nil,
+					Rating:          0,
 					StartHeight:     dBlock.Height,
 					StartTimestamp:  dBlock.Time,
 					StartTxHash:     dTxs[tIndex].Hash,
 					EndHeight:       0,
 					EndTimestamp:    time.Time{},
 					EndTxHash:       "",
-					Payment:         nil,
-					StakingReward:   nil,
-					Rating:          0,
 					Status:          hubtypes.StatusActive.String(),
 					StatusHeight:    dBlock.Height,
 					StatusTimestamp: dBlock.Time,
@@ -519,12 +673,10 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 				ops = append(
 					ops,
-					operations.NewSessionStartOperation(
-						db, &dSession,
-					),
+					operations.NewSessionCreate(db, &dSession),
 				)
-			case "/sentinel.session.v1.MsgUpdateRequest", "/sentinel.session.v1.MsgService/MsgUpdate":
-				msg, err := sessiontypes.NewMsgUpdateRequest(dTxs[tIndex].Messages[mIndex].Data)
+			case "/sentinel.session.v2.MsgUpdateDetailsRequest", "/sentinel.session.v2.MsgService/MsgUpdate":
+				msg, err := sessiontypes.NewMsgUpdateDetailsRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
@@ -541,304 +693,91 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 				ops = append(
 					ops,
-					operations.NewSessionUpdateDetailsOperation(
-						db, msg.ID, msg.Bandwidth, msg.Duration, nil, nil, -1,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
+					operations.NewSessionUpdateDetails(db, msg.ID, msg.Bandwidth, msg.Duration, nil, nil, -1),
+					operations.NewEventCreate(db, &dEvent1),
 				)
-			case "/sentinel.session.v1.MsgEndRequest", "/sentinel.session.v1.MsgService/MsgEnd":
+			case "/sentinel.session.v2.MsgEndRequest", "/sentinel.session.v2.MsgService/MsgEnd":
 				msg, err := sessiontypes.NewMsgEndRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
+				status := hubtypes.StatusInactivePending.String()
 				dEvent1 := models.Event{
 					Type:      types.EventTypeSessionUpdateStatus,
 					Height:    dBlock.Height,
 					Timestamp: dBlock.Time,
 					TxHash:    dTxs[tIndex].Hash,
 					SessionID: msg.ID,
-					Status:    hubtypes.StatusInactivePending.String(),
+					Status:    status,
 				}
 
 				ops = append(
 					ops,
-					operations.NewSessionUpdateDetailsOperation(
-						db, msg.ID, nil, -1, nil, nil, msg.Rating,
-					),
-					operations.NewSessionUpdateStatusOperation(
-						db, msg.ID, hubtypes.StatusInactivePending.String(), dBlock.Height, dBlock.Time, dTxs[tIndex].Hash,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
+					operations.NewSessionUpdateDetails(db, msg.ID, nil, -1, nil, nil, msg.Rating),
+					operations.NewSessionUpdateStatus(db, msg.ID, status, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash),
+					operations.NewEventCreate(db, &dEvent1),
 				)
-			case "/sentinel.subscription.v1.MsgSubscribeToNodeRequest", "/sentinel.subscription.v1.MsgService/MsgSubscribeToNode":
-				eventSubscribeToNode, err := subscriptiontypes.NewEventSubscribeToNodeFromEvents(txResultLog[mIndex].Events)
-				if err != nil {
-					return nil, err
-				}
-
-				eventAddQuota, err := subscriptiontypes.NewEventAddQuotaFromEvents(txResultLog[mIndex].Events)
-				if err != nil {
-					return nil, err
-				}
-
-				eventAddDeposit, err := deposittypes.NewEventAddFromEvents(txResultLog[mIndex].Events)
-				if err != nil {
-					return nil, err
-				}
-
-				dSubscription := models.Subscription{
-					ID:              eventSubscribeToNode.ID,
-					Owner:           eventSubscribeToNode.Owner,
-					Free:            "",
-					Node:            eventSubscribeToNode.Node,
-					Price:           eventSubscribeToNode.Price,
-					Deposit:         eventSubscribeToNode.Deposit,
-					Refund:          nil,
-					Plan:            0,
-					Denom:           "",
-					Expiry:          time.Time{},
-					Payment:         nil,
-					StakingReward:   nil,
-					StartHeight:     dBlock.Height,
-					StartTimestamp:  dBlock.Time,
-					StartTxHash:     dTxs[tIndex].Hash,
-					EndHeight:       0,
-					EndTimestamp:    time.Time{},
-					EndTxHash:       "",
-					Status:          hubtypes.StatusActive.String(),
-					StatusHeight:    dBlock.Height,
-					StatusTimestamp: dBlock.Time,
-					StatusTxHash:    dTxs[tIndex].Hash,
-				}
-
-				dSubscriptionQuota := models.SubscriptionQuota{
-					ID:        eventAddQuota.ID,
-					Address:   eventAddQuota.Address,
-					Allocated: eventAddQuota.Allocated,
-					Consumed:  eventAddQuota.Consumed,
-				}
-
-				dEvent1 := models.Event{
-					Type:           types.EventTypeSubscriptionQuotaUpdateDetails,
-					Height:         dBlock.Height,
-					Timestamp:      dBlock.Time,
-					TxHash:         dTxs[tIndex].Hash,
-					SubscriptionID: eventAddQuota.ID,
-					AccAddress:     eventAddQuota.Address,
-					Allocated:      eventAddQuota.Allocated,
-					Consumed:       eventAddQuota.Consumed,
-				}
-
-				dEvent2 := models.Event{
-					Type:       types.EventTypeDepositAdd,
-					Height:     dBlock.Height,
-					Timestamp:  dBlock.Time,
-					TxHash:     dTxs[tIndex].Hash,
-					AccAddress: eventAddDeposit.Address,
-					Coins:      eventAddDeposit.Coins,
-				}
-
-				ops = append(
-					ops,
-					operations.NewSubscriptionCreateOperation(
-						db, &dSubscription,
-					),
-					operations.NewSubscriptionQuotaAddOperation(
-						db, &dSubscriptionQuota,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
-					operations.NewDepositUpdateOperation(
-						db, eventAddDeposit.Address, eventAddDeposit.Current, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent2,
-					),
-				)
-			case "/sentinel.subscription.v1.MsgSubscribeToPlanRequest", "/sentinel.subscription.v1.MsgService/MsgSubscribeToPlan":
-				eventSubscribeToPlan, err := subscriptiontypes.NewEventSubscribeToPlanFromEvents(txResultLog[mIndex].Events)
-				if err != nil {
-					return nil, err
-				}
-
-				eventAddQuota, err := subscriptiontypes.NewEventAddQuotaFromEvents(txResultLog[mIndex].Events)
-				if err != nil {
-					return nil, err
-				}
-
-				dSubscription := models.Subscription{
-					ID:              eventSubscribeToPlan.ID,
-					Owner:           eventSubscribeToPlan.Owner,
-					Free:            "",
-					Node:            "",
-					Price:           nil,
-					Deposit:         nil,
-					Refund:          nil,
-					Plan:            eventSubscribeToPlan.Plan,
-					Denom:           eventSubscribeToPlan.Payment.Denom,
-					Expiry:          eventSubscribeToPlan.Expiry,
-					Payment:         eventSubscribeToPlan.Payment,
-					StakingReward:   eventSubscribeToPlan.StakingReward,
-					StartHeight:     dBlock.Height,
-					StartTimestamp:  dBlock.Time,
-					StartTxHash:     dTxs[tIndex].Hash,
-					EndHeight:       0,
-					EndTimestamp:    time.Time{},
-					EndTxHash:       "",
-					Status:          hubtypes.StatusActive.String(),
-					StatusHeight:    dBlock.Height,
-					StatusTimestamp: dBlock.Time,
-					StatusTxHash:    dTxs[tIndex].Hash,
-				}
-
-				dSubscriptionQuota := models.SubscriptionQuota{
-					ID:        eventAddQuota.ID,
-					Address:   eventAddQuota.Address,
-					Allocated: eventAddQuota.Allocated,
-					Consumed:  eventAddQuota.Consumed,
-				}
-
-				dEvent1 := models.Event{
-					Type:           types.EventTypeSubscriptionQuotaUpdateDetails,
-					Height:         dBlock.Height,
-					Timestamp:      dBlock.Time,
-					TxHash:         dTxs[tIndex].Hash,
-					SubscriptionID: eventAddQuota.ID,
-					AccAddress:     eventAddQuota.Address,
-					Allocated:      eventAddQuota.Allocated,
-					Consumed:       eventAddQuota.Consumed,
-				}
-
-				ops = append(
-					ops,
-					operations.NewSubscriptionCreateOperation(
-						db, &dSubscription,
-					),
-					operations.NewSubscriptionQuotaAddOperation(
-						db, &dSubscriptionQuota,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
-				)
-			case "/sentinel.subscription.v1.MsgCancelRequest", "/sentinel.subscription.v1.MsgService/MsgCancel":
+			case "/sentinel.subscription.v2.MsgCancelRequest", "/sentinel.subscription.v2.MsgService/MsgCancel":
 				msg, err := subscriptiontypes.NewMsgCancelRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
+				status := hubtypes.StatusInactivePending.String()
 				dEvent1 := models.Event{
 					Type:           types.EventTypeSubscriptionUpdateStatus,
 					Height:         dBlock.Height,
 					Timestamp:      dBlock.Time,
 					TxHash:         dTxs[tIndex].Hash,
 					SubscriptionID: msg.ID,
-					Status:         hubtypes.StatusInactivePending.String(),
+					Status:         status,
 				}
 
 				ops = append(
 					ops,
-					operations.NewSubscriptionUpdateStatusOperation(
-						db, msg.ID, hubtypes.StatusInactivePending.String(), dBlock.Height, dBlock.Time, dTxs[tIndex].Hash,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
+					operations.NewSubscriptionUpdateStatus(db, msg.ID, status, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash),
+					operations.NewEventCreate(db, &dEvent1),
 				)
-			case "/sentinel.subscription.v1.MsgAddQuotaRequest", "/sentinel.subscription.v1.MsgService/MsgAddQuota":
-				eventAddQuota, err := subscriptiontypes.NewEventAddQuotaFromEvents(txResultLog[mIndex].Events)
-				if err != nil {
-					return nil, err
-				}
-
-				dSubscriptionQuota := models.SubscriptionQuota{
-					ID:        eventAddQuota.ID,
-					Address:   eventAddQuota.Address,
-					Consumed:  eventAddQuota.Consumed,
-					Allocated: eventAddQuota.Allocated,
-				}
-
-				dEvent1 := models.Event{
-					Type:           types.EventTypeSubscriptionQuotaUpdateDetails,
-					Height:         dBlock.Height,
-					Timestamp:      dBlock.Time,
-					TxHash:         dTxs[tIndex].Hash,
-					SubscriptionID: eventAddQuota.ID,
-					AccAddress:     eventAddQuota.Address,
-					Allocated:      eventAddQuota.Allocated,
-					Consumed:       eventAddQuota.Consumed,
-				}
-
-				dEvent2 := models.Event{
-					Type:           types.EventTypeSubscriptionUpdateDetails,
-					Height:         dBlock.Height,
-					Timestamp:      dBlock.Time,
-					TxHash:         dTxs[tIndex].Hash,
-					SubscriptionID: eventAddQuota.ID,
-					Free:           eventAddQuota.Free,
-				}
-
-				ops = append(
-					ops,
-					operations.NewSubscriptionQuotaAddOperation(
-						db, &dSubscriptionQuota,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
-					operations.NewSubscriptionUpdateDetailsOperation(
-						db, eventAddQuota.ID, eventAddQuota.Free, nil,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent2,
-					),
-				)
-			case "/sentinel.subscription.v1.MsgUpdateQuotaRequest", "/sentinel.subscription.v1.MsgService/MsgUpdateQuota":
-				eventUpdateQuota, err := subscriptiontypes.NewEventUpdateQuotaFromEvents(txResultLog[mIndex].Events)
+			case "/sentinel.subscription.v2.MsgAllocateRequest", "/sentinel.subscription.v2.MsgService/MsgAllocate":
+				eIndex, eventAllocate1, err := subscriptiontypes.NewEventAllocateFromEvents(txResultLog[mIndex].Events)
 				if err != nil {
 					return nil, err
 				}
 
 				dEvent1 := models.Event{
-					Type:           types.EventTypeSubscriptionQuotaUpdateDetails,
+					Type:           types.EventTypeSubscriptionAllocationUpdateDetails,
 					Height:         dBlock.Height,
 					Timestamp:      dBlock.Time,
 					TxHash:         dTxs[tIndex].Hash,
-					SubscriptionID: eventUpdateQuota.ID,
-					AccAddress:     eventUpdateQuota.Address,
-					Allocated:      eventUpdateQuota.Allocated,
-					Consumed:       eventUpdateQuota.Consumed,
+					SubscriptionID: eventAllocate1.ID,
+					AccAddr:        eventAllocate1.Address,
+					GrantedBytes:   eventAllocate1.GrantedBytes,
+					UtilisedBytes:  eventAllocate1.UtilisedBytes,
+				}
+
+				_, eventAllocate2, err := subscriptiontypes.NewEventAllocateFromEvents(txResultLog[mIndex].Events[eIndex+1:])
+				if err != nil {
+					return nil, err
 				}
 
 				dEvent2 := models.Event{
-					Type:           types.EventTypeSubscriptionUpdateDetails,
+					Type:           types.EventTypeSubscriptionAllocationUpdateDetails,
 					Height:         dBlock.Height,
 					Timestamp:      dBlock.Time,
 					TxHash:         dTxs[tIndex].Hash,
-					SubscriptionID: eventUpdateQuota.ID,
-					Free:           eventUpdateQuota.Free,
+					SubscriptionID: eventAllocate1.ID,
+					AccAddr:        eventAllocate1.Address,
+					GrantedBytes:   eventAllocate1.GrantedBytes,
+					UtilisedBytes:  eventAllocate1.UtilisedBytes,
 				}
 
 				ops = append(
 					ops,
-					operations.NewSubscriptionQuotaUpdateOperation(
-						db, eventUpdateQuota.ID, eventUpdateQuota.Address, eventUpdateQuota.Allocated, eventUpdateQuota.Consumed,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent1,
-					),
-					operations.NewSubscriptionUpdateDetailsOperation(
-						db, eventUpdateQuota.ID, eventUpdateQuota.Free, nil,
-					),
-					operations.NewEventSaveOperation(
-						db, &dEvent2,
-					),
+					operations.NewSubscriptionAllocationUpdate(db, eventAllocate1.ID, eventAllocate1.Address, eventAllocate1.GrantedBytes, eventAllocate1.UtilisedBytes),
+					operations.NewEventCreate(db, &dEvent1),
+					operations.NewSubscriptionAllocationUpdate(db, eventAllocate2.ID, eventAllocate2.Address, eventAllocate2.GrantedBytes, eventAllocate2.UtilisedBytes),
+					operations.NewEventCreate(db, &dEvent2),
 				)
 			default:
 
@@ -857,49 +796,63 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 			}
 
 			dEvent1 := models.Event{
-				Type:       types.EventTypeDepositSubtract,
-				Height:     dBlock.Height,
-				Timestamp:  dBlock.Time,
-				TxHash:     "",
-				AccAddress: event.Address,
-				Coins:      event.Coins,
+				Type:      types.EventTypeDepositSubtract,
+				Height:    dBlock.Height,
+				Timestamp: dBlock.Time,
+				TxHash:    "",
+				AccAddr:   event.Address,
+				Coins:     event.Coins,
 			}
 
 			ops = append(
 				ops,
-				operations.NewDepositUpdateOperation(
-					db, event.Address, event.Current, dBlock.Height, dBlock.Time, "",
-				),
-				operations.NewEventSaveOperation(
-					db, &dEvent1,
-				),
+				operations.NewDepositSubtract(db, event.Address, event.Coins, dBlock.Height, dBlock.Time, ""),
+				operations.NewEventCreate(db, &dEvent1),
 			)
-		case "sentinel.node.v1.EventSetNodeStatus":
-			event, err := nodetypes.NewEventSetNodeStatus(dBlock.EndBlockEvents[eIndex])
+		case "sentinel.node.v2.EventUpdateDetails":
+			event, err := nodetypes.NewEventUpdateDetails(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
 
 			dEvent1 := models.Event{
-				Type:        types.EventTypeNodeUpdateStatus,
-				Height:      dBlock.Height,
-				Timestamp:   dBlock.Time,
-				TxHash:      "",
-				NodeAddress: event.Address,
-				Status:      event.Status,
+				Type:           types.EventTypeNodeUpdateDetails,
+				Height:         dBlock.Height,
+				Timestamp:      dBlock.Time,
+				TxHash:         "",
+				NodeAddr:       event.Address,
+				GigabytePrices: event.GigabytePrices,
+				HourlyPrices:   event.HourlyPrices,
+				RemoteURL:      event.RemoteURL,
 			}
 
 			ops = append(
 				ops,
-				operations.NewNodeUpdateStatusOperation(
-					db, event.Address, event.Status, dBlock.Height, dBlock.Time, "",
-				),
-				operations.NewEventSaveOperation(
-					db, &dEvent1,
-				),
+				operations.NewNodeUpdateDetails(db, event.Address, event.GigabytePrices, event.HourlyPrices, event.RemoteURL),
+				operations.NewEventCreate(db, &dEvent1),
 			)
-		case "sentinel.session.v1.EventEndSession":
-			event, err := sessiontypes.NewEventEndSession(dBlock.EndBlockEvents[eIndex])
+		case "sentinel.node.v2.EventUpdateStatus":
+			event, err := nodetypes.NewEventUpdateStatus(dBlock.EndBlockEvents[eIndex])
+			if err != nil {
+				return nil, err
+			}
+
+			dEvent1 := models.Event{
+				Type:      types.EventTypeNodeUpdateStatus,
+				Height:    dBlock.Height,
+				Timestamp: dBlock.Time,
+				TxHash:    "",
+				NodeAddr:  event.Address,
+				Status:    event.Status,
+			}
+
+			ops = append(
+				ops,
+				operations.NewNodeUpdateStatus(db, event.Address, event.Status, dBlock.Height, dBlock.Time, ""),
+				operations.NewEventCreate(db, &dEvent1),
+			)
+		case "sentinel.session.v2.EventUpdateStatus":
+			event, err := sessiontypes.NewEventUpdateStatus(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
@@ -915,27 +868,21 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 			ops = append(
 				ops,
-				operations.NewSessionUpdateStatusOperation(
-					db, event.ID, event.Status, dBlock.Height, dBlock.Time, "",
-				),
-				operations.NewEventSaveOperation(
-					db, &dEvent1,
-				),
+				operations.NewSessionUpdateStatus(db, event.ID, event.Status, dBlock.Height, dBlock.Time, ""),
+				operations.NewEventCreate(db, &dEvent1),
 			)
-		case "sentinel.session.v1.EventPay":
-			event, err := sessiontypes.NewEventPay(dBlock.EndBlockEvents[eIndex])
+		case "sentinel.subscription.v2.EventPayForSession":
+			event, err := subscriptiontypes.NewEventPayForSession(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
 
 			ops = append(
 				ops,
-				operations.NewSessionUpdateDetailsOperation(
-					db, event.ID, nil, -1, event.Payment, event.StakingReward, -1,
-				),
+				operations.NewSessionUpdateDetails(db, event.ID, nil, -1, event.Payment, event.StakingReward, -1),
 			)
-		case "sentinel.subscription.v1.EventCancelSubscription":
-			event, err := subscriptiontypes.NewEventCancelSubscription(dBlock.EndBlockEvents[eIndex])
+		case "sentinel.subscription.v2.EventUpdateStatus":
+			event, err := subscriptiontypes.NewEventUpdateStatus(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
@@ -951,14 +898,10 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 			ops = append(
 				ops,
-				operations.NewSubscriptionUpdateStatusOperation(
-					db, event.ID, event.Status, dBlock.Height, dBlock.Time, "",
-				),
-				operations.NewEventSaveOperation(
-					db, &dEvent1,
-				),
+				operations.NewSubscriptionUpdateStatus(db, event.ID, event.Status, dBlock.Height, dBlock.Time, ""),
+				operations.NewEventCreate(db, &dEvent1),
 			)
-		case "sentinel.subscription.v1.EventRefund":
+		case "sentinel.subscription.v2.EventRefund":
 			event, err := subscriptiontypes.NewEventRefund(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
@@ -966,35 +909,29 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 			ops = append(
 				ops,
-				operations.NewSubscriptionUpdateDetailsOperation(
-					db, event.ID, "", event.Refund,
-				),
+				operations.NewSubscriptionUpdateDetails(db, event.ID, event.Amount),
 			)
-		case "sentinel.subscription.v1.EventUpdateQuota":
-			event, err := subscriptiontypes.NewEventUpdateQuota(dBlock.EndBlockEvents[eIndex])
+		case "sentinel.subscription.v2.EventAllocate":
+			event, err := subscriptiontypes.NewEventAllocate(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
 
 			dEvent1 := models.Event{
-				Type:           types.EventTypeSubscriptionQuotaUpdateDetails,
+				Type:           types.EventTypeSubscriptionAllocationUpdateDetails,
 				Height:         dBlock.Height,
 				Timestamp:      dBlock.Time,
 				TxHash:         "",
 				SubscriptionID: event.ID,
-				AccAddress:     event.Address,
-				Allocated:      event.Allocated,
-				Consumed:       event.Consumed,
+				AccAddr:        event.Address,
+				GrantedBytes:   event.GrantedBytes,
+				UtilisedBytes:  event.UtilisedBytes,
 			}
 
 			ops = append(
 				ops,
-				operations.NewSubscriptionQuotaUpdateOperation(
-					db, event.ID, event.Address, event.Allocated, event.Consumed,
-				),
-				operations.NewEventSaveOperation(
-					db, &dEvent1,
-				),
+				operations.NewSubscriptionAllocationUpdate(db, event.ID, event.Address, event.GrantedBytes, event.UtilisedBytes),
+				operations.NewEventCreate(db, &dEvent1),
 			)
 		default:
 

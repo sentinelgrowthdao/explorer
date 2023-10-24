@@ -1,204 +1,173 @@
 package subscription
 
 import (
-	"encoding/json"
 	"strconv"
-	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/sentinel-official/explorer/types"
 )
 
-type EventSubscribeToNode struct {
-	Owner   string
-	Node    string
-	ID      uint64
-	Price   *types.Coin
-	Deposit *types.Coin
-}
-
-func NewEventSubscribeToNode(v *types.Event) (*EventSubscribeToNode, error) {
-	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	var price sdk.Coin
-	if err := json.Unmarshal([]byte(v.Attributes["price"]), &price); err != nil {
-		return nil, err
-	}
-
-	var deposit sdk.Coin
-	if err := json.Unmarshal([]byte(v.Attributes["deposit"]), &deposit); err != nil {
-		return nil, err
-	}
-
-	return &EventSubscribeToNode{
-		Owner:   v.Attributes["owner"],
-		Node:    v.Attributes["node"],
-		ID:      id,
-		Price:   types.NewCoin(&price),
-		Deposit: types.NewCoin(&deposit),
-	}, nil
-}
-
-func NewEventSubscribeToNodeFromEvents(v types.Events) (*EventSubscribeToNode, error) {
-	e, err := v.Get("sentinel.subscription.v1.EventSubscribeToNode")
-	if err != nil {
-		return nil, err
-	}
-
-	return NewEventSubscribeToNode(e)
-}
-
-type EventSubscribeToPlan struct {
-	Owner         string
-	ID            uint64
-	Plan          uint64
-	Expiry        time.Time
-	Payment       *types.Coin
-	StakingReward *types.Coin
-}
-
-func NewEventSubscribeToPlan(v *types.Event) (*EventSubscribeToPlan, error) {
-	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err := strconv.ParseUint(v.Attributes["plan"], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	expiry, err := time.Parse(time.RFC3339Nano, v.Attributes["expiry"])
-	if err != nil {
-		return nil, err
-	}
-
-	var payment sdk.Coin
-	if err := json.Unmarshal([]byte(v.Attributes["payment"]), &payment); err != nil {
-		return nil, err
-	}
-
-	var stakingReward sdk.Coin
-	if err := json.Unmarshal([]byte(v.Attributes["staking_reward"]), &stakingReward); err != nil {
-		return nil, err
-	}
-
-	return &EventSubscribeToPlan{
-		Owner:         v.Attributes["owner"],
-		ID:            id,
-		Plan:          plan,
-		Expiry:        expiry,
-		Payment:       types.NewCoin(&payment),
-		StakingReward: types.NewCoin(&stakingReward),
-	}, nil
-}
-
-func NewEventSubscribeToPlanFromEvents(v types.Events) (*EventSubscribeToPlan, error) {
-	e, err := v.Get("sentinel.subscription.v1.EventSubscribeToPlan")
-	if err != nil {
-		return nil, err
-	}
-
-	return NewEventSubscribeToPlan(e)
-}
-
-type EventAddQuota struct {
-	ID        uint64
-	Address   string
-	Allocated string
-	Consumed  string
-	Free      string
-}
-
-func NewEventAddQuota(v *types.Event) (*EventAddQuota, error) {
-	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	return &EventAddQuota{
-		ID:        id,
-		Address:   v.Attributes["address"],
-		Allocated: v.Attributes["allocated"],
-		Consumed:  v.Attributes["consumed"],
-		Free:      v.Attributes["free"],
-	}, nil
-}
-
-func NewEventAddQuotaFromEvents(v types.Events) (*EventAddQuota, error) {
-	e, err := v.Get("sentinel.subscription.v1.EventAddQuota")
-	if err != nil {
-		return nil, err
-	}
-
-	return NewEventAddQuota(e)
-}
-
-type EventUpdateQuota struct {
-	ID        uint64
-	Address   string
-	Allocated string
-	Consumed  string
-	Free      string
-}
-
-func NewEventUpdateQuota(v *types.Event) (*EventUpdateQuota, error) {
-	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	return &EventUpdateQuota{
-		ID:        id,
-		Address:   v.Attributes["address"],
-		Allocated: v.Attributes["allocated"],
-		Consumed:  v.Attributes["consumed"],
-		Free:      v.Attributes["free"],
-	}, nil
-}
-
-func NewEventUpdateQuotaFromEvents(v types.Events) (*EventUpdateQuota, error) {
-	e, err := v.Get("sentinel.subscription.v1.EventUpdateQuota")
-	if err != nil {
-		return nil, err
-	}
-
-	return NewEventUpdateQuota(e)
-}
-
-type EventCancelSubscription struct {
+type EventUpdateStatus struct {
 	ID     uint64
 	Status string
 }
 
-func NewEventCancelSubscription(v *types.Event) (*EventCancelSubscription, error) {
+func NewEventUpdateStatus(v *types.Event) (*EventUpdateStatus, error) {
 	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	return &EventCancelSubscription{
+	return &EventUpdateStatus{
 		ID:     id,
 		Status: v.Attributes["status"],
 	}, nil
 }
 
-func NewEventCancelSubscriptionFromEvents(v types.Events) (*EventCancelSubscription, error) {
-	e, err := v.Get("sentinel.subscription.v1.EventCancelSubscription")
+type EventAllocate struct {
+	ID            uint64
+	Address       string
+	GrantedBytes  string
+	UtilisedBytes string
+}
+
+func NewEventAllocate(v *types.Event) (*EventAllocate, error) {
+	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewEventCancelSubscription(e)
+	return &EventAllocate{
+		ID:            id,
+		Address:       v.Attributes["address"],
+		GrantedBytes:  v.Attributes["granted_bytes"],
+		UtilisedBytes: v.Attributes["utilised_bytes"],
+	}, nil
+}
+
+func NewEventAllocateFromEvents(v types.Events) (int, *EventAllocate, error) {
+	i, e, err := v.Get("sentinel.subscription.v2.EventAllocate")
+	if err != nil {
+		return 0, nil, err
+	}
+
+	item, err := NewEventAllocate(e)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return i, item, nil
+}
+
+type EventPayForPayout struct {
+	ID            uint64
+	Address       string
+	NodeAddress   string
+	Payment       *types.Coin
+	StakingReward *types.Coin
+}
+
+func NewEventPayForPayout(v *types.Event) (*EventPayForPayout, error) {
+	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	payment, err := sdk.ParseCoinNormalized(v.Attributes["payment"])
+	if err != nil {
+		return nil, err
+	}
+
+	stakingReward, err := sdk.ParseCoinNormalized(v.Attributes["staking_reward"])
+	if err != nil {
+		return nil, err
+	}
+
+	return &EventPayForPayout{
+		ID:            id,
+		Address:       v.Attributes["address"],
+		NodeAddress:   v.Attributes["node_address"],
+		Payment:       types.NewCoin(&payment),
+		StakingReward: types.NewCoin(&stakingReward),
+	}, nil
+}
+
+type EventPayForPlan struct {
+	ID            uint64
+	Payment       *types.Coin
+	StakingReward *types.Coin
+}
+
+func NewEventPayForPlan(v *types.Event) (*EventPayForPlan, error) {
+	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	payment, err := sdk.ParseCoinNormalized(v.Attributes["payment"])
+	if err != nil {
+		return nil, err
+	}
+
+	stakingReward, err := sdk.ParseCoinNormalized(v.Attributes["staking_reward"])
+	if err != nil {
+		return nil, err
+	}
+
+	return &EventPayForPlan{
+		ID:            id,
+		Payment:       types.NewCoin(&payment),
+		StakingReward: types.NewCoin(&stakingReward),
+	}, nil
+}
+
+func NewEventPayForPlanFromEvents(v types.Events) (int, *EventPayForPlan, error) {
+	i, e, err := v.Get("sentinel.subscription.v2.EventPayForPlan")
+	if err != nil {
+		return 0, nil, err
+	}
+
+	item, err := NewEventPayForPlan(e)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return i, item, nil
+}
+
+type EventPayForSession struct {
+	ID            uint64
+	Payment       *types.Coin
+	StakingReward *types.Coin
+}
+
+func NewEventPayForSession(v *types.Event) (*EventPayForSession, error) {
+	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	payment, err := sdk.ParseCoinNormalized(v.Attributes["payment"])
+	if err != nil {
+		return nil, err
+	}
+
+	stakingReward, err := sdk.ParseCoinNormalized(v.Attributes["staking_reward"])
+	if err != nil {
+		return nil, err
+	}
+
+	return &EventPayForSession{
+		ID:            id,
+		Payment:       types.NewCoin(&payment),
+		StakingReward: types.NewCoin(&stakingReward),
+	}, nil
 }
 
 type EventRefund struct {
 	ID     uint64
-	Refund *types.Coin
+	Amount *types.Coin
 }
 
 func NewEventRefund(v *types.Event) (*EventRefund, error) {
@@ -207,22 +176,13 @@ func NewEventRefund(v *types.Event) (*EventRefund, error) {
 		return nil, err
 	}
 
-	var refund sdk.Coin
-	if err := json.Unmarshal([]byte(v.Attributes["payment"]), &refund); err != nil {
+	amount, err := sdk.ParseCoinNormalized(v.Attributes["amount"])
+	if err != nil {
 		return nil, err
 	}
 
 	return &EventRefund{
 		ID:     id,
-		Refund: types.NewCoin(&refund),
+		Amount: types.NewCoin(&amount),
 	}, nil
-}
-
-func NewEventRefundFromEvents(v types.Events) (*EventRefund, error) {
-	e, err := v.Get("sentinel.subscription.v1.EventRefund")
-	if err != nil {
-		return nil, err
-	}
-
-	return NewEventRefund(e)
 }

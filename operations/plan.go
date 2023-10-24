@@ -12,7 +12,7 @@ import (
 	"github.com/sentinel-official/explorer/types"
 )
 
-func NewPlanCreateOperation(
+func NewPlanCreate(
 	db *mongo.Database,
 	v *models.Plan,
 ) types.DatabaseOperation {
@@ -25,7 +25,7 @@ func NewPlanCreateOperation(
 	}
 }
 
-func NewPlanUpdateStatusOperation(
+func NewPlanUpdateStatus(
 	db *mongo.Database,
 	id uint64, status string, height int64, timestamp time.Time, txHash string,
 ) types.DatabaseOperation {
@@ -56,9 +56,9 @@ func NewPlanUpdateStatusOperation(
 	}
 }
 
-func NewPlanAddNodeOperation(
+func NewPlanLinkNode(
 	db *mongo.Database,
-	id uint64, address string,
+	id uint64, addr string,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
@@ -66,7 +66,7 @@ func NewPlanAddNodeOperation(
 		}
 		update := bson.M{
 			"$addToSet": bson.M{
-				"node_addresses": address,
+				"node_addrs": addr,
 			},
 		}
 		projection := bson.M{
@@ -84,9 +84,9 @@ func NewPlanAddNodeOperation(
 	}
 }
 
-func NewPlanRemoveNodeOperation(
+func NewPlanUnlinkNode(
 	db *mongo.Database,
-	id uint64, address string,
+	id uint64, addr string,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
@@ -94,7 +94,7 @@ func NewPlanRemoveNodeOperation(
 		}
 		update := bson.M{
 			"$pull": bson.M{
-				"node_addresses": address,
+				"node_addrs": addr,
 			},
 		}
 		projection := bson.M{

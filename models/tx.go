@@ -27,7 +27,7 @@ func NewMessage(v sdk.Msg) *Message {
 		Type: utils.MsgTypeURL(v),
 	}
 
-	buf, err := types.EncCfg.Marshaler.MarshalJSON(v)
+	buf, err := types.EncCfg.Codec.MarshalJSON(v)
 	if err != nil {
 		panic(err)
 	}

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"time"
 
 	hubtypes "github.com/sentinel-official/hub/types"
@@ -18,6 +19,7 @@ import (
 	"github.com/sentinel-official/explorer/models"
 	"github.com/sentinel-official/explorer/operations"
 	"github.com/sentinel-official/explorer/types"
+	nodetypes "github.com/sentinel-official/explorer/types/node"
 	sessiontypes "github.com/sentinel-official/explorer/types/session"
 	subscriptiontypes "github.com/sentinel-official/explorer/types/subscription"
 	"github.com/sentinel-official/explorer/utils"
@@ -37,8 +39,8 @@ var (
 )
 
 func init() {
-	flag.Int64Var(&fromHeight, "from-height", 9_348_475, "")
-	flag.Int64Var(&toHeight, "to-height", 12_310_005, "")
+	flag.Int64Var(&fromHeight, "from-height", 12_310_005, "")
+	flag.Int64Var(&toHeight, "to-height", math.MaxInt64, "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
 	flag.StringVar(&dbUsername, "db-username", "", "")
@@ -99,6 +101,27 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 		return nil, fmt.Errorf("block %d does not exist", height)
 	}
 
+	log.Println("BeginBlockEventsLen", dBlock.Height, len(dBlock.BeginBlockEvents))
+	for eIndex := 0; eIndex < len(dBlock.BeginBlockEvents); eIndex++ {
+		log.Println("Type", eIndex, dBlock.BeginBlockEvents[eIndex].Type)
+		switch dBlock.BeginBlockEvents[eIndex].Type {
+		case "sentinel.subscription.v2.EventPayForPayout":
+			event, err := subscriptiontypes.NewEventPayForPayout(dBlock.BeginBlockEvents[eIndex])
+			if err != nil {
+				return nil, err
+			}
+
+			ops = append(
+				ops,
+				operations.NewNodeStatisticUpdateEarningsForHours(
+					db, utils.DayDate(dBlock.Time), event.ID, event.Payment,
+				),
+			)
+		default:
+
+		}
+	}
+
 	filter = bson.M{
 		"height":      height,
 		"result.code": 0,
@@ -119,11 +142,10 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 		log.Println("TxHash", dTxs[tIndex].Hash)
 		log.Println("MessagesLen", tIndex, len(dTxs[tIndex].Messages))
 
-		txResultLog := types.NewABCIMessageLogs(dTxs[tIndex].Result.Log)
 		for mIndex := 0; mIndex < len(dTxs[tIndex].Messages); mIndex++ {
 			log.Println("Type", dTxs[tIndex].Messages[mIndex].Type)
 			switch dTxs[tIndex].Messages[mIndex].Type {
-			case "/sentinel.session.v1.MsgStartRequest", "/sentinel.session.v1.MsgService/MsgStart":
+			case "/sentinel.session.v2.MsgStartRequest", "/sentinel.session.v2.MsgService/MsgStart":
 				msg, err := sessiontypes.NewMsgStartRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
@@ -131,12 +153,12 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 				ops = append(
 					ops,
-					operations.NewNodeStatisticUpdateSessionStartCount(
-						db, msg.Node, utils.DayDate(dBlock.Time), 1,
+					operations.NewNodeStatisticIncreaseSessionStartCount(
+						db, msg.NodeAddress, utils.DayDate(dBlock.Time), 1,
 					),
 				)
-			case "/sentinel.session.v1.MsgUpdateRequest", "/sentinel.session.v1.MsgService/MsgUpdate":
-				msg, err := sessiontypes.NewMsgUpdateRequest(dTxs[tIndex].Messages[mIndex].Data)
+			case "/sentinel.session.v2.MsgUpdateDetailsRequest", "/sentinel.session.v2.MsgService/MsgUpdateDetails":
+				msg, err := sessiontypes.NewMsgUpdateDetailsRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
@@ -147,24 +169,22 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 						db, msg.From, utils.DayDate(dBlock.Time), msg.ID, msg.Bandwidth, msg.Duration,
 					),
 				)
-			case "/sentinel.subscription.v1.MsgSubscribeToNodeRequest", "/sentinel.subscription.v1.MsgService/MsgSubscribeToNode":
-				msg, err := subscriptiontypes.NewMsgSubscribeToNodeRequest(dTxs[tIndex].Messages[mIndex].Data)
-				if err != nil {
-					return nil, err
-				}
-
-				event, err := subscriptiontypes.NewEventAddQuotaFromEvents(txResultLog[mIndex].Events)
+			case "/sentinel.node.v2.MsgSubscribeRequest", "/sentinel.node.v2.MsgService/MsgSubscribe":
+				msg, err := nodetypes.NewMsgSubscribeRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
 				ops = append(
 					ops,
-					operations.NewNodeStatisticUpdateSubscriptionStartCount(
-						db, msg.Address, utils.DayDate(dBlock.Time), 1,
+					operations.NewNodeStatisticIncreaseSubscriptionStartCount(
+						db, msg.NodeAddress, utils.DayDate(dBlock.Time), 1,
 					),
 					operations.NewNodeStatisticUpdateSubscriptionBytes(
-						db, msg.Address, utils.DayDate(dBlock.Time), utils.MustIntFromString(event.Allocated),
+						db, msg.NodeAddress, utils.DayDate(dBlock.Time), hubtypes.Gigabyte.MulRaw(msg.Gigabytes),
+					),
+					operations.NewNodeStatisticUpdateSubscriptionHours(
+						db, msg.NodeAddress, utils.DayDate(dBlock.Time), msg.Hours,
 					),
 				)
 			default:
@@ -177,8 +197,8 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 	for eIndex := 0; eIndex < len(dBlock.EndBlockEvents); eIndex++ {
 		log.Println("Type", eIndex, dBlock.EndBlockEvents[eIndex].Type)
 		switch dBlock.EndBlockEvents[eIndex].Type {
-		case "sentinel.session.v1.EventEndSession":
-			event, err := sessiontypes.NewEventEndSession(dBlock.EndBlockEvents[eIndex])
+		case "sentinel.session.v2.EventUpdateStatus":
+			event, err := sessiontypes.NewEventUpdateStatus(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
@@ -188,12 +208,12 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 			ops = append(
 				ops,
-				operations.NewNodeStatisticUpdateSessionEndCount(
+				operations.NewNodeStatisticIncreaseSessionEndCount(
 					db, utils.DayDate(dBlock.Time), event.ID, 1,
 				),
 			)
-		case "sentinel.session.v1.EventPay":
-			event, err := sessiontypes.NewEventPay(dBlock.EndBlockEvents[eIndex])
+		case "sentinel.subscription.v2.EventPayForSession":
+			event, err := subscriptiontypes.NewEventPayForSession(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
@@ -204,8 +224,8 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					db, utils.DayDate(dBlock.Time), event.ID, event.Payment,
 				),
 			)
-		case "sentinel.subscription.v1.EventCancelSubscription":
-			event, err := subscriptiontypes.NewEventCancelSubscription(dBlock.EndBlockEvents[eIndex])
+		case "sentinel.subscription.v2.EventUpdateStatus":
+			event, err := subscriptiontypes.NewEventUpdateStatus(dBlock.EndBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
@@ -215,7 +235,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 			ops = append(
 				ops,
-				operations.NewNodeStatisticUpdateSubscriptionEndCount(
+				operations.NewNodeStatisticIncreaseSubscriptionEndCount(
 					db, utils.DayDate(dBlock.Time), event.ID, 1,
 				),
 			)

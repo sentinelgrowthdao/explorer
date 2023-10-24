@@ -10,7 +10,7 @@ import (
 	"github.com/sentinel-official/explorer/types"
 )
 
-func NewProviderRegisterOperation(
+func NewProviderRegister(
 	db *mongo.Database,
 	v *models.Provider,
 ) types.DatabaseOperation {
@@ -23,13 +23,13 @@ func NewProviderRegisterOperation(
 	}
 }
 
-func NewProviderUpdateOperation(
+func NewProviderUpdate(
 	db *mongo.Database,
-	address, name, identity, website, description string,
+	addr, name, identity, website, description, status string,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
-			"address": address,
+			"addr": addr,
 		}
 
 		updateSet := bson.M{}
@@ -44,6 +44,9 @@ func NewProviderUpdateOperation(
 		}
 		if description != "" {
 			updateSet["description"] = description
+		}
+		if status != "" {
+			updateSet["status"] = status
 		}
 
 		update := bson.M{

@@ -8,12 +8,18 @@ import (
 )
 
 type Deposit struct {
-	Address string      `json:"address,omitempty" bson:"address"`
-	Coins   types.Coins `json:"coins,omitempty" bson:"coins"`
+	Addr  string      `json:"addr,omitempty" bson:"addr"`
+	Coins types.Coins `json:"coins,omitempty" bson:"coins"`
 
 	Height    int64     `json:"height,omitempty" bson:"height"`
 	Timestamp time.Time `json:"timestamp,omitempty" bson:"timestamp"`
 	TxHash    string    `json:"tx_hash,omitempty" bson:"tx_hash"`
+}
+
+func NewDeposit() *Deposit {
+	return &Deposit{
+		Coins: types.NewCoins(nil),
+	}
 }
 
 func (d *Deposit) String() string {

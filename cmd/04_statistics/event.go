@@ -137,10 +137,10 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 
 		switch items[i].Type {
 		case types.EventTypeNodeUpdateStatus:
-			d[dayTimestamp].ActiveNode[items[i].NodeAddress] = 1
-			w[weekTimestamp].ActiveNode[items[i].NodeAddress] = 1
-			m[monthTimestamp].ActiveNode[items[i].NodeAddress] = 1
-			y[yearTimestamp].ActiveNode[items[i].NodeAddress] = 1
+			d[dayTimestamp].ActiveNode[items[i].NodeAddr] = 1
+			w[weekTimestamp].ActiveNode[items[i].NodeAddr] = 1
+			m[monthTimestamp].ActiveNode[items[i].NodeAddr] = 1
+			y[yearTimestamp].ActiveNode[items[i].NodeAddr] = 1
 		case types.EventTypeSessionUpdateDetails:
 			d[dayTimestamp].SessionBandwidth[items[i].SessionID] = items[i].Bandwidth
 			d[dayTimestamp].SessionDuration[items[i].SessionID] = items[i].Duration

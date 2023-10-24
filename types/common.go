@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/sentinel-official/hub"
+	"github.com/sentinel-official/hub/app"
 	hubtypes "github.com/sentinel-official/hub/types"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -21,7 +21,7 @@ type (
 
 var (
 	Replacer = strings.NewReplacer(`"\"`, `"`, `\""`, `"`)
-	EncCfg   = hub.MakeEncodingConfig()
+	EncCfg   = app.DefaultEncodingConfig()
 )
 
 type Event struct {
@@ -82,14 +82,14 @@ func NewEventsFromStringEvents(v []sdk.StringEvent) Events {
 	return items
 }
 
-func (e Events) Get(s string) (*Event, error) {
+func (e Events) Get(s string) (int, *Event, error) {
 	for i := 0; i < len(e); i++ {
 		if e[i].Type == s {
-			return e[i], nil
+			return i, e[i], nil
 		}
 	}
 
-	return nil, fmt.Errorf("event %s does not exist", s)
+	return 0, nil, fmt.Errorf("event %s does not exist", s)
 }
 
 type ABCIMessageLog struct {
@@ -153,7 +153,24 @@ func (c *Coin) Add(v string) *Coin {
 	return c
 }
 
+func (c *Coin) Sub(v string) *Coin {
+	a1 := utils.MustIntFromString(c.Amount)
+	a2 := utils.MustIntFromString(v)
+
+	c.Amount = a1.Sub(a2).String()
+	return c
+}
+
 type Coins []*Coin
+
+func NewCoins(v sdk.Coins) Coins {
+	items := make(Coins, 0, v.Len())
+	for _, c := range v {
+		items = append(items, NewCoin(&c))
+	}
+
+	return items.Sort()
+}
 
 func (c Coins) Len() int           { return len(c) }
 func (c Coins) Less(i, j int) bool { return c[i].Denom < c[j].Denom }
@@ -167,15 +184,6 @@ func (c Coins) IndexOf(v string) int {
 	})
 }
 
-func NewCoins(v sdk.Coins) Coins {
-	items := make(Coins, 0, v.Len())
-	for _, c := range v {
-		items = append(items, NewCoin(&c))
-	}
-
-	return items.Sort()
-}
-
 func (c Coins) Copy() (n Coins) {
 	for i := 0; i < len(c); i++ {
 		n = append(n, c[i].Copy())
@@ -184,16 +192,44 @@ func (c Coins) Copy() (n Coins) {
 	return n
 }
 
+func (c Coins) Get(v string) *Coin {
+	for i := 0; i < c.Len(); i++ {
+		if c[i].Denom == v {
+			return c[i]
+		}
+	}
+
+	return nil
+}
+
 func (c Coins) Add(v ...*Coin) (n Coins) {
 	if !c.IsSorted() {
 		panic("coins must be sorted")
 	}
 
-	n = c.Copy()
+	n = c.Copy() // TODO: remove?
 	for i := 0; i < len(v); i++ {
 		index := n.IndexOf(v[i].Denom)
 		if index < len(n) && n[index].Denom == v[i].Denom {
 			n[index] = n[index].Add(v[i].Amount)
+		} else {
+			n = append(n, v[i]).Sort()
+		}
+	}
+
+	return n
+}
+
+func (c Coins) Sub(v ...*Coin) (n Coins) {
+	if !c.IsSorted() {
+		panic("coins must be sorted")
+	}
+
+	n = c.Copy() // TODO: remove?
+	for i := 0; i < len(v); i++ {
+		index := n.IndexOf(v[i].Denom)
+		if index < len(n) && n[index].Denom == v[i].Denom {
+			n[index] = n[index].Sub(v[i].Amount)
 		} else {
 			n = append(n, v[i]).Sort()
 		}

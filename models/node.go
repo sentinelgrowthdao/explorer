@@ -28,10 +28,10 @@ type (
 )
 
 type Node struct {
-	Address   string      `json:"address,omitempty" bson:"address"`
-	Provider  string      `json:"provider,omitempty" bson:"provider"`
-	Price     types.Coins `json:"price,omitempty" bson:"price"`
-	RemoteURL string      `json:"remote_url,omitempty" bson:"remote_url"`
+	Addr           string      `json:"addr,omitempty" bson:"addr"`
+	GigabytePrices types.Coins `json:"gigabyte_prices,omitempty" bson:"gigabyte_prices"`
+	HourlyPrices   types.Coins `json:"hourly_prices,omitempty" bson:"hourly_prices"`
+	RemoteURL      string      `json:"remote_url,omitempty" bson:"remote_url"`
 
 	RegisterHeight    int64     `json:"register_height,omitempty" bson:"register_height"`
 	RegisterTimestamp time.Time `json:"register_timestamp,omitempty" bson:"register_timestamp"`

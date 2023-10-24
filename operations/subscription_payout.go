@@ -8,12 +8,12 @@ import (
 	"github.com/sentinel-official/explorer/types"
 )
 
-func NewEventCreate(
+func NewSubscriptionPayoutCreate(
 	db *mongo.Database,
-	v *models.Event,
+	v *models.SubscriptionPayout,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
-		if _, err := database.EventInsertOne(ctx, db, v); err != nil {
+		if _, err := database.SubscriptionPayoutInsertOne(ctx, db, v); err != nil {
 			return err
 		}
 

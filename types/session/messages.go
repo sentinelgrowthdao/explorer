@@ -12,9 +12,9 @@ import (
 )
 
 type MsgStartRequest struct {
-	From string
-	ID   uint64
-	Node string
+	From        string
+	ID          uint64
+	NodeAddress string
 }
 
 func NewMsgStartRequest(v bson.M) (*MsgStartRequest, error) {
@@ -24,20 +24,20 @@ func NewMsgStartRequest(v bson.M) (*MsgStartRequest, error) {
 	}
 
 	return &MsgStartRequest{
-		From: v["from"].(string),
-		ID:   id,
-		Node: v["node"].(string),
+		From:        v["from"].(string),
+		ID:          id,
+		NodeAddress: v["address"].(string),
 	}, nil
 }
 
-type MsgUpdateRequest struct {
+type MsgUpdateDetailsRequest struct {
 	From      string
 	ID        uint64
 	Duration  int64
 	Bandwidth *types.Bandwidth
 }
 
-func NewMsgUpdateRequest(v bson.M) (*MsgUpdateRequest, error) {
+func NewMsgUpdateDetailsRequest(v bson.M) (*MsgUpdateDetailsRequest, error) {
 	id, err := strconv.ParseUint(v["proof"].(bson.M)["id"].(string), 10, 64)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func NewMsgUpdateRequest(v bson.M) (*MsgUpdateRequest, error) {
 		return nil, err
 	}
 
-	return &MsgUpdateRequest{
+	return &MsgUpdateDetailsRequest{
 		From:      v["from"].(string),
 		ID:        id,
 		Duration:  duration.Nanoseconds(),

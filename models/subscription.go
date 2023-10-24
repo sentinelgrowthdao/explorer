@@ -8,18 +8,18 @@ import (
 )
 
 type Subscription struct {
-	ID    uint64 `json:"id,omitempty" bson:"id"`
-	Owner string `json:"owner,omitempty" bson:"owner"`
-	Free  string `json:"free,omitempty" bson:"free"`
+	ID         uint64      `json:"id,omitempty" bson:"id"`
+	AccAddr    string      `json:"acc_addr,omitempty" bson:"acc_addr"`
+	InactiveAt time.Time   `json:"inactive_at,omitempty" bson:"inactive_at"`
+	Price      *types.Coin `json:"price,omitempty" bson:"price"`
 
-	Node    string      `json:"node,omitempty" bson:"node"`
-	Price   *types.Coin `json:"price,omitempty" bson:"price"`
-	Deposit *types.Coin `json:"deposit,omitempty" bson:"deposit"`
-	Refund  *types.Coin `json:"refund,omitempty" bson:"refund"`
+	NodeAddr  string      `json:"node_addr,omitempty" bson:"node_addr"`
+	Gigabytes int64       `json:"gigabytes,omitempty" bson:"gigabytes"`
+	Hours     int64       `json:"hours,omitempty" bson:"hours"`
+	Deposit   *types.Coin `json:"deposit,omitempty" bson:"deposit"`
+	Refund    *types.Coin `json:"refund,omitempty" bson:"refund"`
 
-	Plan          uint64      `json:"plan,omitempty" bson:"plan"`
-	Denom         string      `json:"denom,omitempty" bson:"denom"`
-	Expiry        time.Time   `json:"expiry,omitempty" bson:"expiry"`
+	PlanID        uint64      `json:"plan_id,omitempty" bson:"plan_id"`
 	Payment       *types.Coin `json:"payment,omitempty" bson:"payment"`
 	StakingReward *types.Coin `json:"staking_reward,omitempty" bson:"staking_reward"`
 

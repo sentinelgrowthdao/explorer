@@ -8,7 +8,7 @@ import (
 )
 
 type NodeStatistic struct {
-	Address   string    `json:"address" bson:"address"`
+	Addr      string    `json:"addr" bson:"addr"`
 	Timestamp time.Time `json:"timestamp" bson:"timestamp"`
 
 	GasFeeSpent types.Coins `json:"gas_fee_spent" bson:"gas_fee_spent"`

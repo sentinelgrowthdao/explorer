@@ -16,7 +16,7 @@ func RegisterRoutes(router gin.IRouter, db *mongo.Database) {
 	router.GET("/subscriptions/:id", HandlerGetSubscription(db))
 	router.GET("/subscriptions/:id/events", HandlerGetSubscriptionEvents(db))
 
-	router.GET("/subscriptions/:id/quotas", HandlerGetQuotas(db))
-	router.GET("/subscriptions/:id/quotas/:acc_addr", HandlerGetQuota(db))
-	router.GET("/subscriptions/:id/quotas/:acc_addr/events", HandlerGetQuotaEvents(db))
+	router.GET("/subscriptions/:id/allocations", HandlerGetAllocations(db))
+	router.GET("/subscriptions/:id/allocations/:acc_addr", HandlerGetAllocation(db))
+	router.GET("/subscriptions/:id/allocations/:acc_addr/events", HandlerGetAllocationEvents(db))
 }
