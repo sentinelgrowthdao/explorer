@@ -49,17 +49,39 @@ func NewEventFromABCIEvent(v *abcitypes.Event) *Event {
 	return item
 }
 
-func NewEventFromStringEvent(v *sdk.StringEvent) *Event {
-	item := &Event{
-		Type:       v.Type,
-		Attributes: make(map[string]string),
-	}
+func NewEventsFromStringEvent(v *sdk.StringEvent) (items []*Event) {
+	var (
+		keys      = make(map[string]int)
+		numEvents = 0
+	)
 
 	for _, x := range v.Attributes {
-		item.Attributes[x.Key] = x.Value
+		if _, ok := keys[x.Key]; !ok {
+			keys[x.Key] = 0
+		}
+
+		keys[x.Key] = keys[x.Key] + 1
+		if keys[x.Key] > numEvents {
+			numEvents = keys[x.Key]
+		}
 	}
 
-	return item
+	numAttributes := len(v.Attributes) / numEvents
+	for eventIndex := 0; eventIndex < numEvents; eventIndex++ {
+		item := &Event{
+			Type:       v.Type,
+			Attributes: make(map[string]string),
+		}
+
+		startIndex, endIndex := eventIndex*numAttributes, (eventIndex+1)*numAttributes
+		for attributeIndex := startIndex; attributeIndex < endIndex; attributeIndex++ {
+			item.Attributes[v.Attributes[attributeIndex].Key] = v.Attributes[attributeIndex].Value
+		}
+
+		items = append(items, item)
+	}
+
+	return items
 }
 
 type Events []*Event
@@ -76,7 +98,7 @@ func NewEventsFromABCIEvents(v []abcitypes.Event) Events {
 func NewEventsFromStringEvents(v []sdk.StringEvent) Events {
 	items := make(Events, 0, len(v))
 	for _, item := range v {
-		items = append(items, NewEventFromStringEvent(&item))
+		items = append(items, NewEventsFromStringEvent(&item)...)
 	}
 
 	return items
