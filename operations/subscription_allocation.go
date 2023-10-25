@@ -25,12 +25,12 @@ func NewSubscriptionAllocationCreate(
 
 func NewSubscriptionAllocationUpdate(
 	db *mongo.Database,
-	id uint64, addr string, grantedBytes, utilisedBytes string,
+	id uint64, accAddr string, grantedBytes, utilisedBytes string,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
-			"id":   id,
-			"addr": addr,
+			"id":       id,
+			"acc_addr": accAddr,
 		}
 		update := bson.M{
 			"$set": bson.M{
