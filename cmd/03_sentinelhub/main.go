@@ -286,9 +286,9 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 		"result.code": 0,
 	}
 	projection = bson.M{
-		"hash":       1,
-		"messages":   1,
-		"result.log": 1,
+		"hash":          1,
+		"messages":      1,
+		"result.events": 1,
 	}
 
 	dTxs, err := database.TxFind(context.TODO(), db, filter, options.Find().SetProjection(projection))
@@ -305,8 +305,9 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 			log.Println("Type", dTxs[tIndex].Messages[mIndex].Type)
 
 			if strings.Contains(dTxs[tIndex].Messages[mIndex].Type, "MsgExec") {
-				msgs := dTxs[tIndex].Messages[mIndex].Data["msgs"].([]bson.M)
-				for _, msg := range msgs {
+				msgs := dTxs[tIndex].Messages[mIndex].Data["msgs"].(bson.A)
+				for i := 0; i < len(msgs); i++ {
+					msg := msgs[i].(bson.M)
 					log.Println("MsgExec @type", msg["@type"].(string))
 					if strings.Contains(msg["@type"].(string), "sentinel") {
 						return nil, fmt.Errorf("invalid /cosmos.authz.v1beta1.MsgExec")
