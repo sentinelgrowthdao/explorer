@@ -36,7 +36,7 @@ func NewMsgRegisterRequest(v bson.M) (*MsgRegisterRequest, error) {
 	}
 
 	var hourlyPrices sdk.Coins
-	if err := json.Unmarshal(buf, &gigabytePrices); err != nil {
+	if err := json.Unmarshal(buf, &hourlyPrices); err != nil {
 		return nil, err
 	}
 
@@ -77,7 +77,7 @@ func NewMsgUpdateDetailsRequest(v bson.M) (*MsgUpdateDetailsRequest, error) {
 	}
 
 	var hourlyPrices sdk.Coins
-	if err := json.Unmarshal(buf, &gigabytePrices); err != nil {
+	if err := json.Unmarshal(buf, &hourlyPrices); err != nil {
 		return nil, err
 	}
 
