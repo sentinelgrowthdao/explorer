@@ -332,6 +332,9 @@ func NewNodeStatisticIncreaseSubscriptionEndCount(
 		if err != nil {
 			return err
 		}
+		if item.PlanID != 0 {
+			return nil
+		}
 
 		filter = bson.M{
 			"addr":      item.NodeAddr,

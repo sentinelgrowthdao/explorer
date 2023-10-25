@@ -1,12 +1,15 @@
 import math
 import sys
+from datetime import datetime
 
 from dateutil.parser import parse
 from pymongo import MongoClient
+from pymongo import UpdateOne, InsertOne
 
 ZERO_TIMESTAMP = parse('0001-01-01T00:00:00.0Z')
 HEIGHT = 12_310_005
 TIMESTAMP = parse("2023-08-18T12:10:36.572027592Z")
+TIMESTAMP_DATE = datetime(year=TIMESTAMP.year, month=TIMESTAMP.month, day=TIMESTAMP.day)
 
 db = MongoClient()["sentinelhub-2"]
 
@@ -18,6 +21,20 @@ print("Latest height", height)
 if height != HEIGHT - 1:
     print("Exiting...")
     sys.exit(1)
+
+collections = [
+    "deposits",
+    "events",
+    "nodes",
+    "node_statistics"
+    "plans",
+    "providers",
+    "sessions",
+    "subscriptions",
+    "subscription_quotas"
+]
+for cname in collections:
+    db[cname].drop_indexes()
 
 db["subscription_quotas"].rename("subscription_allocations", dropTarget=True)
 
@@ -83,18 +100,22 @@ db["nodes"].update_many(
 db["nodes"].update_many({"status": "STATUS_ACTIVE"}, {"$set": {"status": "active"}})
 db["nodes"].update_many({"status": "STATUS_INACTIVE"}, {"$set": {"status": "inactive"}})
 
+nodes_ops = []
 cursor = db["nodes"].find()
 for item in cursor:
-    db["nodes"].find_one_and_update(
-        {
-            "addr": item["addr"],
-        },
-        {
-            "$set": {
-                "hourly_prices": item["gigabyte_prices"],
+    nodes_ops.append(
+        UpdateOne(
+            {
+                "_id": item["_id"],
             },
-        },
+            {
+                "$set": {
+                    "hourly_prices": item["gigabyte_prices"],
+                },
+            },
+        )
     )
+db["nodes"].bulk_write(nodes_ops, ordered=False)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 
@@ -116,18 +137,22 @@ db["plans"].update_many(
 db["plans"].update_many({"status": "STATUS_ACTIVE"}, {"$set": {"status": "active"}})
 db["plans"].update_many({"status": "STATUS_INACTIVE"}, {"$set": {"status": "inactive"}})
 
+plans_ops = []
 cursor = db["plans"].find()
 for item in cursor:
-    db["plans"].find_one_and_update(
-        {
-            "id": item["id"],
-        },
-        {
-            "$set": {
-                "gigabytes": int(math.ceil(int(item["gigabytes"]) / 1e9)),
+    plans_ops.append(
+        UpdateOne(
+            {
+                "_id": item["_id"],
             },
-        },
+            {
+                "$set": {
+                    "gigabytes": int(math.ceil(int(item["gigabytes"]) / 1e9)),
+                },
+            },
+        )
     )
+db["plans"].bulk_write(plans_ops, ordered=False)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 
@@ -140,21 +165,42 @@ db["providers"].update_many(
     },
 )
 
+providers_ops, events_ops = [], []
 cursor = db["providers"].find()
 for item in cursor:
-    db["providers"].find_one_and_update(
-        {
-            "addr": item["addr"],
-        },
-        {
-            "$set": {
-                "status": "active",
-                "status_at": HEIGHT,
-                "status_timestamp": TIMESTAMP,
-                "status_tx_hash": "",
+    providers_ops.append(
+        UpdateOne(
+            {
+                "_id": item["_id"],
             },
-        },
+            {
+                "$set": {
+                    "status": "active",
+                    "status_height": HEIGHT,
+                    "status_timestamp": TIMESTAMP,
+                    "status_tx_hash": "",
+                },
+            },
+        )
     )
+    events_ops.append(
+        InsertOne(
+            {
+                "type": "Provider.UpdateDetails",
+                "height": HEIGHT,
+                "timestamp": TIMESTAMP,
+                "tx_hash": "",
+                "prov_addr": item["addr"],
+                "name": item["name"],
+                "identity": item["identity"],
+                "website": item["website"],
+                "description": item["description"],
+                "status": "active",
+            }
+        )
+    )
+db["providers"].bulk_write(providers_ops, ordered=False)
+db["events"].bulk_write(events_ops, ordered=False)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 
@@ -176,43 +222,55 @@ db["sessions"].update_many(
     {"status": "STATUS_INACTIVE"}, {"$set": {"status": "inactive"}}
 )
 
-cursor = db["sessions"].find({"status": {"$ne": "inactive"}})
+sessions_ops, events_ops, node_statistics_ops = [], [], []
+cursor = db["sessions"].find({"status": {"$ne": "inactive"}}).sort([("id", 1)])
 for item in cursor:
-    db["sessions"].find_one_and_update(
-        {
-            "id": item["id"],
-        },
-        {
-            "$set": {
-                "end_height": HEIGHT,
-                "end_timestamp": TIMESTAMP,
+    print(item["id"])
+    sessions_ops.append(
+        UpdateOne(
+            {
+                "_id": item["_id"],
+            },
+            {
+                "$set": {
+                    "end_height": HEIGHT,
+                    "end_timestamp": TIMESTAMP,
+                    "status": "inactive",
+                    "status_height": HEIGHT,
+                    "status_timestamp": TIMESTAMP,
+                },
+            },
+        )
+    )
+    events_ops.append(
+        InsertOne(
+            {
+                "type": "Session.UpdateStatus",
+                "height": HEIGHT,
+                "timestamp": TIMESTAMP,
+                "tx_hash": "",
+                "session_id": item["id"],
                 "status": "inactive",
-                "status_at": HEIGHT,
-                "status_timestamp": TIMESTAMP,
             },
-        },
+        )
     )
-    db["events"].insert_one(
-        {
-            "type": "Session.UpdateStatus",
-            "height": HEIGHT,
-            "timestamp": TIMESTAMP,
-            "tx_hash": "",
-            "session_id": item["id"],
-            "status": "inactive",
-        }
-    )
-    db["node_statistics"].find_one_and_update(
-        {
-            "address": item["node_addr"],
-            "timestamp": TIMESTAMP.date(),
-        },
-        {
-            "$inc": {
-                "session_end_count": 1
+    node_statistics_ops.append(
+        UpdateOne(
+            {
+                "address": item["node_addr"],
+                "timestamp": TIMESTAMP_DATE,
             },
-        },
+            {
+                "$inc": {
+                    "session_end_count": 1
+                },
+            },
+            upsert=True,
+        )
     )
+db["sessions"].bulk_write(sessions_ops, ordered=False)
+db["events"].bulk_write(events_ops, ordered=False)
+db["node_statistics"].bulk_write(node_statistics_ops, ordered=False)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 
@@ -245,37 +303,29 @@ db["subscriptions"].update_many(
     {"status": "STATUS_INACTIVE"}, {"$set": {"status": "inactive"}}
 )
 
-cursor = db["subscriptions"].find({"plan_id": 0})
+subscriptions_ops = []
+cursor = db["subscriptions"].find({"plan_id": {"$ne": 0}}).sort([("id", 1)])
 for item in cursor:
-    db["subscriptions"].find_one_and_update(
-        {
-            "id": item["id"],
-        },
-        {
-            "$set": {
-                "inactive_at": ZERO_TIMESTAMP
-            },
-        },
-    )
-
-cursor = db["subscriptions"].find({"plan_id": {"$ne": 0}})
-for item in cursor:
+    print(item["id"])
     plan = db["plans"].find_one(
         {
             "id": item["plan_id"],
         },
     )
     price = [v for v in plan["prices"] if v["denom"] == item["denom"]][0]
-    db["subscriptions"].find_one_and_update(
-        {
-            "id": item["id"],
-        },
-        {
-            "$set": {
-                "price": price,
+    subscriptions_ops.append(
+        UpdateOne(
+            {
+                "_id": item["_id"],
             },
-        },
+            {
+                "$set": {
+                    "price": price,
+                },
+            },
+        )
     )
+db["subscriptions"].bulk_write(subscriptions_ops, ordered=False)
 
 db["subscriptions"].update_many(
     {},
@@ -285,8 +335,14 @@ db["subscriptions"].update_many(
         },
     },
 )
-cursor1 = db["subscriptions"].find({"plan_id": 0, "status": {"$ne": "inactive"}})
+
+db.sessions.create_index([("subscription_id", 1)])
+db.node_statistics.create_index([("address", 1), ("timestamp", 1)])
+
+subscriptions_ops, events_ops, node_statistics_ops = [], [], []
+cursor1 = db["subscriptions"].find({"plan_id": 0, "status": {"$ne": "inactive"}}).sort([("id", 1)])
 for item in cursor1:
+    print(item["id"])
     cursor2 = db["sessions"].find(
         {
             "subscription_id": item["id"],
@@ -294,53 +350,67 @@ for item in cursor1:
     )
     total = 0
     for session in cursor2:
-        if "payment" in session and "amount" in session["payment"]:
+        if "payment" in session and \
+                session["payment"] is not None and "amount" in session["payment"]:
             total += int(session["payment"]["amount"])
-        if "staking_reward" in session and "amount" in session["staking_reward"]:
+        if "staking_reward" in session and \
+                session["staking_reward"] is not None and "amount" in session["staking_reward"]:
             total += int(session["staking_reward"]["amount"])
     refund = {
         "denom": item["deposit"]["denom"],
-        "amount": int(item["deposit"]["amount"]) - total,
+        "amount": str(int(item["deposit"]["amount"]) - total),
     }
-    db["subscriptions"].find_one_and_update(
-        {
-            "id": item["id"],
-        },
-        {
-            "$set": {
-                "end_height": HEIGHT,
-                "end_timestamp": TIMESTAMP,
-                "refund": refund,
+    subscriptions_ops.append(
+        UpdateOne(
+            {
+                "_id": item["_id"],
+            },
+            {
+                "$set": {
+                    "end_height": HEIGHT,
+                    "end_timestamp": TIMESTAMP,
+                    "refund": refund,
+                    "status": "inactive",
+                    "status_height": HEIGHT,
+                    "status_timestamp": TIMESTAMP,
+                },
+            },
+        )
+    )
+    events_ops.append(
+        InsertOne(
+            {
+                "type": "Subscription.UpdateStatus",
+                "height": HEIGHT,
+                "timestamp": TIMESTAMP,
+                "tx_hash": "",
+                "session_id": item["id"],
                 "status": "inactive",
-                "status_at": HEIGHT,
-                "status_timestamp": TIMESTAMP,
             },
-        },
+        )
     )
-    db["events"].insert_one(
-        {
-            "type": "Subscription.UpdateStatus",
-            "height": HEIGHT,
-            "timestamp": TIMESTAMP,
-            "tx_hash": "",
-            "session_id": item["id"],
-            "status": "inactive",
-        },
-    )
-    db["node_statistics"].find_one_and_update(
-        {
-            "address": item["node_addr"],
-            "timestamp": TIMESTAMP.date(),
-        },
-        {
-            "$inc": {
-                "subscription_end_count": 1
+    node_statistics_ops.append(
+        UpdateOne(
+            {
+                "address": item["node_addr"],
+                "timestamp": TIMESTAMP_DATE,
             },
-        },
+            {
+                "$inc": {
+                    "subscription_end_count": 1
+                },
+            },
+            upsert=True,
+        )
     )
+db["subscriptions"].bulk_write(subscriptions_ops, ordered=False)
+db["events"].bulk_write(events_ops, ordered=False)
+db["node_statistics"].bulk_write(node_statistics_ops, ordered=False)
 
-cursor1 = db["subscriptions"].find({"plan_id": {"$ne": 0}})
+subscription_allocations_ops, events_ops = [], []
+cursor1 = db["subscriptions"].find({"plan_id": {"$ne": 0}}).sort([("id", 1)])
 for item in cursor1:
+    print(item["id"])
     plan = db["plans"].find_one(
         {
             "id": item["plan_id"],
@@ -354,37 +424,43 @@ for item in cursor1:
     total = 0
     for alloc in cursor2:
         total += int(alloc["allocated"])
-    diff = (plan["gigabytes"] * 1e9) - total
-
+    diff = int(plan["gigabytes"] * 1e9) - total
+    print(int(plan["gigabytes"] * 1e9), total, diff)
     alloc = db["subscription_allocations"].find_one(
         {
             "id": item["id"],
             "address": item["acc_addr"],
         },
     )
-    db["subscription_allocations"].find_one_and_update(
-        {
-            "id": item["id"],
-            "address": item["acc_addr"]
-        },
-        {
-            "$set": {
-                "allocated": str(alloc + diff),
+    subscription_allocations_ops.append(
+        UpdateOne(
+            {
+                "id": item["id"],
+                "address": item["acc_addr"]
             },
-        },
+            {
+                "$set": {
+                    "allocated": str(int(alloc["allocated"]) + diff),
+                },
+            },
+        )
     )
-    db["events"].insert_one(
-        {
-            "type": "SubscriptionAllocation.UpdateDetails",
-            "height": HEIGHT,
-            "timestamp": TIMESTAMP,
-            "tx_hash": "",
-            "subscription_id": item["id"],
-            "acc_addr": item["acc_addr"],
-            "granted_bytes": str(alloc + diff),
-            "utilised_bytes": alloc["consumed"],
-        },
+    events_ops.append(
+        InsertOne(
+            {
+                "type": "SubscriptionAllocation.UpdateDetails",
+                "height": HEIGHT,
+                "timestamp": TIMESTAMP,
+                "tx_hash": "",
+                "subscription_id": alloc["id"],
+                "acc_addr": alloc["address"],
+                "granted_bytes": str(int(alloc["allocated"]) + diff),
+                "utilised_bytes": alloc["consumed"],
+            },
+        )
     )
+db["subscription_allocations"].bulk_write(subscription_allocations_ops, ordered=False)
+db["events"].bulk_write(events_ops, ordered=False)
 
 # -------------------------------------------------------------------------------------------------------------------- #
 
@@ -401,6 +477,11 @@ db["subscription_allocations"].update_many(
 
 # -------------------------------------------------------------------------------------------------------------------- #
 
+db["node_statistics"].delete_many(
+    {
+        "address": "",
+    },
+)
 db["node_statistics"].update_many(
     {},
     {
@@ -409,3 +490,19 @@ db["node_statistics"].update_many(
         },
     },
 )
+
+# -------------------------------------------------------------------------------------------------------------------- #
+
+collections = [
+    "deposits",
+    "events",
+    "nodes",
+    "node_statistics"
+    "plans",
+    "providers",
+    "sessions",
+    "subscriptions",
+    "subscription_quotas"
+]
+for cname in collections:
+    db[cname].drop_indexes()
