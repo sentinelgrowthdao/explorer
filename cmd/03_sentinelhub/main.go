@@ -234,6 +234,26 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 	for eIndex := 0; eIndex < len(dBlock.BeginBlockEvents); eIndex++ {
 		log.Println("Type", eIndex, dBlock.BeginBlockEvents[eIndex].Type)
 		switch dBlock.BeginBlockEvents[eIndex].Type {
+		case "sentinel.deposit.v1.EventSubtract":
+			event, err := deposittypes.NewEventSubtract(dBlock.EndBlockEvents[eIndex])
+			if err != nil {
+				return nil, err
+			}
+
+			dEvent1 := models.Event{
+				Type:      types.EventTypeDepositSubtract,
+				Height:    dBlock.Height,
+				Timestamp: dBlock.Time,
+				TxHash:    "",
+				AccAddr:   event.Address,
+				Coins:     event.Coins,
+			}
+
+			ops = append(
+				ops,
+				operations.NewDepositSubtract(db, event.Address, event.Coins, dBlock.Height, dBlock.Time, ""),
+				operations.NewEventCreate(db, &dEvent1),
+			)
 		case "sentinel.subscription.v2.EventPayForPayout":
 			event, err := subscriptiontypes.NewEventPayForPayout(dBlock.BeginBlockEvents[eIndex])
 			if err != nil {
