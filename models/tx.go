@@ -130,7 +130,9 @@ type Tx struct {
 func NewTx(v tmtypes.Tx) *Tx {
 	t, err := types.EncCfg.TxConfig.TxDecoder()(v)
 	if err != nil {
-		panic(err)
+		return &Tx{
+			Hash: bytes.HexBytes(v.Hash()).String(),
+		}
 	}
 
 	tx := t.(authsigning.Tx)

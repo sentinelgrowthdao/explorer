@@ -143,7 +143,7 @@ type EventPayForSession struct {
 }
 
 func NewEventPayForSession(v *types.Event) (*EventPayForSession, error) {
-	id, err := strconv.ParseUint(v.Attributes["id"], 10, 64)
+	id, err := strconv.ParseUint(v.Attributes["session_id"], 10, 64)
 	if err != nil {
 		return nil, err
 	}

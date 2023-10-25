@@ -196,7 +196,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{
 			Keys: bson.D{
 				bson.E{Key: "id", Value: 1},
-				bson.E{Key: "addr", Value: 1},
+				bson.E{Key: "acc_addr", Value: 1},
 			},
 			Options: options.Index().
 				SetUnique(true),
@@ -235,7 +235,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 		log.Println("Type", eIndex, dBlock.BeginBlockEvents[eIndex].Type)
 		switch dBlock.BeginBlockEvents[eIndex].Type {
 		case "sentinel.deposit.v1.EventSubtract":
-			event, err := deposittypes.NewEventSubtract(dBlock.EndBlockEvents[eIndex])
+			event, err := deposittypes.NewEventSubtract(dBlock.BeginBlockEvents[eIndex])
 			if err != nil {
 				return nil, err
 			}
