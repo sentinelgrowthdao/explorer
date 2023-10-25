@@ -301,9 +301,9 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 		log.Println("TxHash", dTxs[tIndex].Hash)
 		log.Println("MessagesLen", tIndex, len(dTxs[tIndex].Messages))
 
-		txResultLog := types.NewABCIMessageLogs(dTxs[tIndex].Result.Log)
-		for mIndex := 0; mIndex < len(dTxs[tIndex].Messages); mIndex++ {
+		for eIndex, mIndex := -1, 0; mIndex < len(dTxs[tIndex].Messages); mIndex++ {
 			log.Println("Type", dTxs[tIndex].Messages[mIndex].Type)
+
 			if strings.Contains(dTxs[tIndex].Messages[mIndex].Type, "MsgExec") {
 				msgs := dTxs[tIndex].Messages[mIndex].Data["msgs"].([]bson.M)
 				for _, msg := range msgs {
@@ -387,17 +387,25 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					return nil, err
 				}
 
-				_, eventAdd, err := deposittypes.NewEventAddFromEvents(txResultLog[mIndex].Events)
+				var (
+					eventAdd                *deposittypes.EventAdd
+					eventAllocate           *subscriptiontypes.EventAllocate
+					eventCreateSubscription *nodetypes.EventCreateSubscription
+				)
+
+				eIndex, eventAdd, err = deposittypes.NewEventAddFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
 				if err != nil {
 					return nil, err
 				}
 
-				_, eventCreateSubscription, err := nodetypes.NewEventCreateSubscriptionFromEvents(txResultLog[mIndex].Events)
-				if err != nil {
-					return nil, err
+				if msg.Gigabytes != 0 {
+					eIndex, eventAllocate, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
+					if err != nil {
+						return nil, err
+					}
 				}
 
-				_, eventAllocate, err := subscriptiontypes.NewEventAllocateFromEvents(txResultLog[mIndex].Events)
+				eIndex, eventCreateSubscription, err = nodetypes.NewEventCreateSubscriptionFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
 				if err != nil {
 					return nil, err
 				}
@@ -429,25 +437,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					StatusTxHash:    dTxs[tIndex].Hash,
 				}
 
-				dSubscriptionAllocation := models.SubscriptionAllocation{
-					ID:            eventAllocate.ID,
-					AccAddr:       eventAllocate.Address,
-					GrantedBytes:  eventAllocate.GrantedBytes,
-					UtilisedBytes: eventAllocate.UtilisedBytes,
-				}
-
 				dEvent1 := models.Event{
-					Type:           types.EventTypeSubscriptionAllocationUpdateDetails,
-					Height:         dBlock.Height,
-					Timestamp:      dBlock.Time,
-					TxHash:         dTxs[tIndex].Hash,
-					SubscriptionID: eventAllocate.ID,
-					AccAddr:        eventAllocate.Address,
-					GrantedBytes:   eventAllocate.GrantedBytes,
-					UtilisedBytes:  eventAllocate.UtilisedBytes,
-				}
-
-				dEvent2 := models.Event{
 					Type:      types.EventTypeDepositAdd,
 					Height:    dBlock.Height,
 					Timestamp: dBlock.Time,
@@ -459,18 +449,46 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 				ops = append(
 					ops,
 					operations.NewSubscriptionCreate(db, &dSubscription),
-					operations.NewSubscriptionAllocationCreate(db, &dSubscriptionAllocation),
-					operations.NewEventCreate(db, &dEvent1),
 					operations.NewDepositAdd(db, eventAdd.Address, eventAdd.Coins, dBlock.Height, dBlock.Time, dTxs[tIndex].Hash),
-					operations.NewEventCreate(db, &dEvent2),
+					operations.NewEventCreate(db, &dEvent1),
 				)
+
+				if msg.Gigabytes != 0 {
+					dSubscriptionAllocation := models.SubscriptionAllocation{
+						ID:            eventAllocate.ID,
+						AccAddr:       eventAllocate.Address,
+						GrantedBytes:  eventAllocate.GrantedBytes,
+						UtilisedBytes: eventAllocate.UtilisedBytes,
+					}
+
+					dEvent1 := models.Event{
+						Type:           types.EventTypeSubscriptionAllocationUpdateDetails,
+						Height:         dBlock.Height,
+						Timestamp:      dBlock.Time,
+						TxHash:         dTxs[tIndex].Hash,
+						SubscriptionID: eventAllocate.ID,
+						AccAddr:        eventAllocate.Address,
+						GrantedBytes:   eventAllocate.GrantedBytes,
+						UtilisedBytes:  eventAllocate.UtilisedBytes,
+					}
+
+					ops = append(
+						ops,
+						operations.NewSubscriptionAllocationCreate(db, &dSubscriptionAllocation),
+						operations.NewEventCreate(db, &dEvent1),
+					)
+				}
 			case "/sentinel.plan.v2.MsgCreateRequest", "/sentinel.plan.v2.MsgService/MsgCreate":
 				msg, err := plantypes.NewMsgCreateRequest(dTxs[tIndex].Messages[mIndex].Data)
 				if err != nil {
 					return nil, err
 				}
 
-				_, eventCreate, err := plantypes.NewEventCreateFromEvents(txResultLog[mIndex].Events)
+				var (
+					eventCreate *plantypes.EventCreate
+				)
+
+				eIndex, eventCreate, err = plantypes.NewEventCreateFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
 				if err != nil {
 					return nil, err
 				}
@@ -561,17 +579,23 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					return nil, err
 				}
 
-				_, eventCreateSubscription, err := plantypes.NewEventCreateSubscriptionFromEvents(txResultLog[mIndex].Events)
+				var (
+					eventPayForPlan         *subscriptiontypes.EventPayForPlan
+					eventAllocate           *subscriptiontypes.EventAllocate
+					eventCreateSubscription *plantypes.EventCreateSubscription
+				)
+
+				eIndex, eventPayForPlan, err = subscriptiontypes.NewEventPayForPlanFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
 				if err != nil {
 					return nil, err
 				}
 
-				_, eventAllocate, err := subscriptiontypes.NewEventAllocateFromEvents(txResultLog[mIndex].Events)
+				eIndex, eventAllocate, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
 				if err != nil {
 					return nil, err
 				}
 
-				_, eventPayForPlan, err := subscriptiontypes.NewEventPayForPlanFromEvents(txResultLog[mIndex].Events)
+				eIndex, eventCreateSubscription, err = plantypes.NewEventCreateSubscriptionFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
 				if err != nil {
 					return nil, err
 				}
@@ -675,7 +699,11 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					return nil, err
 				}
 
-				_, eventStart, err := sessiontypes.NewEventStartFromEvents(txResultLog[mIndex].Events)
+				var (
+					eventStart *sessiontypes.EventStart
+				)
+
+				eIndex, eventStart, err = sessiontypes.NewEventStartFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
 				if err != nil {
 					return nil, err
 				}
@@ -771,7 +799,12 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					operations.NewEventCreate(db, &dEvent1),
 				)
 			case "/sentinel.subscription.v2.MsgAllocateRequest", "/sentinel.subscription.v2.MsgService/MsgAllocate":
-				eIndex, eventAllocate1, err := subscriptiontypes.NewEventAllocateFromEvents(txResultLog[mIndex].Events)
+				var (
+					eventAllocate1 *subscriptiontypes.EventAllocate
+					eventAllocate2 *subscriptiontypes.EventAllocate
+				)
+
+				eIndex, eventAllocate1, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
 				if err != nil {
 					return nil, err
 				}
@@ -787,7 +820,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					UtilisedBytes:  eventAllocate1.UtilisedBytes,
 				}
 
-				_, eventAllocate2, err := subscriptiontypes.NewEventAllocateFromEvents(txResultLog[mIndex].Events[eIndex+1:])
+				eIndex, eventAllocate2, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
 				if err != nil {
 					return nil, err
 				}
