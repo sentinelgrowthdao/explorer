@@ -52,7 +52,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	indexes := []mongo.IndexModel{
 		{
 			Keys: bson.D{
-				bson.E{Key: "address", Value: 1},
+				bson.E{Key: "addr", Value: 1},
 				bson.E{Key: "timestamp", Value: 1},
 			},
 			Options: options.Index().
@@ -88,9 +88,10 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 		"height": height,
 	}
 	projection := bson.M{
-		"height":           1,
-		"time":             1,
-		"end_block_events": 1,
+		"begin_block_events": 1,
+		"end_block_events":   1,
+		"height":             1,
+		"time":               1,
 	}
 
 	dBlock, err := database.BlockFindOne(context.TODO(), db, filter, options.FindOne().SetProjection(projection))
