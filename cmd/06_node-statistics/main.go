@@ -139,6 +139,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 	log.Println("TxsLen", len(dTxs))
 	for tIndex := 0; tIndex < len(dTxs); tIndex++ {
+		dTxs[tIndex].Messages = dTxs[tIndex].Messages.WithAuthzMsgExecMessages()
 		log.Println("TxHash", dTxs[tIndex].Hash)
 		log.Println("MessagesLen", tIndex, len(dTxs[tIndex].Messages))
 
@@ -180,13 +181,23 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					operations.NewNodeStatisticIncreaseSubscriptionStartCount(
 						db, msg.NodeAddress, utils.DayDate(dBlock.Time), 1,
 					),
-					operations.NewNodeStatisticUpdateSubscriptionBytes(
-						db, msg.NodeAddress, utils.DayDate(dBlock.Time), hubtypes.Gigabyte.MulRaw(msg.Gigabytes),
-					),
-					operations.NewNodeStatisticUpdateSubscriptionHours(
-						db, msg.NodeAddress, utils.DayDate(dBlock.Time), msg.Hours,
-					),
 				)
+				if msg.Gigabytes != 0 {
+					ops = append(
+						ops,
+						operations.NewNodeStatisticUpdateSubscriptionBytes(
+							db, msg.NodeAddress, utils.DayDate(dBlock.Time), hubtypes.Gigabyte.MulRaw(msg.Gigabytes),
+						),
+					)
+				}
+				if msg.Hours != 0 {
+					ops = append(
+						ops,
+						operations.NewNodeStatisticUpdateSubscriptionHours(
+							db, msg.NodeAddress, utils.DayDate(dBlock.Time), msg.Hours,
+						),
+					)
+				}
 			default:
 
 			}
