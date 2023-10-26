@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"strings"
 	"time"
 
 	hubtypes "github.com/sentinel-official/hub/types"
@@ -298,23 +297,12 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 
 	log.Println("TxsLen", len(dTxs))
 	for tIndex := 0; tIndex < len(dTxs); tIndex++ {
+		dTxs[tIndex].Messages = dTxs[tIndex].Messages.WithAuthzMsgExecMessages()
 		log.Println("TxHash", dTxs[tIndex].Hash)
 		log.Println("MessagesLen", tIndex, len(dTxs[tIndex].Messages))
 
 		for eIndex, mIndex := -1, 0; mIndex < len(dTxs[tIndex].Messages); mIndex++ {
 			log.Println("Type", dTxs[tIndex].Messages[mIndex].Type)
-
-			if strings.Contains(dTxs[tIndex].Messages[mIndex].Type, "MsgExec") {
-				msgs := dTxs[tIndex].Messages[mIndex].Data["msgs"].(bson.A)
-				for i := 0; i < len(msgs); i++ {
-					msg := msgs[i].(bson.M)
-					log.Println("MsgExec @type", msg["@type"].(string))
-					if strings.Contains(msg["@type"].(string), "sentinel") {
-						return nil, fmt.Errorf("invalid /cosmos.authz.v1beta1.MsgExec")
-					}
-				}
-			}
-
 			switch dTxs[tIndex].Messages[mIndex].Type {
 			case "/sentinel.node.v2.MsgRegisterRequest", "/sentinel.node.v2.MsgService/MsgRegister":
 				msg, err := nodetypes.NewMsgRegisterRequest(dTxs[tIndex].Messages[mIndex].Data)

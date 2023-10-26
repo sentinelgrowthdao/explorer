@@ -2,6 +2,8 @@ package models
 
 import (
 	"encoding/json"
+	"maps"
+	"strings"
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -45,6 +47,31 @@ func NewMessages(v []sdk.Msg) Messages {
 	items := make(Messages, 0, len(v))
 	for _, item := range v {
 		items = append(items, NewMessage(item))
+	}
+
+	return items
+}
+
+func (m Messages) WithAuthzMsgExecMessages() (items Messages) {
+	for i := 0; i < len(m); i++ {
+		items = append(items, m[i])
+		if strings.Contains(m[i].Type, "cosmos.authz") && strings.Contains(m[i].Type, "MsgExec") {
+			msgs := m[i].Data["msgs"].(bson.A)
+			for j := 0; j < len(msgs); j++ {
+				item := &Message{
+					Data: func() bson.M {
+						m := make(bson.M)
+						maps.Copy(m, msgs[j].(bson.M))
+						delete(m, "@type")
+
+						return m
+					}(),
+					Type: msgs[j].(bson.M)["@type"].(string),
+				}
+
+				items = append(items, item)
+			}
+		}
 	}
 
 	return items
