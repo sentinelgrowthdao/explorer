@@ -16,44 +16,44 @@ import (
 
 var (
 	requestHandlers = map[string]func(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error){
-		types.StatisticMethodAverageActiveNodeCount:              handleAverageActiveNodesCount,
-		types.StatisticMethodAverageActiveSessionCount:           handleAverageActiveSessionsCount,
-		types.StatisticMethodAverageActiveSubscriptionCount:      handleAverageActiveSubscriptionsCount,
-		types.StatisticMethodAverageEndSessionCount:              handleAverageEndSessionsCount,
-		types.StatisticMethodAverageEndSubscriptionCount:         handleAverageEndSubscriptionsCount,
-		types.StatisticMethodAverageRegisterNodeCount:            handleAverageRegisterNodesCount,
-		types.StatisticMethodAverageSessionPayment:               handleAverageSessionPayments,
-		types.StatisticMethodAverageSessionStakingReward:         handleAverageSessionStakingRewards,
-		types.StatisticMethodAverageStartSessionCount:            handleAverageStartSessionsCount,
-		types.StatisticMethodAverageStartSubscriptionCount:       handleAverageStartSubscriptionsCount,
-		types.StatisticMethodAverageSubscriptionDeposit:          handleAverageSubscriptionDeposits,
-		types.StatisticMethodAverageSubscriptionPayment:          handleAverageSubscriptionPayments,
-		types.StatisticMethodAverageSubscriptionStakingReward:    handleAverageSubscriptionStakingRewards,
-		types.StatisticMethodCurrentNodeCount:                    handleCurrentNodesCount,
-		types.StatisticMethodCurrentSessionCount:                 handleCurrentSessionsCount,
-		types.StatisticMethodCurrentSubscriptionCount:            handleCurrentSubscriptionsCount,
-		types.StatisticMethodHistoricalActiveNodeCount:           handleHistoricalActiveNodesCount,
-		types.StatisticMethodHistoricalActiveSessionCount:        handleHistoricalActiveSessionsCount,
-		types.StatisticMethodHistoricalActiveSubscriptionCount:   handleHistoricalActiveSubscriptionsCount,
-		types.StatisticMethodHistoricalEndSessionCount:           handleHistoricalEndSessionsCount,
-		types.StatisticMethodHistoricalEndSubscriptionCount:      handleHistoricalEndSubscriptionsCount,
-		types.StatisticMethodHistoricalRegisterNodeCount:         handleHistoricalRegisterNodesCount,
-		types.StatisticMethodHistoricalSessionBandwidth:          handleHistoricalSessionBandwidths,
-		types.StatisticMethodHistoricalSessionDuration:           handleHistoricalSessionDurations,
-		types.StatisticMethodHistoricalSessionPayment:            handleHistoricalSessionPayments,
-		types.StatisticMethodHistoricalSessionStakingReward:      handleHistoricalSessionStakingRewards,
-		types.StatisticMethodHistoricalStartSessionCount:         handleHistoricalStartSessionsCount,
-		types.StatisticMethodHistoricalStartSubscriptionCount:    handleHistoricalStartSubscriptionsCount,
-		types.StatisticMethodHistoricalSubscriptionDeposit:       handleHistoricalSubscriptionDeposits,
-		types.StatisticMethodHistoricalSubscriptionPayment:       handleHistoricalSubscriptionPayments,
-		types.StatisticMethodHistoricalSubscriptionStakingReward: handleHistoricalSubscriptionStakingRewards,
-		types.StatisticMethodTotalSessionBandwidth:               handleTotalSessionBandwidth,
-		types.StatisticMethodTotalSessionDuration:                handleTotalSessionDuration,
-		types.StatisticMethodTotalSessionPayment:                 handleTotalSessionPayments,
-		types.StatisticMethodTotalSessionStakingReward:           handleTotalSessionStakingRewards,
-		types.StatisticMethodTotalSubscriptionDeposit:            handleTotalSubscriptionDeposits,
-		types.StatisticMethodTotalSubscriptionPayment:            handleTotalSubscriptionPayments,
-		types.StatisticMethodTotalSubscriptionStakingReward:      handleTotalSubscriptionStakingRewards,
+		types.StatisticMethodAverageActiveNodeCount:            handleAverageActiveNodesCount,
+		types.StatisticMethodAverageActiveSessionCount:         handleAverageActiveSessionsCount,
+		types.StatisticMethodAverageActiveSubscriptionCount:    handleAverageActiveSubscriptionsCount,
+		types.StatisticMethodAverageEndSessionCount:            handleAverageEndSessionsCount,
+		types.StatisticMethodAverageEndSubscriptionCount:       handleAverageEndSubscriptionsCount,
+		types.StatisticMethodAverageRegisterNodeCount:          handleAverageRegisterNodesCount,
+		types.StatisticMethodAverageBytesPayment:               handleAverageBytesPayments,
+		types.StatisticMethodAverageBytesStakingReward:         handleAverageBytesStakingRewards,
+		types.StatisticMethodAverageStartSessionCount:          handleAverageStartSessionsCount,
+		types.StatisticMethodAverageStartSubscriptionCount:     handleAverageStartSubscriptionsCount,
+		types.StatisticMethodAverageSubscriptionDeposit:        handleAverageSubscriptionDeposits,
+		types.StatisticMethodAveragePlanPayment:                handleAveragePlanPayments,
+		types.StatisticMethodAveragePlanStakingReward:          handleAveragePlanStakingRewards,
+		types.StatisticMethodCurrentNodeCount:                  handleCurrentNodesCount,
+		types.StatisticMethodCurrentSessionCount:               handleCurrentSessionsCount,
+		types.StatisticMethodCurrentSubscriptionCount:          handleCurrentSubscriptionsCount,
+		types.StatisticMethodHistoricalActiveNodeCount:         handleHistoricalActiveNodesCount,
+		types.StatisticMethodHistoricalActiveSessionCount:      handleHistoricalActiveSessionsCount,
+		types.StatisticMethodHistoricalActiveSubscriptionCount: handleHistoricalActiveSubscriptionsCount,
+		types.StatisticMethodHistoricalEndSessionCount:         handleHistoricalEndSessionsCount,
+		types.StatisticMethodHistoricalEndSubscriptionCount:    handleHistoricalEndSubscriptionsCount,
+		types.StatisticMethodHistoricalRegisterNodeCount:       handleHistoricalRegisterNodesCount,
+		types.StatisticMethodHistoricalSessionBytes:            handleHistoricalSessionBytess,
+		types.StatisticMethodHistoricalSessionDuration:         handleHistoricalSessionDurations,
+		types.StatisticMethodHistoricalBytesPayment:            handleHistoricalBytesPayments,
+		types.StatisticMethodHistoricalBytesStakingReward:      handleHistoricalBytesStakingRewards,
+		types.StatisticMethodHistoricalStartSessionCount:       handleHistoricalStartSessionsCount,
+		types.StatisticMethodHistoricalStartSubscriptionCount:  handleHistoricalStartSubscriptionsCount,
+		types.StatisticMethodHistoricalSubscriptionDeposit:     handleHistoricalSubscriptionDeposits,
+		types.StatisticMethodHistoricalPlanPayment:             handleHistoricalPlanPayments,
+		types.StatisticMethodHistoricalPlanStakingReward:       handleHistoricalPlanStakingRewards,
+		types.StatisticMethodTotalSessionBytes:                 handleTotalSessionBytes,
+		types.StatisticMethodTotalSessionDuration:              handleTotalSessionDuration,
+		types.StatisticMethodTotalBytesPayment:                 handleTotalBytesPayments,
+		types.StatisticMethodTotalBytesStakingReward:           handleTotalBytesStakingRewards,
+		types.StatisticMethodTotalSubscriptionDeposit:          handleTotalSubscriptionDeposits,
+		types.StatisticMethodTotalPlanPayment:                  handleTotalPlanPayments,
+		types.StatisticMethodTotalPlanStakingReward:            handleTotalPlanStakingRewards,
 	}
 )
 
@@ -195,12 +195,12 @@ func handleAverageRegisterNodesCount(db *mongo.Database, req *RequestGetStatisti
 	return handleAverage(db, types.StatisticTypeRegisterNode, "$_id", "", "$value", req)
 }
 
-func handleAverageSessionPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleAverage(db, types.StatisticTypeSessionPayment, "$value", "$value.denom", "$value.amount", req)
+func handleAverageBytesPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleAverage(db, types.StatisticTypeBytesPayment, "$value", "$value.denom", "$value.amount", req)
 }
 
-func handleAverageSessionStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleAverage(db, types.StatisticTypeSessionStakingReward, "$value", "$value.denom", "$value.amount", req)
+func handleAverageBytesStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleAverage(db, types.StatisticTypeBytesStakingReward, "$value", "$value.denom", "$value.amount", req)
 }
 
 func handleAverageStartSessionsCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
@@ -215,12 +215,12 @@ func handleAverageSubscriptionDeposits(db *mongo.Database, req *RequestGetStatis
 	return handleAverage(db, types.StatisticTypeSubscriptionDeposit, "$value", "$value.denom", "$value.amount", req)
 }
 
-func handleAverageSubscriptionPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleAverage(db, types.StatisticTypeSubscriptionPayment, "$value", "$value.denom", "$value.amount", req)
+func handleAveragePlanPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleAverage(db, types.StatisticTypePlanPayment, "$value", "$value.denom", "$value.amount", req)
 }
 
-func handleAverageSubscriptionStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleAverage(db, types.StatisticTypeSubscriptionStakingReward, "$value", "$value.denom", "$value.amount", req)
+func handleAveragePlanStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleAverage(db, types.StatisticTypePlanStakingReward, "$value", "$value.denom", "$value.amount", req)
 }
 
 func handleCurrentNodesCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
@@ -292,7 +292,7 @@ func handleHistoricalActiveSubscriptionsCount(db *mongo.Database, req *RequestGe
 	return handleHistorical(db, types.StatisticTypeActiveSubscription, req)
 }
 
-func handleHistoricalSessionBandwidths(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+func handleHistoricalSessionBytess(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
 	return handleHistorical(db, types.StatisticTypeSessionBytes, req)
 }
 
@@ -312,12 +312,12 @@ func handleHistoricalSessionDurations(db *mongo.Database, req *RequestGetStatist
 	return handleHistorical(db, types.StatisticTypeSessionDuration, req)
 }
 
-func handleHistoricalSessionPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleHistorical(db, types.StatisticTypeSessionPayment, req)
+func handleHistoricalBytesPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleHistorical(db, types.StatisticTypeBytesPayment, req)
 }
 
-func handleHistoricalSessionStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleHistorical(db, types.StatisticTypeSessionStakingReward, req)
+func handleHistoricalBytesStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleHistorical(db, types.StatisticTypeBytesStakingReward, req)
 }
 
 func handleHistoricalStartSessionsCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
@@ -332,15 +332,15 @@ func handleHistoricalSubscriptionDeposits(db *mongo.Database, req *RequestGetSta
 	return handleHistorical(db, types.StatisticTypeSubscriptionDeposit, req)
 }
 
-func handleHistoricalSubscriptionPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleHistorical(db, types.StatisticTypeSubscriptionPayment, req)
+func handleHistoricalPlanPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleHistorical(db, types.StatisticTypePlanPayment, req)
 }
 
-func handleHistoricalSubscriptionStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleHistorical(db, types.StatisticTypeSubscriptionStakingReward, req)
+func handleHistoricalPlanStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleHistorical(db, types.StatisticTypePlanStakingReward, req)
 }
 
-func handleTotalSessionBandwidth(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+func handleTotalSessionBytes(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
@@ -389,22 +389,22 @@ func handleTotalSessionDuration(db *mongo.Database, req *RequestGetStatistics) (
 	return handleTotal(db, types.StatisticTypeSessionDuration, "$_id", "", "$value", req)
 }
 
-func handleTotalSessionPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleTotal(db, types.StatisticTypeSessionPayment, "$value", "$value.denom", "$value.amount", req)
+func handleTotalBytesPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleTotal(db, types.StatisticTypeBytesPayment, "$value", "$value.denom", "$value.amount", req)
 }
 
-func handleTotalSessionStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleTotal(db, types.StatisticTypeSessionStakingReward, "$value", "$value.denom", "$value.amount", req)
+func handleTotalBytesStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleTotal(db, types.StatisticTypeBytesStakingReward, "$value", "$value.denom", "$value.amount", req)
 }
 
 func handleTotalSubscriptionDeposits(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
 	return handleTotal(db, types.StatisticTypeSubscriptionDeposit, "$value", "$value.denom", "$value.amount", req)
 }
 
-func handleTotalSubscriptionPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleTotal(db, types.StatisticTypeSubscriptionPayment, "$value", "$value.denom", "$value.amount", req)
+func handleTotalPlanPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleTotal(db, types.StatisticTypePlanPayment, "$value", "$value.denom", "$value.amount", req)
 }
 
-func handleTotalSubscriptionStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleTotal(db, types.StatisticTypeSubscriptionStakingReward, "$value", "$value.denom", "$value.amount", req)
+func handleTotalPlanStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleTotal(db, types.StatisticTypePlanStakingReward, "$value", "$value.denom", "$value.amount", req)
 }

@@ -1,7 +1,6 @@
 package statistics
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +30,7 @@ func NewRequestGetStatistics(c *gin.Context) (req *RequestGetStatistics, err err
 
 	validatorFunc, ok := validators[req.Query.Method]
 	if !ok {
-		return nil, fmt.Errorf("unknown method %s", req.Query.Method)
+		return req, nil
 	}
 	if validatorFunc == nil {
 		return req, nil
