@@ -48,7 +48,7 @@ func (ses *SessionEventStatistics) Result(timestamp time.Time) bson.A {
 
 	return bson.A{
 		bson.M{
-			"type":      types.StatisticTypeSessionBandwidth,
+			"type":      types.StatisticTypeSessionBytes,
 			"timeframe": ses.Timeframe,
 			"timestamp": timestamp,
 			"value":     sessionBandwidth,

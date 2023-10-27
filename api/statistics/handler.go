@@ -293,7 +293,7 @@ func handleHistoricalActiveSubscriptionsCount(db *mongo.Database, req *RequestGe
 }
 
 func handleHistoricalSessionBandwidths(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleHistorical(db, types.StatisticTypeSessionBandwidth, req)
+	return handleHistorical(db, types.StatisticTypeSessionBytes, req)
 }
 
 func handleHistoricalEndSessionsCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
@@ -344,7 +344,7 @@ func handleTotalSessionBandwidth(db *mongo.Database, req *RequestGetStatistics) 
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				"type":      types.StatisticTypeSessionBandwidth,
+				"type":      types.StatisticTypeSessionBytes,
 				"timeframe": req.Query.Timeframe,
 				"timestamp": bson.M{
 					"$gte": req.Query.FromTimestamp,

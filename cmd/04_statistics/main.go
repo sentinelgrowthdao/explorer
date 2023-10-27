@@ -184,6 +184,16 @@ func main() {
 		return nil
 	})
 
+	group.Go(func() error {
+		items, err := StatisticsFromSubscriptionPayouts(context.TODO(), db, time.Time{}, maxTimestamp)
+		if err != nil {
+			return err
+		}
+
+		result = append(result, items...)
+		return nil
+	})
+
 	if err := group.Wait(); err != nil {
 		log.Panicln(err)
 	}
