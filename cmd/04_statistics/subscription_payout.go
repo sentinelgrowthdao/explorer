@@ -51,11 +51,14 @@ func StatisticsFromSubscriptionPayouts(ctx context.Context, db *mongo.Database, 
 	log.Println("StatisticsFromSubscriptionPayouts", minTimestamp, maxTimestamp)
 
 	filter := bson.M{}
-	sort := bson.D{
-		bson.E{Key: "timestamp", Value: 1},
+	projection := bson.M{
+		"_id":            0,
+		"payment":        1,
+		"staking_reward": 1,
+		"timestamp":      1,
 	}
 
-	items, err := database.SubscriptionPayoutFind(ctx, db, filter, options.Find().SetSort(sort))
+	items, err := database.SubscriptionPayoutFind(ctx, db, filter, options.Find().SetProjection(projection))
 	if err != nil {
 		return nil, err
 	}
@@ -93,10 +96,10 @@ func StatisticsFromSubscriptionPayouts(ctx context.Context, db *mongo.Database, 
 		m[monthTimestamp].HoursPayment = m[monthTimestamp].HoursPayment.Add(items[i].Payment)
 		y[yearTimestamp].HoursPayment = y[yearTimestamp].HoursPayment.Add(items[i].Payment)
 
-		d[dayTimestamp].HoursStakingReward = d[dayTimestamp].HoursStakingReward.Add(items[i].Payment)
-		w[weekTimestamp].HoursStakingReward = w[weekTimestamp].HoursStakingReward.Add(items[i].Payment)
-		m[monthTimestamp].HoursStakingReward = m[monthTimestamp].HoursStakingReward.Add(items[i].Payment)
-		y[yearTimestamp].HoursStakingReward = y[yearTimestamp].HoursStakingReward.Add(items[i].Payment)
+		d[dayTimestamp].HoursStakingReward = d[dayTimestamp].HoursStakingReward.Add(items[i].StakingReward)
+		w[weekTimestamp].HoursStakingReward = w[weekTimestamp].HoursStakingReward.Add(items[i].StakingReward)
+		m[monthTimestamp].HoursStakingReward = m[monthTimestamp].HoursStakingReward.Add(items[i].StakingReward)
+		y[yearTimestamp].HoursStakingReward = y[yearTimestamp].HoursStakingReward.Add(items[i].StakingReward)
 	}
 
 	for t, statistics := range d {

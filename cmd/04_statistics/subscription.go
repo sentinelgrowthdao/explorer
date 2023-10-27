@@ -124,11 +124,20 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 	log.Println("StatisticsFromSubscriptions", minTimestamp, maxTimestamp)
 
 	filter := bson.M{}
-	sort := bson.D{
-		bson.E{Key: "start_timestamp", Value: 1},
+	projection := bson.M{
+		"_id":             0,
+		"end_timestamp":   1,
+		"deposit":         1,
+		"gigabytes":       1,
+		"hours":           1,
+		"payment":         1,
+		"plan_id":         1,
+		"refund":          1,
+		"staking_reward":  1,
+		"start_timestamp": 1,
 	}
 
-	items, err := database.SubscriptionFind(ctx, db, filter, options.Find().SetSort(sort))
+	items, err := database.SubscriptionFind(ctx, db, filter, options.Find().SetProjection(projection))
 	if err != nil {
 		return nil, err
 	}

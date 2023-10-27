@@ -79,11 +79,8 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 		"staking_reward":  1,
 		"start_timestamp": 1,
 	}
-	sort := bson.D{
-		bson.E{Key: "start_timestamp", Value: 1},
-	}
 
-	items, err := database.SessionFind(ctx, db, filter, options.Find().SetProjection(projection).SetSort(sort))
+	items, err := database.SessionFind(ctx, db, filter, options.Find().SetProjection(projection))
 	if err != nil {
 		return nil, err
 	}

@@ -51,45 +51,6 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		return err
 	}
 
-	indexes = []mongo.IndexModel{
-		{
-			Keys: bson.D{
-				bson.E{Key: "register_timestamp", Value: 1},
-			},
-		},
-	}
-
-	_, err = database.NodeIndexesCreateMany(ctx, db, indexes)
-	if err != nil {
-		return err
-	}
-
-	indexes = []mongo.IndexModel{
-		{
-			Keys: bson.D{
-				bson.E{Key: "start_timestamp", Value: 1},
-			},
-		},
-	}
-
-	_, err = database.SessionIndexesCreateMany(ctx, db, indexes)
-	if err != nil {
-		return err
-	}
-
-	indexes = []mongo.IndexModel{
-		{
-			Keys: bson.D{
-				bson.E{Key: "start_timestamp", Value: 1},
-			},
-		},
-	}
-
-	_, err = database.SubscriptionIndexesCreateMany(ctx, db, indexes)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
