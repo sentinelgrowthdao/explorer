@@ -25,6 +25,10 @@ func StatisticInsertOne(ctx context.Context, db *mongo.Database, v bson.M, opts 
 	return InsertOne(ctx, db.Collection(StatisticCollectionName), v, opts...)
 }
 
+func StatisticInsertMany(ctx context.Context, db *mongo.Database, v bson.A, opts ...*options.InsertManyOptions) (*mongo.InsertManyResult, error) {
+	return InsertMany(ctx, db.Collection(StatisticCollectionName), v, opts...)
+}
+
 func StatisticFindOneAndUpdate(ctx context.Context, db *mongo.Database, filter, update bson.M, opts ...*options.FindOneAndUpdateOptions) (bson.M, error) {
 	var v bson.M
 	if err := FindOneAndUpdate(ctx, db.Collection(StatisticCollectionName), filter, update, &v, opts...); err != nil {

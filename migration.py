@@ -384,7 +384,7 @@ for item in cursor1:
                 "height": HEIGHT,
                 "timestamp": TIMESTAMP,
                 "tx_hash": "",
-                "session_id": item["id"],
+                "subscription_id": item["id"],
                 "status": "inactive",
             },
         )

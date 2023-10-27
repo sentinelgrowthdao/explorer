@@ -276,6 +276,13 @@ func NewBandwidth(v *hubtypes.Bandwidth) *Bandwidth {
 	}
 }
 
+func (b *Bandwidth) Copy() *Bandwidth {
+	return &Bandwidth{
+		Upload:   b.Upload,
+		Download: b.Download,
+	}
+}
+
 func (b *Bandwidth) Add(v *Bandwidth) *Bandwidth {
 	bu := utils.MustIntFromString(b.Upload)
 	bd := utils.MustIntFromString(b.Download)

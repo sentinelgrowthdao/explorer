@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
-	"sort"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/sentinel-official/explorer/database"
 	"github.com/sentinel-official/explorer/utils"
@@ -40,14 +41,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{
 			Keys: bson.D{
 				bson.E{Key: "type", Value: 1},
-				bson.E{Key: "timestamp", Value: 1},
-			},
-		},
-		{
-			Keys: bson.D{
-				bson.E{Key: "type", Value: 1},
-				bson.E{Key: "status", Value: 1},
-				bson.E{Key: "timestamp", Value: 1},
+				bson.E{Key: "timestamp", Value: -1},
 			},
 		},
 	}
@@ -130,41 +124,102 @@ func main() {
 		log.Panicln(err)
 	}
 
-	var maxTimestamp time.Time
+	maxTimestamp := time.Now().UTC()
 	if len(dBlocks) > 0 {
 		maxTimestamp = dBlocks[0].Time
 	}
 
-	events, err := StatisticsFromEvents(context.TODO(), db)
-	if err != nil {
-		log.Panicln(err)
-	}
+	var (
+		result bson.A
+		group  = errgroup.Group{}
+	)
 
-	nodes, err := StatisticsFromNodes(context.TODO(), db)
-	if err != nil {
-		log.Panicln(err)
-	}
+	group.Go(func() error {
+		items, err := StatisticsFromNodeEvents(context.TODO(), db)
+		if err != nil {
+			return err
+		}
 
-	sessions, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp)
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	subscriptions, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp)
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	result := append([]bson.M{}, events...)
-	result = append(result, nodes...)
-	result = append(result, sessions...)
-	result = append(result, subscriptions...)
-
-	sort.Slice(result, func(i, j int) bool {
-		return result[i]["timestamp"].(time.Time).After(result[j]["timestamp"].(time.Time))
+		result = append(result, items...)
+		return nil
 	})
 
-	fmt.Println(utils.MustMarshalIndentToString(result))
+	group.Go(func() error {
+		items, err := StatisticsFromSessionEvents(context.TODO(), db)
+		if err != nil {
+			return err
+		}
+
+		result = append(result, items...)
+		return nil
+	})
+
+	group.Go(func() error {
+		items, err := StatisticsFromNodes(context.TODO(), db)
+		if err != nil {
+			return err
+		}
+
+		result = append(result, items...)
+		return nil
+	})
+
+	group.Go(func() error {
+		items, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp)
+		if err != nil {
+			return err
+		}
+
+		result = append(result, items...)
+		return nil
+	})
+
+	group.Go(func() error {
+		items, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp)
+		if err != nil {
+			return err
+		}
+
+		result = append(result, items...)
+		return nil
+	})
+
+	if err := group.Wait(); err != nil {
+		log.Panicln(err)
+	}
+
+	err = db.Client().UseSession(
+		context.TODO(),
+		func(ctx mongo.SessionContext) error {
+			err := ctx.StartTransaction(
+				options.Transaction().
+					SetReadConcern(readconcern.Snapshot()).
+					SetWriteConcern(writeconcern.Majority()),
+			)
+			if err != nil {
+				return err
+			}
+
+			abort := true
+			defer func() {
+				if abort {
+					_ = ctx.AbortTransaction(ctx)
+				}
+			}()
+
+			filter := bson.M{}
+			if err := database.StatisticDeleteMany(ctx, db, filter); err != nil {
+				return err
+			}
+
+			if _, err := database.StatisticInsertMany(ctx, db, result); err != nil {
+				return err
+			}
+
+			abort = false
+			return ctx.CommitTransaction(ctx)
+		},
+	)
 
 	log.Println("Duration", time.Since(now))
 	log.Println("")

@@ -61,6 +61,15 @@ func InsertOne(ctx context.Context, c *mongo.Collection, v interface{}, opts ...
 	return c.InsertOne(ctx, v, opts...)
 }
 
+func InsertMany(ctx context.Context, c *mongo.Collection, v []interface{}, opts ...*options.InsertManyOptions) (*mongo.InsertManyResult, error) {
+	now := time.Now()
+	defer func() {
+		log.Println(c.Name(), "InsertMany", time.Since(now))
+	}()
+
+	return c.InsertMany(ctx, v, opts...)
+}
+
 func FindOneAndUpdate(ctx context.Context, c *mongo.Collection, filter, update bson.M, v interface{}, opts ...*options.FindOneAndUpdateOptions) error {
 	now := time.Now()
 	defer func() {

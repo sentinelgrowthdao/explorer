@@ -35,39 +35,39 @@ func NewSubscriptionStatistics(timeframe string) *SubscriptionStatistics {
 	}
 }
 
-func (ss *SubscriptionStatistics) Result(timestamp time.Time) []bson.M {
-	return []bson.M{
-		{
+func (ss *SubscriptionStatistics) Result(timestamp time.Time) bson.A {
+	return bson.A{
+		bson.M{
 			"type":      types.StatisticTypeActiveSubscription,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.ActiveSubscription,
 		},
-		{
+		bson.M{
 			"type":      types.StatisticTypeEndSubscription,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.EndSubscription,
 		},
-		{
+		bson.M{
 			"type":      types.StatisticTypeStartSubscription,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.StartSubscription,
 		},
-		{
+		bson.M{
 			"type":      types.StatisticTypeSubscriptionDeposit,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.SubscriptionDeposit,
 		},
-		{
+		bson.M{
 			"type":      types.StatisticTypeSubscriptionPayment,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.SubscriptionPayment,
 		},
-		{
+		bson.M{
 			"type":      types.StatisticTypeSubscriptionStakingReward,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
@@ -76,7 +76,7 @@ func (ss *SubscriptionStatistics) Result(timestamp time.Time) []bson.M {
 	}
 }
 
-func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time) (result []bson.M, err error) {
+func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time) (result bson.A, err error) {
 	log.Println("StatisticsFromSubscriptions", minTimestamp, maxTimestamp)
 
 	filter := bson.M{}
@@ -84,7 +84,9 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 		"_id":             0,
 		"deposit":         1,
 		"end_timestamp":   1,
+		"node_addr":       1,
 		"payment":         1,
+		"plan_id":         1,
 		"staking_reward":  1,
 		"start_timestamp": 1,
 	}
@@ -164,16 +166,32 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 			y[yearStartTimestamp].SubscriptionDeposit = y[yearStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
 		}
 		if items[i].Payment != nil {
-			d[dayEndTimestamp].SubscriptionPayment = d[dayEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
-			w[weekEndTimestamp].SubscriptionPayment = w[weekEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
-			m[monthEndTimestamp].SubscriptionPayment = m[monthEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
-			y[yearEndTimestamp].SubscriptionPayment = y[yearEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
+			if items[i].NodeAddr != "" {
+				d[dayEndTimestamp].SubscriptionPayment = d[dayEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
+				w[weekEndTimestamp].SubscriptionPayment = w[weekEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
+				m[monthEndTimestamp].SubscriptionPayment = m[monthEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
+				y[yearEndTimestamp].SubscriptionPayment = y[yearEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
+			}
+			if items[i].PlanID != 0 {
+				d[dayStartTimestamp].SubscriptionPayment = d[dayStartTimestamp].SubscriptionPayment.Add(items[i].Payment)
+				w[weekStartTimestamp].SubscriptionPayment = w[weekStartTimestamp].SubscriptionPayment.Add(items[i].Payment)
+				m[monthStartTimestamp].SubscriptionPayment = m[monthStartTimestamp].SubscriptionPayment.Add(items[i].Payment)
+				y[yearStartTimestamp].SubscriptionPayment = y[yearStartTimestamp].SubscriptionPayment.Add(items[i].Payment)
+			}
 		}
 		if items[i].StakingReward != nil {
-			d[dayEndTimestamp].SubscriptionStakingReward = d[dayEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
-			w[weekEndTimestamp].SubscriptionStakingReward = w[weekEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
-			m[monthEndTimestamp].SubscriptionStakingReward = m[monthEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
-			y[yearEndTimestamp].SubscriptionStakingReward = y[yearEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+			if items[i].NodeAddr != "" {
+				d[dayEndTimestamp].SubscriptionStakingReward = d[dayEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+				w[weekEndTimestamp].SubscriptionStakingReward = w[weekEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+				m[monthEndTimestamp].SubscriptionStakingReward = m[monthEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+				y[yearEndTimestamp].SubscriptionStakingReward = y[yearEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+			}
+			if items[i].PlanID != 0 {
+				d[dayStartTimestamp].SubscriptionStakingReward = d[dayStartTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+				w[weekStartTimestamp].SubscriptionStakingReward = w[weekStartTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+				m[monthStartTimestamp].SubscriptionStakingReward = m[monthStartTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+				y[yearStartTimestamp].SubscriptionStakingReward = y[yearStartTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+			}
 		}
 		if !items[i].StartTimestamp.IsZero() {
 			d[dayStartTimestamp].StartSubscription += 1

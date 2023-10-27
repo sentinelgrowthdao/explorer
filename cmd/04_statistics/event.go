@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
 	hubtypes "github.com/sentinel-official/hub/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/sentinel-official/explorer/database"
 	"github.com/sentinel-official/explorer/types"
@@ -17,177 +15,321 @@ import (
 )
 
 type (
-	EventStatistics struct {
+	SessionEventStatistics struct {
 		Timeframe        string
-		ActiveNode       map[string]int64
 		SessionBandwidth map[uint64]*types.Bandwidth
 		SessionDuration  map[uint64]int64
 	}
+
+	NodeEventStatistics struct {
+		Timeframe  string
+		ActiveNode map[string]int64
+	}
 )
 
-func NewEventStatistics(timeframe string) *EventStatistics {
-	return &EventStatistics{
+func NewSessionEventStatistics(timeframe string) *SessionEventStatistics {
+	return &SessionEventStatistics{
 		Timeframe:        timeframe,
-		ActiveNode:       make(map[string]int64),
 		SessionBandwidth: make(map[uint64]*types.Bandwidth),
 		SessionDuration:  make(map[uint64]int64),
 	}
 }
 
-func (es *EventStatistics) Result(timestamp time.Time) []bson.M {
-	var activeNode int64 = 0
-	for _, v := range es.ActiveNode {
-		activeNode = activeNode + v
-	}
-
+func (ses *SessionEventStatistics) Result(timestamp time.Time) bson.A {
 	var sessionBandwidth = &types.Bandwidth{}
-	for _, v := range es.SessionBandwidth {
+	for _, v := range ses.SessionBandwidth {
 		sessionBandwidth = sessionBandwidth.Add(v)
 	}
 
 	var sessionDuration int64 = 0
-	for _, v := range es.SessionDuration {
+	for _, v := range ses.SessionDuration {
 		sessionDuration = sessionDuration + v
 	}
 
-	return []bson.M{
-		{
-			"type":      types.StatisticTypeActiveNode,
-			"timeframe": es.Timeframe,
-			"timestamp": timestamp,
-			"value":     activeNode,
-		},
-		{
+	return bson.A{
+		bson.M{
 			"type":      types.StatisticTypeSessionBandwidth,
-			"timeframe": es.Timeframe,
+			"timeframe": ses.Timeframe,
 			"timestamp": timestamp,
 			"value":     sessionBandwidth,
 		},
-		{
+		bson.M{
 			"type":      types.StatisticTypeSessionDuration,
-			"timeframe": es.Timeframe,
+			"timeframe": ses.Timeframe,
 			"timestamp": timestamp,
 			"value":     sessionDuration,
 		},
 	}
 }
 
-func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
-	log.Println("StatisticsFromEvents")
+func NewNodeEventStatistics(timeframe string) *NodeEventStatistics {
+	return &NodeEventStatistics{
+		Timeframe:  timeframe,
+		ActiveNode: make(map[string]int64),
+	}
+}
 
-	filter := bson.M{
-		"$or": []bson.M{
-			{
-				"type":   types.EventTypeNodeUpdateStatus,
-				"status": hubtypes.StatusActive.String(),
-			},
-			{
+func (nes *NodeEventStatistics) Result(timestamp time.Time) bson.A {
+	var activeNode int64 = 0
+	for _, v := range nes.ActiveNode {
+		activeNode = activeNode + v
+	}
+
+	return bson.A{
+		bson.M{
+			"type":      types.StatisticTypeActiveNode,
+			"timeframe": nes.Timeframe,
+			"timestamp": timestamp,
+			"value":     activeNode,
+		},
+	}
+}
+
+func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (result bson.A, err error) {
+	log.Println("StatisticsFromSessionEvents")
+
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
 				"type": types.EventTypeSessionUpdateDetails,
 			},
 		},
+		{
+			"$sort": bson.M{
+				"timestamp": -1,
+			},
+		},
+		{
+			"$project": bson.M{
+				"_id":        0,
+				"bandwidth":  1,
+				"duration":   1,
+				"timestamp":  1,
+				"session_id": 1,
+			},
+		},
+		{
+			"$addFields": bson.M{
+				"timestamp": bson.M{
+					"$dateFromParts": bson.M{
+						"day":   bson.M{"$dayOfMonth": "$timestamp"},
+						"month": bson.M{"$month": "$timestamp"},
+						"year":  bson.M{"$year": "$timestamp"},
+					},
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": bson.M{
+					"session_id": "$session_id",
+					"timestamp":  "$timestamp",
+				},
+				"bandwidth": bson.M{"$first": "$bandwidth"},
+				"duration":  bson.M{"$first": "$duration"},
+			},
+		},
+		{
+			"$project": bson.M{
+				"_id":        0,
+				"bandwidth":  "$bandwidth",
+				"duration":   "$duration",
+				"session_id": "$_id.session_id",
+				"timestamp":  "$_id.timestamp",
+			},
+		},
 	}
-	projection := bson.M{
-		"_id":          0,
-		"bandwidth":    1,
-		"duration":     1,
-		"node_address": 1,
-		"session_id":   1,
-		"timestamp":    1,
-		"type":         1,
-	}
-	sort := bson.D{
-		bson.E{Key: "timestamp", Value: 1},
-	}
-	opts := options.Find().
-		SetProjection(projection).
-		SetSort(sort)
 
-	items, err := database.EventFind(ctx, db, filter, opts)
+	items, err := database.EventAggregate(ctx, db, pipeline)
 	if err != nil {
 		return nil, err
 	}
 
 	var (
-		d = make(map[time.Time]*EventStatistics)
-		w = make(map[time.Time]*EventStatistics)
-		m = make(map[time.Time]*EventStatistics)
-		y = make(map[time.Time]*EventStatistics)
+		d = make(map[time.Time]*SessionEventStatistics)
+		w = make(map[time.Time]*SessionEventStatistics)
+		m = make(map[time.Time]*SessionEventStatistics)
+		y = make(map[time.Time]*SessionEventStatistics)
 	)
 
 	for i := 0; i < len(items); i++ {
-		dayTimestamp := utils.DayDate(items[i].Timestamp)
+		bandwidth := types.BandwidthFromInterface(items[i]["bandwidth"])
+		duration := types.Int64FromInterface(items[i]["duration"])
+		sessionID := types.Uint64FromInterface(items[i]["session_id"])
+		timestamp := types.TimeFromInterface(items[i]["timestamp"])
+
+		dayTimestamp := utils.DayDate(timestamp)
 		if _, ok := d[dayTimestamp]; !ok {
-			d[dayTimestamp] = NewEventStatistics("day")
+			d[dayTimestamp] = NewSessionEventStatistics("day")
 		}
 
-		weekTimestamp := utils.ISOWeekDate(items[i].Timestamp)
+		weekTimestamp := utils.ISOWeekDate(timestamp)
 		if _, ok := w[weekTimestamp]; !ok {
-			w[weekTimestamp] = NewEventStatistics("week")
+			w[weekTimestamp] = NewSessionEventStatistics("week")
 		}
 
-		monthTimestamp := utils.MonthDate(items[i].Timestamp)
+		monthTimestamp := utils.MonthDate(timestamp)
 		if _, ok := m[monthTimestamp]; !ok {
-			m[monthTimestamp] = NewEventStatistics("month")
+			m[monthTimestamp] = NewSessionEventStatistics("month")
 		}
 
-		yearTimestamp := utils.YearDate(items[i].Timestamp)
+		yearTimestamp := utils.YearDate(timestamp)
 		if _, ok := y[yearTimestamp]; !ok {
-			y[yearTimestamp] = NewEventStatistics("year")
+			y[yearTimestamp] = NewSessionEventStatistics("year")
 		}
 
-		switch items[i].Type {
-		case types.EventTypeNodeUpdateStatus:
-			d[dayTimestamp].ActiveNode[items[i].NodeAddr] = 1
-			w[weekTimestamp].ActiveNode[items[i].NodeAddr] = 1
-			m[monthTimestamp].ActiveNode[items[i].NodeAddr] = 1
-			y[yearTimestamp].ActiveNode[items[i].NodeAddr] = 1
-		case types.EventTypeSessionUpdateDetails:
-			d[dayTimestamp].SessionBandwidth[items[i].SessionID] = items[i].Bandwidth
-			d[dayTimestamp].SessionDuration[items[i].SessionID] = items[i].Duration
-			if v, ok := d[dayTimestamp.AddDate(0, 0, -1)]; ok {
-				if v, ok := v.SessionBandwidth[items[i].SessionID]; ok {
-					d[dayTimestamp].SessionBandwidth[items[i].SessionID] = d[dayTimestamp].SessionBandwidth[items[i].SessionID].Sub(v)
-				}
-				if v, ok := v.SessionDuration[items[i].SessionID]; ok {
-					d[dayTimestamp].SessionDuration[items[i].SessionID] = d[dayTimestamp].SessionDuration[items[i].SessionID] - v
-				}
-			}
+		d[dayTimestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
+		d[dayTimestamp].SessionDuration[sessionID] = duration
 
-			w[weekTimestamp].SessionBandwidth[items[i].SessionID] = items[i].Bandwidth
-			w[weekTimestamp].SessionDuration[items[i].SessionID] = items[i].Duration
-			if v, ok := w[weekTimestamp.AddDate(0, 0, -7)]; ok {
-				if v, ok := v.SessionBandwidth[items[i].SessionID]; ok {
-					w[weekTimestamp].SessionBandwidth[items[i].SessionID] = w[weekTimestamp].SessionBandwidth[items[i].SessionID].Sub(v)
-				}
-				if v, ok := v.SessionDuration[items[i].SessionID]; ok {
-					w[weekTimestamp].SessionDuration[items[i].SessionID] = w[weekTimestamp].SessionDuration[items[i].SessionID] - v
-				}
-			}
+		w[weekTimestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
+		w[weekTimestamp].SessionDuration[sessionID] = duration
 
-			m[monthTimestamp].SessionBandwidth[items[i].SessionID] = items[i].Bandwidth
-			m[monthTimestamp].SessionDuration[items[i].SessionID] = items[i].Duration
-			if v, ok := m[monthTimestamp.AddDate(0, -1, 0)]; ok {
-				if v, ok := v.SessionBandwidth[items[i].SessionID]; ok {
-					m[monthTimestamp].SessionBandwidth[items[i].SessionID] = m[monthTimestamp].SessionBandwidth[items[i].SessionID].Sub(v)
-				}
-				if v, ok := v.SessionDuration[items[i].SessionID]; ok {
-					m[monthTimestamp].SessionDuration[items[i].SessionID] = m[monthTimestamp].SessionDuration[items[i].SessionID] - v
-				}
-			}
+		m[monthTimestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
+		m[monthTimestamp].SessionDuration[sessionID] = duration
 
-			y[yearTimestamp].SessionBandwidth[items[i].SessionID] = items[i].Bandwidth
-			y[yearTimestamp].SessionDuration[items[i].SessionID] = items[i].Duration
-			if v, ok := y[yearTimestamp.AddDate(-1, 0, 0)]; ok {
-				if v, ok := v.SessionBandwidth[items[i].SessionID]; ok {
-					y[yearTimestamp].SessionBandwidth[items[i].SessionID] = y[yearTimestamp].SessionBandwidth[items[i].SessionID].Sub(v)
-				}
-				if v, ok := v.SessionDuration[items[i].SessionID]; ok {
-					y[yearTimestamp].SessionDuration[items[i].SessionID] = y[yearTimestamp].SessionDuration[items[i].SessionID] - v
-				}
+		y[yearTimestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
+		y[yearTimestamp].SessionDuration[sessionID] = duration
+	}
+
+	for i := 0; i < len(items); i++ {
+		sessionID := types.Uint64FromInterface(items[i]["session_id"])
+		timestamp := types.TimeFromInterface(items[i]["timestamp"])
+
+		dayTimestamp := utils.DayDate(timestamp)
+		if v, ok := d[dayTimestamp.AddDate(0, 0, -1)]; ok {
+			if v, ok := v.SessionBandwidth[sessionID]; ok {
+				d[dayTimestamp].SessionBandwidth[sessionID] = d[dayTimestamp].SessionBandwidth[sessionID].Sub(v)
 			}
-		default:
-			return nil, fmt.Errorf("invalid type %s", items[i].Type)
+			if v, ok := v.SessionDuration[sessionID]; ok {
+				d[dayTimestamp].SessionDuration[sessionID] = d[dayTimestamp].SessionDuration[sessionID] - v
+			}
 		}
+
+		weekTimestamp := utils.ISOWeekDate(timestamp)
+		if v, ok := d[weekTimestamp.AddDate(0, 0, -7)]; ok {
+			if v, ok := v.SessionBandwidth[sessionID]; ok {
+				d[weekTimestamp].SessionBandwidth[sessionID] = d[weekTimestamp].SessionBandwidth[sessionID].Sub(v)
+			}
+			if v, ok := v.SessionDuration[sessionID]; ok {
+				d[weekTimestamp].SessionDuration[sessionID] = d[weekTimestamp].SessionDuration[sessionID] - v
+			}
+		}
+
+		monthTimestamp := utils.MonthDate(timestamp)
+		if v, ok := d[monthTimestamp.AddDate(0, -1, 0)]; ok {
+			if v, ok := v.SessionBandwidth[sessionID]; ok {
+				d[monthTimestamp].SessionBandwidth[sessionID] = d[monthTimestamp].SessionBandwidth[sessionID].Sub(v)
+			}
+			if v, ok := v.SessionDuration[sessionID]; ok {
+				d[monthTimestamp].SessionDuration[sessionID] = d[monthTimestamp].SessionDuration[sessionID] - v
+			}
+		}
+
+		yearTimestamp := utils.YearDate(timestamp)
+		if v, ok := d[yearTimestamp.AddDate(-1, 0, 0)]; ok {
+			if v, ok := v.SessionBandwidth[sessionID]; ok {
+				d[yearTimestamp].SessionBandwidth[sessionID] = d[yearTimestamp].SessionBandwidth[sessionID].Sub(v)
+			}
+			if v, ok := v.SessionDuration[sessionID]; ok {
+				d[yearTimestamp].SessionDuration[sessionID] = d[yearTimestamp].SessionDuration[sessionID] - v
+			}
+		}
+	}
+
+	for t, statistics := range d {
+		result = append(result, statistics.Result(t)...)
+	}
+	for t, statistics := range w {
+		result = append(result, statistics.Result(t)...)
+	}
+	for t, statistics := range m {
+		result = append(result, statistics.Result(t)...)
+	}
+	for t, statistics := range y {
+		result = append(result, statistics.Result(t)...)
+	}
+
+	return result, nil
+}
+
+func StatisticsFromNodeEvents(ctx context.Context, db *mongo.Database) (result bson.A, err error) {
+	log.Println("StatisticsFromNodeEvents")
+
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				"type":   types.EventTypeNodeUpdateStatus,
+				"status": hubtypes.StatusActive.String(),
+			},
+		},
+		{
+			"$addFields": bson.M{
+				"timestamp": bson.M{
+					"$dateFromParts": bson.M{
+						"day":   bson.M{"$dayOfMonth": "$timestamp"},
+						"month": bson.M{"$month": "$timestamp"},
+						"year":  bson.M{"$year": "$timestamp"},
+					},
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": bson.M{
+					"node_addr": "$node_addr",
+					"timestamp": "$timestamp",
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				"_id":       0,
+				"node_addr": "$_id.node_addr",
+				"timestamp": "$_id.timestamp",
+			},
+		},
+	}
+
+	items, err := database.EventAggregate(ctx, db, pipeline)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		d = make(map[time.Time]*NodeEventStatistics)
+		w = make(map[time.Time]*NodeEventStatistics)
+		m = make(map[time.Time]*NodeEventStatistics)
+		y = make(map[time.Time]*NodeEventStatistics)
+	)
+
+	for i := 0; i < len(items); i++ {
+		nodeAddr := types.StringFromInterface(items[i]["node_addr"])
+		timestamp := types.TimeFromInterface(items[i]["timestamp"])
+
+		dayTimestamp := utils.DayDate(timestamp)
+		if _, ok := d[dayTimestamp]; !ok {
+			d[dayTimestamp] = NewNodeEventStatistics("day")
+		}
+
+		weekTimestamp := utils.ISOWeekDate(timestamp)
+		if _, ok := w[weekTimestamp]; !ok {
+			w[weekTimestamp] = NewNodeEventStatistics("week")
+		}
+
+		monthTimestamp := utils.MonthDate(timestamp)
+		if _, ok := m[monthTimestamp]; !ok {
+			m[monthTimestamp] = NewNodeEventStatistics("month")
+		}
+
+		yearTimestamp := utils.YearDate(timestamp)
+		if _, ok := y[yearTimestamp]; !ok {
+			y[yearTimestamp] = NewNodeEventStatistics("year")
+		}
+
+		d[dayTimestamp].ActiveNode[nodeAddr] = 1
+		w[weekTimestamp].ActiveNode[nodeAddr] = 1
+		m[monthTimestamp].ActiveNode[nodeAddr] = 1
+		y[yearTimestamp].ActiveNode[nodeAddr] = 1
 	}
 
 	for t, statistics := range d {
