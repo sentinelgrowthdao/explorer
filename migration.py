@@ -70,6 +70,10 @@ db["events"].update_many(
         }
     },
 )
+db["events"].update_many({"type": "Plan.AddNode"}, {"$set": {"type": "Plan.LinkNode"}})
+db["events"].update_many({"type": "Plan.RemoveNode"}, {"$set": {"type": "Plan.UnlinkNode"}})
+db["events"].update_many({"type": "SubscriptionQuota.UpdateDetails"},
+                         {"$set": {"type": "SubscriptionAllocation.UpdateDetails"}})
 db["events"].update_many({"status": "STATUS_ACTIVE"}, {"$set": {"status": "active"}})
 db["events"].update_many(
     {"status": "STATUS_INACTIVE_PENDING"}, {"$set": {"status": "inactive_pending"}}
