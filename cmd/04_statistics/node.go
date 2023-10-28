@@ -27,9 +27,9 @@ func NewNodeStatistics(timeframe string) *NodeStatistics {
 	}
 }
 
-func (ss *NodeStatistics) Result(timestamp time.Time) bson.A {
-	return bson.A{
-		bson.M{
+func (ss *NodeStatistics) Result(timestamp time.Time) []bson.M {
+	return []bson.M{
+		{
 			"type":      types.StatisticTypeRegisterNode,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
@@ -38,7 +38,7 @@ func (ss *NodeStatistics) Result(timestamp time.Time) bson.A {
 	}
 }
 
-func StatisticsFromNodes(ctx context.Context, db *mongo.Database) (result bson.A, err error) {
+func StatisticsFromNodes(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
 	log.Println("StatisticsFromNodes")
 
 	filter := bson.M{}

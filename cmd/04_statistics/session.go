@@ -33,33 +33,33 @@ func NewSessionStatistics(timeframe string) *SessionStatistics {
 	}
 }
 
-func (ss *SessionStatistics) Result(timestamp time.Time) bson.A {
-	return bson.A{
-		bson.M{
+func (ss *SessionStatistics) Result(timestamp time.Time) []bson.M {
+	return []bson.M{
+		{
 			"type":      types.StatisticTypeActiveSession,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.ActiveSession,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeEndSession,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.EndSession,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeBytesPayment,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.BytesPayment,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeBytesStakingReward,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.BytesStakingReward,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeStartSession,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
@@ -68,7 +68,7 @@ func (ss *SessionStatistics) Result(timestamp time.Time) bson.A {
 	}
 }
 
-func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time) (result bson.A, err error) {
+func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time) (result []bson.M, err error) {
 	log.Println("StatisticsFromSessions", minTimestamp, maxTimestamp)
 
 	filter := bson.M{}

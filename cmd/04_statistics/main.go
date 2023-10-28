@@ -91,72 +91,77 @@ func main() {
 	}
 
 	var (
-		result bson.A
-		group  = errgroup.Group{}
+		m     []bson.M
+		group = errgroup.Group{}
 	)
 
 	group.Go(func() error {
-		items, err := StatisticsFromNodeEvents(context.TODO(), db)
+		v, err := StatisticsFromNodeEvents(context.TODO(), db)
 		if err != nil {
 			return err
 		}
 
-		result = append(result, items...)
+		m = append(m, v...)
 		return nil
 	})
 
 	group.Go(func() error {
-		items, err := StatisticsFromSessionEvents(context.TODO(), db)
+		v, err := StatisticsFromSessionEvents(context.TODO(), db)
 		if err != nil {
 			return err
 		}
 
-		result = append(result, items...)
+		m = append(m, v...)
 		return nil
 	})
 
 	group.Go(func() error {
-		items, err := StatisticsFromNodes(context.TODO(), db)
+		v, err := StatisticsFromNodes(context.TODO(), db)
 		if err != nil {
 			return err
 		}
 
-		result = append(result, items...)
+		m = append(m, v...)
 		return nil
 	})
 
 	group.Go(func() error {
-		items, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp)
+		v, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp)
 		if err != nil {
 			return err
 		}
 
-		result = append(result, items...)
+		m = append(m, v...)
 		return nil
 	})
 
 	group.Go(func() error {
-		items, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp)
+		v, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp)
 		if err != nil {
 			return err
 		}
 
-		result = append(result, items...)
+		m = append(m, v...)
 		return nil
 	})
 
 	group.Go(func() error {
-		items, err := StatisticsFromSubscriptionPayouts(context.TODO(), db, time.Time{}, maxTimestamp)
+		v, err := StatisticsFromSubscriptionPayouts(context.TODO(), db)
 		if err != nil {
 			return err
 		}
 
-		result = append(result, items...)
+		m = append(m, v...)
 		return nil
 	})
 
 	if err := group.Wait(); err != nil {
 		log.Panicln(err)
+	}
+
+	var result bson.A
+	for i := 0; i < len(m); i++ {
+		result = append(result, m[i])
 	}
 
 	err = db.Client().UseSession(

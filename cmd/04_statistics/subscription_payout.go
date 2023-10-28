@@ -30,15 +30,15 @@ func NewSubscriptionPayoutStatistics(timeframe string) *SubscriptionPayoutStatis
 	}
 }
 
-func (sps *SubscriptionPayoutStatistics) Result(timestamp time.Time) bson.A {
-	return bson.A{
-		bson.M{
+func (sps *SubscriptionPayoutStatistics) Result(timestamp time.Time) []bson.M {
+	return []bson.M{
+		{
 			"type":      types.StatisticTypeHoursPayment,
 			"timeframe": sps.Timeframe,
 			"timestamp": timestamp,
 			"value":     sps.HoursPayment,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeHoursStakingReward,
 			"timeframe": sps.Timeframe,
 			"timestamp": timestamp,
@@ -47,8 +47,8 @@ func (sps *SubscriptionPayoutStatistics) Result(timestamp time.Time) bson.A {
 	}
 }
 
-func StatisticsFromSubscriptionPayouts(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time) (result bson.A, err error) {
-	log.Println("StatisticsFromSubscriptionPayouts", minTimestamp, maxTimestamp)
+func StatisticsFromSubscriptionPayouts(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
+	log.Println("StatisticsFromSubscriptionPayouts")
 
 	filter := bson.M{}
 	projection := bson.M{

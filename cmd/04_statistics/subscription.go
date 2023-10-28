@@ -43,75 +43,75 @@ func NewSubscriptionStatistics(timeframe string) *SubscriptionStatistics {
 	}
 }
 
-func (ss *SubscriptionStatistics) Result(timestamp time.Time) bson.A {
-	return bson.A{
-		bson.M{
+func (ss *SubscriptionStatistics) Result(timestamp time.Time) []bson.M {
+	return []bson.M{
+		{
 			"type":      types.StatisticTypeActiveSubscription,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.ActiveSubscription,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeBytesSubscription,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.BytesSubscription,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeEndSubscription,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.EndSubscription,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeHoursSubscription,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.HoursSubscription,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypePlanPayment,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.PlanPayment,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypePlanStakingReward,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.PlanStakingReward,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypePlanSubscription,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.PlanSubscription,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeStartSubscription,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.StartSubscription,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeSubscriptionBytes,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.SubscriptionBytes,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeSubscriptionDeposit,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.SubscriptionDeposit,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeSubscriptionHours,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.SubscriptionHours,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeSubscriptionRefund,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
@@ -120,7 +120,7 @@ func (ss *SubscriptionStatistics) Result(timestamp time.Time) bson.A {
 	}
 }
 
-func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time) (result bson.A, err error) {
+func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time) (result []bson.M, err error) {
 	log.Println("StatisticsFromSubscriptions", minTimestamp, maxTimestamp)
 
 	filter := bson.M{}

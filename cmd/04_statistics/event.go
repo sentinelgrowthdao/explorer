@@ -35,7 +35,7 @@ func NewSessionEventStatistics(timeframe string) *SessionEventStatistics {
 	}
 }
 
-func (ses *SessionEventStatistics) Result(timestamp time.Time) bson.A {
+func (ses *SessionEventStatistics) Result(timestamp time.Time) []bson.M {
 	var sessionBandwidth = &types.Bandwidth{}
 	for _, v := range ses.SessionBandwidth {
 		sessionBandwidth = sessionBandwidth.Add(v)
@@ -46,14 +46,14 @@ func (ses *SessionEventStatistics) Result(timestamp time.Time) bson.A {
 		sessionDuration = sessionDuration + v
 	}
 
-	return bson.A{
-		bson.M{
+	return []bson.M{
+		{
 			"type":      types.StatisticTypeSessionBytes,
 			"timeframe": ses.Timeframe,
 			"timestamp": timestamp,
 			"value":     sessionBandwidth,
 		},
-		bson.M{
+		{
 			"type":      types.StatisticTypeSessionDuration,
 			"timeframe": ses.Timeframe,
 			"timestamp": timestamp,
@@ -69,14 +69,14 @@ func NewNodeEventStatistics(timeframe string) *NodeEventStatistics {
 	}
 }
 
-func (nes *NodeEventStatistics) Result(timestamp time.Time) bson.A {
+func (nes *NodeEventStatistics) Result(timestamp time.Time) []bson.M {
 	var activeNode int64 = 0
 	for _, v := range nes.ActiveNode {
 		activeNode = activeNode + v
 	}
 
-	return bson.A{
-		bson.M{
+	return []bson.M{
+		{
 			"type":      types.StatisticTypeActiveNode,
 			"timeframe": nes.Timeframe,
 			"timestamp": timestamp,
@@ -85,7 +85,7 @@ func (nes *NodeEventStatistics) Result(timestamp time.Time) bson.A {
 	}
 }
 
-func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (result bson.A, err error) {
+func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
 	log.Println("StatisticsFromSessionEvents")
 
 	pipeline := []bson.M{
@@ -252,7 +252,7 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (resul
 	return result, nil
 }
 
-func StatisticsFromNodeEvents(ctx context.Context, db *mongo.Database) (result bson.A, err error) {
+func StatisticsFromNodeEvents(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
 	log.Println("StatisticsFromNodeEvents")
 
 	pipeline := []bson.M{
