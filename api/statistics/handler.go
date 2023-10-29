@@ -138,7 +138,7 @@ func handleHistorical(db *mongo.Database, t string, req *RequestGetStatistics) (
 	return database.StatisticFind(context.TODO(), db, filter, opts)
 }
 
-func handleTotal(db *mongo.Database, t, unwind string, _id, value string, req *RequestGetStatistics) ([]bson.M, error) {
+func handleTotal(db *mongo.Database, t, unwind, _id, value interface{}, req *RequestGetStatistics) ([]bson.M, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
@@ -150,23 +150,37 @@ func handleTotal(db *mongo.Database, t, unwind string, _id, value string, req *R
 				},
 			},
 		},
-		{
-			"$unwind": unwind,
-		},
-		{
-			"$group": bson.M{
-				"_id": _id,
-				"value": bson.M{
-					"$sum": value,
+	}
+
+	if unwind != nil {
+		pipeline = append(
+			pipeline,
+			bson.M{
+				"$unwind": unwind,
+			},
+		)
+	}
+
+	pipeline = append(
+		pipeline,
+		[]bson.M{
+			{
+				"$group": bson.M{
+					"_id": _id,
+					"value": bson.M{
+						"$sum": bson.M{
+							"$toLong": value,
+						},
+					},
 				},
 			},
-		},
-		{
-			"$sort": bson.D{
-				bson.E{Key: "_id", Value: 1},
+			{
+				"$sort": bson.D{
+					bson.E{Key: "_id", Value: 1},
+				},
 			},
-		},
-	}
+		}...,
+	)
 
 	return database.StatisticAggregate(context.TODO(), db, pipeline)
 }
@@ -353,22 +367,18 @@ func handleTotalSessionBytes(db *mongo.Database, req *RequestGetStatistics) ([]b
 			},
 		},
 		{
-			"$unwind": "$_id",
-		},
-		{
 			"$group": bson.M{
-				"_id": "",
+				"_id": nil,
 				"download": bson.M{
-					"$sum": "$value.download",
+					"$sum": bson.M{
+						"$toLong": "$value.download",
+					},
 				},
 				"upload": bson.M{
-					"$sum": "$value.upload",
+					"$sum": bson.M{
+						"$toLong": "$value.upload",
+					},
 				},
-			},
-		},
-		{
-			"$sort": bson.D{
-				bson.E{Key: "_id", Value: 1},
 			},
 		},
 		{
@@ -386,7 +396,7 @@ func handleTotalSessionBytes(db *mongo.Database, req *RequestGetStatistics) ([]b
 }
 
 func handleTotalSessionDuration(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	return handleTotal(db, types.StatisticTypeSessionDuration, "$_id", "", "$value", req)
+	return handleTotal(db, types.StatisticTypeSessionDuration, nil, nil, "$value", req)
 }
 
 func handleTotalBytesPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
