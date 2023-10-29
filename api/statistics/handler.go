@@ -37,6 +37,7 @@ var (
 		types.StatisticMethodHistoricalActiveSubscriptionCount: handleHistoricalActiveSubscriptionsCount,
 		types.StatisticMethodHistoricalEndSessionCount:         handleHistoricalEndSessionsCount,
 		types.StatisticMethodHistoricalEndSubscriptionCount:    handleHistoricalEndSubscriptionsCount,
+		types.StatisticMethodHistoricalHoursPayment:            handleHistoricalHoursPayments,
 		types.StatisticMethodHistoricalRegisterNodeCount:       handleHistoricalRegisterNodesCount,
 		types.StatisticMethodHistoricalSessionBytes:            handleHistoricalSessionBytess,
 		types.StatisticMethodHistoricalSessionDuration:         handleHistoricalSessionDurations,
@@ -348,6 +349,10 @@ func handleHistoricalSubscriptionDeposits(db *mongo.Database, req *RequestGetSta
 
 func handleHistoricalPlanPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
 	return handleHistorical(db, types.StatisticTypePlanPayment, req)
+}
+
+func handleHistoricalHoursPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleHistorical(db, types.StatisticTypeHoursPayment, req)
 }
 
 func handleHistoricalPlanStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {

@@ -22,6 +22,7 @@ var (
 		types.StatisticMethodHistoricalSubscriptionDeposit:     validateHistoricalSubscriptionDeposits,
 		types.StatisticMethodHistoricalPlanPayment:             validateHistoricalPlanPayments,
 		types.StatisticMethodHistoricalPlanStakingReward:       validateHistoricalPlanStakingRewards,
+		types.StatisticMethodHistoricalHoursPayment:            validateHistoricalHoursPayment,
 	}
 )
 
@@ -214,6 +215,18 @@ func validateHistoricalPlanPayments(req *RequestGetStatistics) (err error) {
 }
 
 func validateHistoricalPlanStakingRewards(req *RequestGetStatistics) (err error) {
+	allowed := []string{
+		"-timestamp",
+		"timestamp",
+	}
+	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateHistoricalHoursPayment(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
