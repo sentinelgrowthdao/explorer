@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"sort"
 	"time"
 
 	hubtypes "github.com/sentinel-official/hub/types"
@@ -99,8 +100,8 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (resul
 				"_id":        0,
 				"bandwidth":  1,
 				"duration":   1,
-				"timestamp":  1,
 				"session_id": 1,
+				"timestamp":  1,
 			},
 		},
 		{
@@ -133,6 +134,11 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (resul
 				"timestamp":  "$_id.timestamp",
 			},
 		},
+		{
+			"$sort": bson.M{
+				"timestamp": 1,
+			},
+		},
 	}
 
 	items, err := database.EventAggregate(ctx, db, pipeline)
@@ -141,10 +147,14 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (resul
 	}
 
 	var (
-		d = make(map[time.Time]*SessionEventStatistics)
-		w = make(map[time.Time]*SessionEventStatistics)
-		m = make(map[time.Time]*SessionEventStatistics)
-		y = make(map[time.Time]*SessionEventStatistics)
+		wKeys []time.Time
+		mKeys []time.Time
+		yKeys []time.Time
+		dKeys []time.Time
+		d     = make(map[time.Time]*SessionEventStatistics)
+		w     = make(map[time.Time]*SessionEventStatistics)
+		m     = make(map[time.Time]*SessionEventStatistics)
+		y     = make(map[time.Time]*SessionEventStatistics)
 	)
 
 	for i := 0; i < len(items); i++ {
@@ -155,22 +165,22 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (resul
 
 		dayTimestamp := utils.DayDate(timestamp)
 		if _, ok := d[dayTimestamp]; !ok {
-			d[dayTimestamp] = NewSessionEventStatistics("day")
+			dKeys, d[dayTimestamp] = append(dKeys, dayTimestamp), NewSessionEventStatistics("day")
 		}
 
 		weekTimestamp := utils.ISOWeekDate(timestamp)
 		if _, ok := w[weekTimestamp]; !ok {
-			w[weekTimestamp] = NewSessionEventStatistics("week")
+			wKeys, w[weekTimestamp] = append(wKeys, weekTimestamp), NewSessionEventStatistics("week")
 		}
 
 		monthTimestamp := utils.MonthDate(timestamp)
 		if _, ok := m[monthTimestamp]; !ok {
-			m[monthTimestamp] = NewSessionEventStatistics("month")
+			mKeys, m[monthTimestamp] = append(mKeys, monthTimestamp), NewSessionEventStatistics("month")
 		}
 
 		yearTimestamp := utils.YearDate(timestamp)
 		if _, ok := y[yearTimestamp]; !ok {
-			y[yearTimestamp] = NewSessionEventStatistics("year")
+			yKeys, y[yearTimestamp] = append(yKeys, yearTimestamp), NewSessionEventStatistics("year")
 		}
 
 		d[dayTimestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
@@ -186,47 +196,67 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (resul
 		y[yearTimestamp].SessionDuration[sessionID] = duration
 	}
 
-	for i := 0; i < len(items); i++ {
-		sessionID := types.Uint64FromInterface(items[i]["session_id"])
-		timestamp := types.TimeFromInterface(items[i]["timestamp"])
+	sort.Slice(dKeys, func(i, j int) bool {
+		return dKeys[i].After(dKeys[j])
+	})
+	sort.Slice(wKeys, func(i, j int) bool {
+		return wKeys[i].After(wKeys[j])
+	})
+	sort.Slice(mKeys, func(i, j int) bool {
+		return mKeys[i].After(mKeys[j])
+	})
+	sort.Slice(yKeys, func(i, j int) bool {
+		return yKeys[i].After(yKeys[j])
+	})
 
-		dayTimestamp := utils.DayDate(timestamp)
-		if v, ok := d[dayTimestamp.AddDate(0, 0, -1)]; ok {
-			if v, ok := v.SessionBandwidth[sessionID]; ok {
-				d[dayTimestamp].SessionBandwidth[sessionID] = d[dayTimestamp].SessionBandwidth[sessionID].Sub(v)
-			}
-			if v, ok := v.SessionDuration[sessionID]; ok {
-				d[dayTimestamp].SessionDuration[sessionID] = d[dayTimestamp].SessionDuration[sessionID] - v
+	for _, t := range dKeys {
+		for u := range d[t].SessionBandwidth {
+			if v, ok := d[t.AddDate(0, 0, -1)]; ok {
+				if v, ok := v.SessionBandwidth[u]; ok {
+					d[t].SessionBandwidth[u] = d[t].SessionBandwidth[u].Sub(v)
+				}
+				if v, ok := v.SessionDuration[u]; ok {
+					d[t].SessionDuration[u] = d[t].SessionDuration[u] - v
+				}
 			}
 		}
+	}
 
-		weekTimestamp := utils.ISOWeekDate(timestamp)
-		if v, ok := d[weekTimestamp.AddDate(0, 0, -7)]; ok {
-			if v, ok := v.SessionBandwidth[sessionID]; ok {
-				d[weekTimestamp].SessionBandwidth[sessionID] = d[weekTimestamp].SessionBandwidth[sessionID].Sub(v)
-			}
-			if v, ok := v.SessionDuration[sessionID]; ok {
-				d[weekTimestamp].SessionDuration[sessionID] = d[weekTimestamp].SessionDuration[sessionID] - v
+	for _, t := range wKeys {
+		for u := range w[t].SessionBandwidth {
+			if v, ok := w[t.AddDate(0, 0, -7)]; ok {
+				if v, ok := v.SessionBandwidth[u]; ok {
+					w[t].SessionBandwidth[u] = w[t].SessionBandwidth[u].Sub(v)
+				}
+				if v, ok := v.SessionDuration[u]; ok {
+					w[t].SessionDuration[u] = w[t].SessionDuration[u] - v
+				}
 			}
 		}
+	}
 
-		monthTimestamp := utils.MonthDate(timestamp)
-		if v, ok := d[monthTimestamp.AddDate(0, -1, 0)]; ok {
-			if v, ok := v.SessionBandwidth[sessionID]; ok {
-				d[monthTimestamp].SessionBandwidth[sessionID] = d[monthTimestamp].SessionBandwidth[sessionID].Sub(v)
-			}
-			if v, ok := v.SessionDuration[sessionID]; ok {
-				d[monthTimestamp].SessionDuration[sessionID] = d[monthTimestamp].SessionDuration[sessionID] - v
+	for _, t := range mKeys {
+		for u := range m[t].SessionBandwidth {
+			if v, ok := m[t.AddDate(0, -1, 0)]; ok {
+				if v, ok := v.SessionBandwidth[u]; ok {
+					m[t].SessionBandwidth[u] = m[t].SessionBandwidth[u].Sub(v)
+				}
+				if v, ok := v.SessionDuration[u]; ok {
+					m[t].SessionDuration[u] = m[t].SessionDuration[u] - v
+				}
 			}
 		}
+	}
 
-		yearTimestamp := utils.YearDate(timestamp)
-		if v, ok := d[yearTimestamp.AddDate(-1, 0, 0)]; ok {
-			if v, ok := v.SessionBandwidth[sessionID]; ok {
-				d[yearTimestamp].SessionBandwidth[sessionID] = d[yearTimestamp].SessionBandwidth[sessionID].Sub(v)
-			}
-			if v, ok := v.SessionDuration[sessionID]; ok {
-				d[yearTimestamp].SessionDuration[sessionID] = d[yearTimestamp].SessionDuration[sessionID] - v
+	for _, t := range yKeys {
+		for u := range y[t].SessionBandwidth {
+			if v, ok := y[t.AddDate(-1, 0, 0)]; ok {
+				if v, ok := v.SessionBandwidth[u]; ok {
+					y[t].SessionBandwidth[u] = y[t].SessionBandwidth[u].Sub(v)
+				}
+				if v, ok := v.SessionDuration[u]; ok {
+					y[t].SessionDuration[u] = y[t].SessionDuration[u] - v
+				}
 			}
 		}
 	}
