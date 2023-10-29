@@ -27,13 +27,13 @@ func NewNodeStatistics(timeframe string) *NodeStatistics {
 	}
 }
 
-func (ss *NodeStatistics) Result(timestamp time.Time) []bson.M {
+func (s *NodeStatistics) Result(timestamp time.Time) []bson.M {
 	return []bson.M{
 		{
 			"type":      types.StatisticTypeRegisterNode,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.RegisterNode,
+			"value":     s.RegisterNode,
 		},
 	}
 }

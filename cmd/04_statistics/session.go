@@ -17,6 +17,7 @@ import (
 type (
 	SessionStatistics struct {
 		Timeframe          string
+		ActiveAddress      map[string]bool
 		ActiveSession      int64
 		EndSession         int64
 		BytesPayment       types.Coins
@@ -28,6 +29,7 @@ type (
 func NewSessionStatistics(timeframe string) *SessionStatistics {
 	return &SessionStatistics{
 		Timeframe:          timeframe,
+		ActiveAddress:      make(map[string]bool),
 		BytesPayment:       types.NewCoins(nil),
 		BytesStakingReward: types.NewCoins(nil),
 	}
@@ -35,6 +37,12 @@ func NewSessionStatistics(timeframe string) *SessionStatistics {
 
 func (ss *SessionStatistics) Result(timestamp time.Time) []bson.M {
 	return []bson.M{
+		{
+			"type":      types.StatisticTypeActiveAddress,
+			"timeframe": ss.Timeframe,
+			"timestamp": timestamp,
+			"value":     len(ss.ActiveAddress),
+		},
 		{
 			"type":      types.StatisticTypeActiveSession,
 			"timeframe": ss.Timeframe,
@@ -74,6 +82,7 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 	filter := bson.M{}
 	projection := bson.M{
 		"_id":             0,
+		"acc_addr":        1,
 		"end_timestamp":   1,
 		"payment":         1,
 		"staking_reward":  1,
@@ -109,6 +118,7 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				d[t] = NewSessionStatistics("day")
 			}
 
+			d[t].ActiveAddress[items[i].AccAddr] = true
 			d[t].ActiveSession += 1
 		}
 
@@ -118,6 +128,7 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				w[t] = NewSessionStatistics("week")
 			}
 
+			w[t].ActiveAddress[items[i].AccAddr] = true
 			w[t].ActiveSession += 1
 		}
 
@@ -127,6 +138,7 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				m[t] = NewSessionStatistics("month")
 			}
 
+			m[t].ActiveAddress[items[i].AccAddr] = true
 			m[t].ActiveSession += 1
 		}
 
@@ -136,6 +148,7 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				y[t] = NewSessionStatistics("year")
 			}
 
+			y[t].ActiveAddress[items[i].AccAddr] = true
 			y[t].ActiveSession += 1
 		}
 

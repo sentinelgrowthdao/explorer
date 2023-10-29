@@ -23,7 +23,7 @@ type (
 
 	NodeEventStatistics struct {
 		Timeframe  string
-		ActiveNode map[string]int64
+		ActiveNode map[string]bool
 	}
 )
 
@@ -35,27 +35,27 @@ func NewSessionEventStatistics(timeframe string) *SessionEventStatistics {
 	}
 }
 
-func (ses *SessionEventStatistics) Result(timestamp time.Time) []bson.M {
+func (s *SessionEventStatistics) Result(timestamp time.Time) []bson.M {
 	var sessionBandwidth = &types.Bandwidth{}
-	for _, v := range ses.SessionBandwidth {
+	for _, v := range s.SessionBandwidth {
 		sessionBandwidth = sessionBandwidth.Add(v)
 	}
 
 	var sessionDuration int64 = 0
-	for _, v := range ses.SessionDuration {
+	for _, v := range s.SessionDuration {
 		sessionDuration = sessionDuration + v
 	}
 
 	return []bson.M{
 		{
 			"type":      types.StatisticTypeSessionBytes,
-			"timeframe": ses.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
 			"value":     sessionBandwidth,
 		},
 		{
 			"type":      types.StatisticTypeSessionDuration,
-			"timeframe": ses.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
 			"value":     sessionDuration,
 		},
@@ -65,22 +65,17 @@ func (ses *SessionEventStatistics) Result(timestamp time.Time) []bson.M {
 func NewNodeEventStatistics(timeframe string) *NodeEventStatistics {
 	return &NodeEventStatistics{
 		Timeframe:  timeframe,
-		ActiveNode: make(map[string]int64),
+		ActiveNode: make(map[string]bool),
 	}
 }
 
-func (nes *NodeEventStatistics) Result(timestamp time.Time) []bson.M {
-	var activeNode int64 = 0
-	for _, v := range nes.ActiveNode {
-		activeNode = activeNode + v
-	}
-
+func (s *NodeEventStatistics) Result(timestamp time.Time) []bson.M {
 	return []bson.M{
 		{
 			"type":      types.StatisticTypeActiveNode,
-			"timeframe": nes.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     activeNode,
+			"value":     len(s.ActiveNode),
 		},
 	}
 }
@@ -326,10 +321,10 @@ func StatisticsFromNodeEvents(ctx context.Context, db *mongo.Database) (result [
 			y[yearTimestamp] = NewNodeEventStatistics("year")
 		}
 
-		d[dayTimestamp].ActiveNode[nodeAddr] = 1
-		w[weekTimestamp].ActiveNode[nodeAddr] = 1
-		m[monthTimestamp].ActiveNode[nodeAddr] = 1
-		y[yearTimestamp].ActiveNode[nodeAddr] = 1
+		d[dayTimestamp].ActiveNode[nodeAddr] = true
+		w[weekTimestamp].ActiveNode[nodeAddr] = true
+		m[monthTimestamp].ActiveNode[nodeAddr] = true
+		y[yearTimestamp].ActiveNode[nodeAddr] = true
 	}
 
 	for t, statistics := range d {

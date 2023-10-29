@@ -43,79 +43,79 @@ func NewSubscriptionStatistics(timeframe string) *SubscriptionStatistics {
 	}
 }
 
-func (ss *SubscriptionStatistics) Result(timestamp time.Time) []bson.M {
+func (s *SubscriptionStatistics) Result(timestamp time.Time) []bson.M {
 	return []bson.M{
 		{
 			"type":      types.StatisticTypeActiveSubscription,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.ActiveSubscription,
+			"value":     s.ActiveSubscription,
 		},
 		{
 			"type":      types.StatisticTypeBytesSubscription,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.BytesSubscription,
+			"value":     s.BytesSubscription,
 		},
 		{
 			"type":      types.StatisticTypeEndSubscription,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.EndSubscription,
+			"value":     s.EndSubscription,
 		},
 		{
 			"type":      types.StatisticTypeHoursSubscription,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.HoursSubscription,
+			"value":     s.HoursSubscription,
 		},
 		{
 			"type":      types.StatisticTypePlanPayment,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.PlanPayment,
+			"value":     s.PlanPayment,
 		},
 		{
 			"type":      types.StatisticTypePlanStakingReward,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.PlanStakingReward,
+			"value":     s.PlanStakingReward,
 		},
 		{
 			"type":      types.StatisticTypePlanSubscription,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.PlanSubscription,
+			"value":     s.PlanSubscription,
 		},
 		{
 			"type":      types.StatisticTypeStartSubscription,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.StartSubscription,
+			"value":     s.StartSubscription,
 		},
 		{
 			"type":      types.StatisticTypeSubscriptionBytes,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.SubscriptionBytes,
+			"value":     s.SubscriptionBytes,
 		},
 		{
 			"type":      types.StatisticTypeSubscriptionDeposit,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.SubscriptionDeposit,
+			"value":     s.SubscriptionDeposit,
 		},
 		{
 			"type":      types.StatisticTypeSubscriptionHours,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.SubscriptionHours,
+			"value":     s.SubscriptionHours,
 		},
 		{
 			"type":      types.StatisticTypeSubscriptionRefund,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.SubscriptionRefund,
+			"value":     s.SubscriptionRefund,
 		},
 	}
 }

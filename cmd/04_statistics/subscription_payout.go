@@ -30,19 +30,19 @@ func NewSubscriptionPayoutStatistics(timeframe string) *SubscriptionPayoutStatis
 	}
 }
 
-func (sps *SubscriptionPayoutStatistics) Result(timestamp time.Time) []bson.M {
+func (s *SubscriptionPayoutStatistics) Result(timestamp time.Time) []bson.M {
 	return []bson.M{
 		{
 			"type":      types.StatisticTypeHoursPayment,
-			"timeframe": sps.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     sps.HoursPayment,
+			"value":     s.HoursPayment,
 		},
 		{
 			"type":      types.StatisticTypeHoursStakingReward,
-			"timeframe": sps.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     sps.HoursStakingReward,
+			"value":     s.HoursStakingReward,
 		},
 	}
 }
