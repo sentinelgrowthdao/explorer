@@ -83,8 +83,8 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 		{
 			"$group": bson.M{
 				"_id": bson.M{
-					"timestamp":  "$timestamp",
 					"session_id": "$session_id",
+					"timestamp":  "$timestamp",
 				},
 				"bandwidth": bson.M{"$first": "$bandwidth"},
 				"duration":  bson.M{"$first": "$duration"},

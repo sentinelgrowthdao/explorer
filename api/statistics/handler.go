@@ -54,6 +54,7 @@ var (
 		types.StatisticMethodTotalBytesStakingReward:           handleTotalBytesStakingRewards,
 		types.StatisticMethodTotalSubscriptionDeposit:          handleTotalSubscriptionDeposits,
 		types.StatisticMethodTotalPlanPayment:                  handleTotalPlanPayments,
+		types.StatisticMethodHistoricalActiveAddressCount:      handleHistoricalActiveAddressCount,
 		types.StatisticMethodTotalPlanStakingReward:            handleTotalPlanStakingRewards,
 	}
 )
@@ -301,6 +302,10 @@ func handleHistoricalActiveNodesCount(db *mongo.Database, req *RequestGetStatist
 
 func handleHistoricalActiveSessionsCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
 	return handleHistorical(db, types.StatisticTypeActiveSession, req)
+}
+
+func handleHistoricalActiveAddressCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleHistorical(db, types.StatisticTypeActiveAddress, req)
 }
 
 func handleHistoricalActiveSubscriptionsCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
