@@ -132,6 +132,15 @@ func CountDocuments(ctx context.Context, c *mongo.Collection, filter bson.M, opt
 	return c.CountDocuments(ctx, filter, opts...)
 }
 
+func Distinct(ctx context.Context, c *mongo.Collection, fieldName string, filter bson.M, opts ...*options.DistinctOptions) (bson.A, error) {
+	now := time.Now()
+	defer func() {
+		log.Println(c.Name(), "CountDocuments", time.Since(now))
+	}()
+
+	return c.Distinct(ctx, fieldName, filter, opts...)
+}
+
 func Drop(ctx context.Context, c *mongo.Collection) error {
 	now := time.Now()
 	defer func() {

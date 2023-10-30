@@ -17,11 +17,12 @@ import (
 type (
 	SessionStatistics struct {
 		Timeframe          string
-		ActiveAddress      map[string]bool
 		ActiveSession      int64
-		EndSession         int64
 		BytesPayment       types.Coins
 		BytesStakingReward types.Coins
+		EndSession         int64
+		SessionAddress     map[string]bool
+		SessionNode        map[string]bool
 		StartSession       int64
 	}
 )
@@ -29,31 +30,20 @@ type (
 func NewSessionStatistics(timeframe string) *SessionStatistics {
 	return &SessionStatistics{
 		Timeframe:          timeframe,
-		ActiveAddress:      make(map[string]bool),
 		BytesPayment:       types.NewCoins(nil),
 		BytesStakingReward: types.NewCoins(nil),
+		SessionAddress:     make(map[string]bool),
+		SessionNode:        make(map[string]bool),
 	}
 }
 
 func (ss *SessionStatistics) Result(timestamp time.Time) []bson.M {
 	return []bson.M{
 		{
-			"type":      types.StatisticTypeActiveAddress,
-			"timeframe": ss.Timeframe,
-			"timestamp": timestamp,
-			"value":     len(ss.ActiveAddress),
-		},
-		{
 			"type":      types.StatisticTypeActiveSession,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.ActiveSession,
-		},
-		{
-			"type":      types.StatisticTypeEndSession,
-			"timeframe": ss.Timeframe,
-			"timestamp": timestamp,
-			"value":     ss.EndSession,
 		},
 		{
 			"type":      types.StatisticTypeBytesPayment,
@@ -66,6 +56,24 @@ func (ss *SessionStatistics) Result(timestamp time.Time) []bson.M {
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.BytesStakingReward,
+		},
+		{
+			"type":      types.StatisticTypeEndSession,
+			"timeframe": ss.Timeframe,
+			"timestamp": timestamp,
+			"value":     ss.EndSession,
+		},
+		{
+			"type":      types.StatisticTypeSessionAddress,
+			"timeframe": ss.Timeframe,
+			"timestamp": timestamp,
+			"value":     len(ss.SessionAddress),
+		},
+		{
+			"type":      types.StatisticTypeSessionNode,
+			"timeframe": ss.Timeframe,
+			"timestamp": timestamp,
+			"value":     len(ss.SessionNode),
 		},
 		{
 			"type":      types.StatisticTypeStartSession,
@@ -83,6 +91,7 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 	projection := bson.M{
 		"_id":             0,
 		"acc_addr":        1,
+		"node_addr":       1,
 		"end_timestamp":   1,
 		"payment":         1,
 		"staking_reward":  1,
@@ -118,7 +127,8 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				d[t] = NewSessionStatistics("day")
 			}
 
-			d[t].ActiveAddress[items[i].AccAddr] = true
+			d[t].SessionAddress[items[i].AccAddr] = true
+			d[t].SessionNode[items[i].NodeAddr] = true
 			d[t].ActiveSession += 1
 		}
 
@@ -128,7 +138,8 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				w[t] = NewSessionStatistics("week")
 			}
 
-			w[t].ActiveAddress[items[i].AccAddr] = true
+			w[t].SessionAddress[items[i].AccAddr] = true
+			w[t].SessionNode[items[i].NodeAddr] = true
 			w[t].ActiveSession += 1
 		}
 
@@ -138,7 +149,8 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				m[t] = NewSessionStatistics("month")
 			}
 
-			m[t].ActiveAddress[items[i].AccAddr] = true
+			m[t].SessionAddress[items[i].AccAddr] = true
+			m[t].SessionNode[items[i].NodeAddr] = true
 			m[t].ActiveSession += 1
 		}
 
@@ -148,7 +160,8 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				y[t] = NewSessionStatistics("year")
 			}
 
-			y[t].ActiveAddress[items[i].AccAddr] = true
+			y[t].SessionAddress[items[i].AccAddr] = true
+			y[t].SessionNode[items[i].NodeAddr] = true
 			y[t].ActiveSession += 1
 		}
 
