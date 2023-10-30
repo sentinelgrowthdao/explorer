@@ -26,6 +26,7 @@ var (
 		types.StatisticMethodAverageBytesStakingReward:         handleAverageBytesStakingRewards,
 		types.StatisticMethodAverageStartSessionCount:          handleAverageStartSessionsCount,
 		types.StatisticMethodAverageStartSubscriptionCount:     handleAverageStartSubscriptionsCount,
+		types.StatisticMethodHistoricalHoursStakingReward:      handleHistoricalHoursStakingReward,
 		types.StatisticMethodAverageSubscriptionDeposit:        handleAverageSubscriptionDeposits,
 		types.StatisticMethodAveragePlanPayment:                handleAveragePlanPayments,
 		types.StatisticMethodAveragePlanStakingReward:          handleAveragePlanStakingRewards,
@@ -334,6 +335,10 @@ func handleHistoricalSessionDurations(db *mongo.Database, req *RequestGetStatist
 
 func handleHistoricalBytesPayments(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
 	return handleHistorical(db, types.StatisticTypeBytesPayment, req)
+}
+
+func handleHistoricalHoursStakingReward(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+	return handleHistorical(db, types.StatisticTypeHoursStakingReward, req)
 }
 
 func handleHistoricalBytesStakingRewards(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {

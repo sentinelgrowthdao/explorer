@@ -17,6 +17,7 @@ var (
 		types.StatisticMethodHistoricalSessionDuration:         validateHistoricalSessionDurations,
 		types.StatisticMethodHistoricalActiveAddressCount:      validateHistoricalActiveAddressCount,
 		types.StatisticMethodHistoricalBytesPayment:            validateHistoricalBytesPayments,
+		types.StatisticMethodHistoricalHoursStakingReward:      validateHistoricalHoursStakingReward,
 		types.StatisticMethodHistoricalBytesStakingReward:      validateHistoricalBytesStakingRewards,
 		types.StatisticMethodHistoricalStartSessionCount:       validateHistoricalStartSessionsCount,
 		types.StatisticMethodHistoricalStartSubscriptionCount:  validateHistoricalStartSubscriptionsCount,
@@ -240,6 +241,18 @@ func validateHistoricalHoursPayment(req *RequestGetStatistics) (err error) {
 }
 
 func validateHistoricalActiveAddressCount(req *RequestGetStatistics) (err error) {
+	allowed := []string{
+		"-timestamp",
+		"timestamp",
+	}
+	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateHistoricalHoursStakingReward(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
