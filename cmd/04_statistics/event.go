@@ -105,24 +105,29 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (resul
 			},
 		},
 		{
-			"$addFields": bson.M{
-				"timestamp": bson.M{
-					"$dateFromParts": bson.M{
-						"day":   bson.M{"$dayOfMonth": "$timestamp"},
-						"month": bson.M{"$month": "$timestamp"},
-						"year":  bson.M{"$year": "$timestamp"},
-					},
-				},
-			},
-		},
-		{
 			"$group": bson.M{
 				"_id": bson.M{
 					"session_id": "$session_id",
-					"timestamp":  "$timestamp",
+					"timestamp": bson.M{
+						"$dateFromParts": bson.M{
+							"day": bson.M{
+								"$dayOfMonth": "$timestamp",
+							},
+							"month": bson.M{
+								"$month": "$timestamp",
+							},
+							"year": bson.M{
+								"$year": "$timestamp",
+							},
+						},
+					},
 				},
-				"bandwidth": bson.M{"$first": "$bandwidth"},
-				"duration":  bson.M{"$first": "$duration"},
+				"bandwidth": bson.M{
+					"$first": "$bandwidth",
+				},
+				"duration": bson.M{
+					"$first": "$duration",
+				},
 			},
 		},
 		{
@@ -288,21 +293,22 @@ func StatisticsFromNodeEvents(ctx context.Context, db *mongo.Database) (result [
 			},
 		},
 		{
-			"$addFields": bson.M{
-				"timestamp": bson.M{
-					"$dateFromParts": bson.M{
-						"day":   bson.M{"$dayOfMonth": "$timestamp"},
-						"month": bson.M{"$month": "$timestamp"},
-						"year":  bson.M{"$year": "$timestamp"},
-					},
-				},
-			},
-		},
-		{
 			"$group": bson.M{
 				"_id": bson.M{
 					"node_addr": "$node_addr",
-					"timestamp": "$timestamp",
+					"timestamp": bson.M{
+						"$dateFromParts": bson.M{
+							"day": bson.M{
+								"$dayOfMonth": "$timestamp",
+							},
+							"month": bson.M{
+								"$month": "$timestamp",
+							},
+							"year": bson.M{
+								"$year": "$timestamp",
+							},
+						},
+					},
 				},
 			},
 		},
