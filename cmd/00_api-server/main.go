@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	blockapi "github.com/sentinel-official/explorer/api/block"
 	depositapi "github.com/sentinel-official/explorer/api/deposit"
@@ -16,6 +18,7 @@ import (
 	statisticsapi "github.com/sentinel-official/explorer/api/statistics"
 	subscriptionapi "github.com/sentinel-official/explorer/api/subscription"
 	txapi "github.com/sentinel-official/explorer/api/tx"
+	"github.com/sentinel-official/explorer/database"
 	"github.com/sentinel-official/explorer/utils"
 )
 
@@ -38,14 +41,48 @@ func init() {
 	flag.Parse()
 }
 
+func createIndexes(ctx context.Context, db *mongo.Database) error {
+	indexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "status", Value: 1},
+			},
+		},
+	}
+
+	_, err := database.NodeIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "status", Value: 1},
+			},
+		},
+	}
+
+	_, err = database.SessionIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	db, err := utils.PrepareDatabase(context.TODO(), appName, dbUsername, dbPassword, dbAddress, dbName)
 	if err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	if err = db.Client().Ping(context.TODO(), nil); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
+	}
+
+	if err := createIndexes(context.TODO(), db); err != nil {
+		log.Fatalln(err)
 	}
 
 	engine := gin.Default()
@@ -62,6 +99,6 @@ func main() {
 	txapi.RegisterRoutes(router, db)
 
 	if err := http.ListenAndServe(":8080", engine); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 }

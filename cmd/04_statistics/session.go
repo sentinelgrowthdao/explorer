@@ -127,9 +127,9 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				d[t] = NewSessionStatistics("day")
 			}
 
+			d[t].ActiveSession += 1
 			d[t].SessionAddress[items[i].AccAddr] = true
 			d[t].SessionNode[items[i].NodeAddr] = true
-			d[t].ActiveSession += 1
 		}
 
 		weekStartTimestamp, weekEndTimestamp := utils.ISOWeekDate(startTimestamp), utils.ISOWeekDate(endTimestamp)
@@ -138,9 +138,9 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				w[t] = NewSessionStatistics("week")
 			}
 
+			w[t].ActiveSession += 1
 			w[t].SessionAddress[items[i].AccAddr] = true
 			w[t].SessionNode[items[i].NodeAddr] = true
-			w[t].ActiveSession += 1
 		}
 
 		monthStartTimestamp, monthEndTimestamp := utils.MonthDate(startTimestamp), utils.MonthDate(endTimestamp)
@@ -149,9 +149,9 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				m[t] = NewSessionStatistics("month")
 			}
 
+			m[t].ActiveSession += 1
 			m[t].SessionAddress[items[i].AccAddr] = true
 			m[t].SessionNode[items[i].NodeAddr] = true
-			m[t].ActiveSession += 1
 		}
 
 		yearStartTimestamp, yearEndTimestamp := utils.YearDate(startTimestamp), utils.YearDate(endTimestamp)
@@ -160,9 +160,9 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 				y[t] = NewSessionStatistics("year")
 			}
 
+			y[t].ActiveSession += 1
 			y[t].SessionAddress[items[i].AccAddr] = true
 			y[t].SessionNode[items[i].NodeAddr] = true
-			y[t].ActiveSession += 1
 		}
 
 		if !items[i].EndTimestamp.IsZero() {
