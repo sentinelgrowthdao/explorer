@@ -100,7 +100,7 @@ func main() {
 	engine := gin.Default()
 	engine.Use(cors.Default())
 
-	router := engine.Group("/api/v1")
+	router := engine.Group("/v2")
 
 	blockapi.RegisterRoutes(router, db)
 	depositapi.RegisterRoutes(router, db)
