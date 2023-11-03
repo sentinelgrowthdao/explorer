@@ -303,7 +303,11 @@ func handleCurrentSubscriptionCount(db *mongo.Database, req *RequestGetStatistic
 }
 
 func handleCurrentSessionAddressCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	filter := bson.M{}
+	filter := bson.M{
+		"status": bson.M{
+			"$ne": "",
+		},
+	}
 	if req.Query.Status != "" {
 		filter["status"] = req.Query.Status
 	}
@@ -322,7 +326,11 @@ func handleCurrentSessionAddressCount(db *mongo.Database, req *RequestGetStatist
 }
 
 func handleCurrentSessionNodeCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	filter := bson.M{}
+	filter := bson.M{
+		"status": bson.M{
+			"$ne": "",
+		},
+	}
 	if req.Query.Status != "" {
 		filter["status"] = req.Query.Status
 	}
