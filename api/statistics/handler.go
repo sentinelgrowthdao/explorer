@@ -249,6 +249,10 @@ func handleCurrentNodeCount(db *mongo.Database, req *RequestGetStatistics) ([]bs
 	filter := bson.M{}
 	if req.Query.Status != "" {
 		filter["status"] = req.Query.Status
+	} else {
+		filter["_id"] = bson.M{
+			"$ne": nil,
+		}
 	}
 
 	count, err := database.NodeCountDocuments(context.TODO(), db, filter)
@@ -268,6 +272,10 @@ func handleCurrentSessionCount(db *mongo.Database, req *RequestGetStatistics) ([
 	filter := bson.M{}
 	if req.Query.Status != "" {
 		filter["status"] = req.Query.Status
+	} else {
+		filter["_id"] = bson.M{
+			"$ne": nil,
+		}
 	}
 
 	count, err := database.SessionCountDocuments(context.TODO(), db, filter)
@@ -287,6 +295,10 @@ func handleCurrentSubscriptionCount(db *mongo.Database, req *RequestGetStatistic
 	filter := bson.M{}
 	if req.Query.Status != "" {
 		filter["status"] = req.Query.Status
+	} else {
+		filter["_id"] = bson.M{
+			"$ne": nil,
+		}
 	}
 
 	count, err := database.SubscriptionCountDocuments(context.TODO(), db, filter)
@@ -305,7 +317,7 @@ func handleCurrentSubscriptionCount(db *mongo.Database, req *RequestGetStatistic
 func handleCurrentSessionAddressCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
 	filter := bson.M{
 		"status": bson.M{
-			"$ne": "",
+			"$ne": nil,
 		},
 	}
 	if req.Query.Status != "" {
@@ -328,7 +340,7 @@ func handleCurrentSessionAddressCount(db *mongo.Database, req *RequestGetStatist
 func handleCurrentSessionNodeCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
 	filter := bson.M{
 		"status": bson.M{
-			"$ne": "",
+			"$ne": nil,
 		},
 	}
 	if req.Query.Status != "" {
