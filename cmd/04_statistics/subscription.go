@@ -16,20 +16,22 @@ import (
 
 type (
 	SubscriptionStatistics struct {
-		Timeframe           string
-		ActiveSubscription  int64
-		EndSubscription     int64
-		StartSubscription   int64
-		SubscriptionDeposit types.Coins
-		SubscriptionPayment types.Coins
+		Timeframe                 string
+		ActiveSubscription        int64
+		EndSubscription           int64
+		StartSubscription         int64
+		SubscriptionDeposit       types.Coins
+		SubscriptionPayment       types.Coins
+		SubscriptionStakingReward types.Coins
 	}
 )
 
 func NewSubscriptionStatistics(timeframe string) *SubscriptionStatistics {
 	return &SubscriptionStatistics{
-		Timeframe:           timeframe,
-		SubscriptionDeposit: types.NewCoins(nil),
-		SubscriptionPayment: types.NewCoins(nil),
+		Timeframe:                 timeframe,
+		SubscriptionDeposit:       types.NewCoins(nil),
+		SubscriptionPayment:       types.NewCoins(nil),
+		SubscriptionStakingReward: types.NewCoins(nil),
 	}
 }
 
@@ -65,6 +67,12 @@ func (ss *SubscriptionStatistics) Result(timestamp time.Time) []bson.M {
 			"timestamp": timestamp,
 			"value":     ss.SubscriptionPayment,
 		},
+		{
+			"type":      types.StatisticTypeSubscriptionStakingReward,
+			"timeframe": ss.Timeframe,
+			"timestamp": timestamp,
+			"value":     ss.SubscriptionStakingReward,
+		},
 	}
 }
 
@@ -77,6 +85,7 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 		"deposit":         1,
 		"end_timestamp":   1,
 		"payment":         1,
+		"staking_reward":  1,
 		"start_timestamp": 1,
 	}
 	sort := bson.D{
@@ -148,12 +157,6 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 			m[monthEndTimestamp].EndSubscription += 1
 			y[yearEndTimestamp].EndSubscription += 1
 		}
-		if !items[i].StartTimestamp.IsZero() {
-			d[dayStartTimestamp].StartSubscription += 1
-			w[weekStartTimestamp].StartSubscription += 1
-			m[monthStartTimestamp].StartSubscription += 1
-			y[yearStartTimestamp].StartSubscription += 1
-		}
 		if items[i].Deposit != nil {
 			d[dayStartTimestamp].SubscriptionDeposit = d[dayStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
 			w[weekStartTimestamp].SubscriptionDeposit = w[weekStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
@@ -165,6 +168,18 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 			w[weekEndTimestamp].SubscriptionPayment = w[weekEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
 			m[monthEndTimestamp].SubscriptionPayment = m[monthEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
 			y[yearEndTimestamp].SubscriptionPayment = y[yearEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
+		}
+		if items[i].StakingReward != nil {
+			d[dayEndTimestamp].SubscriptionStakingReward = d[dayEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+			w[weekEndTimestamp].SubscriptionStakingReward = w[weekEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+			m[monthEndTimestamp].SubscriptionStakingReward = m[monthEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+			y[yearEndTimestamp].SubscriptionStakingReward = y[yearEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+		}
+		if !items[i].StartTimestamp.IsZero() {
+			d[dayStartTimestamp].StartSubscription += 1
+			w[weekStartTimestamp].StartSubscription += 1
+			m[monthStartTimestamp].StartSubscription += 1
+			y[yearStartTimestamp].StartSubscription += 1
 		}
 	}
 

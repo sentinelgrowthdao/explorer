@@ -22,8 +22,9 @@ type Session struct {
 	EndTimestamp   time.Time `json:"end_timestamp,omitempty" bson:"end_timestamp"`
 	EndTxHash      string    `json:"end_tx_hash,omitempty" bson:"end_tx_hash"`
 
-	Payment *types.Coin `json:"payment,omitempty" bson:"payment"`
-	Rating  int64       `json:"rating,omitempty" bson:"rating"`
+	Payment       *types.Coin `json:"payment,omitempty" bson:"payment"`
+	StakingReward *types.Coin `json:"staking_reward,omitempty" bson:"staking_reward"`
+	Rating        int64       `json:"rating,omitempty" bson:"rating"`
 
 	Status          string    `json:"status,omitempty" bson:"status"`
 	StatusHeight    int64     `json:"status_height,omitempty" bson:"status_height"`
