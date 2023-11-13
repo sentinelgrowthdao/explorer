@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	hubtypes "github.com/sentinel-official/hub/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -16,62 +17,105 @@ import (
 
 type (
 	SubscriptionStatistics struct {
-		Timeframe                 string
-		ActiveSubscription        int64
-		EndSubscription           int64
-		StartSubscription         int64
-		SubscriptionDeposit       types.Coins
-		SubscriptionPayment       types.Coins
-		SubscriptionStakingReward types.Coins
+		Timeframe           string
+		ActiveSubscription  int64
+		BytesSubscription   int64
+		EndSubscription     int64
+		HoursSubscription   int64
+		PlanPayment         types.Coins
+		PlanStakingReward   types.Coins
+		PlanSubscription    int64
+		StartSubscription   int64
+		SubscriptionBytes   string
+		SubscriptionDeposit types.Coins
+		SubscriptionHours   int64
+		SubscriptionRefund  types.Coins
 	}
 )
 
 func NewSubscriptionStatistics(timeframe string) *SubscriptionStatistics {
 	return &SubscriptionStatistics{
-		Timeframe:                 timeframe,
-		SubscriptionDeposit:       types.NewCoins(nil),
-		SubscriptionPayment:       types.NewCoins(nil),
-		SubscriptionStakingReward: types.NewCoins(nil),
+		Timeframe:           timeframe,
+		PlanPayment:         types.NewCoins(nil),
+		PlanStakingReward:   types.NewCoins(nil),
+		SubscriptionDeposit: types.NewCoins(nil),
+		SubscriptionRefund:  types.NewCoins(nil),
 	}
 }
 
-func (ss *SubscriptionStatistics) Result(timestamp time.Time) []bson.M {
+func (s *SubscriptionStatistics) Result(timestamp time.Time) []bson.M {
 	return []bson.M{
 		{
 			"type":      types.StatisticTypeActiveSubscription,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.ActiveSubscription,
+			"value":     s.ActiveSubscription,
+		},
+		{
+			"type":      types.StatisticTypeBytesSubscription,
+			"timeframe": s.Timeframe,
+			"timestamp": timestamp,
+			"value":     s.BytesSubscription,
 		},
 		{
 			"type":      types.StatisticTypeEndSubscription,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.EndSubscription,
+			"value":     s.EndSubscription,
+		},
+		{
+			"type":      types.StatisticTypeHoursSubscription,
+			"timeframe": s.Timeframe,
+			"timestamp": timestamp,
+			"value":     s.HoursSubscription,
+		},
+		{
+			"type":      types.StatisticTypePlanPayment,
+			"timeframe": s.Timeframe,
+			"timestamp": timestamp,
+			"value":     s.PlanPayment,
+		},
+		{
+			"type":      types.StatisticTypePlanStakingReward,
+			"timeframe": s.Timeframe,
+			"timestamp": timestamp,
+			"value":     s.PlanStakingReward,
+		},
+		{
+			"type":      types.StatisticTypePlanSubscription,
+			"timeframe": s.Timeframe,
+			"timestamp": timestamp,
+			"value":     s.PlanSubscription,
 		},
 		{
 			"type":      types.StatisticTypeStartSubscription,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.StartSubscription,
+			"value":     s.StartSubscription,
+		},
+		{
+			"type":      types.StatisticTypeSubscriptionBytes,
+			"timeframe": s.Timeframe,
+			"timestamp": timestamp,
+			"value":     s.SubscriptionBytes,
 		},
 		{
 			"type":      types.StatisticTypeSubscriptionDeposit,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.SubscriptionDeposit,
+			"value":     s.SubscriptionDeposit,
 		},
 		{
-			"type":      types.StatisticTypeSubscriptionPayment,
-			"timeframe": ss.Timeframe,
+			"type":      types.StatisticTypeSubscriptionHours,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.SubscriptionPayment,
+			"value":     s.SubscriptionHours,
 		},
 		{
-			"type":      types.StatisticTypeSubscriptionStakingReward,
-			"timeframe": ss.Timeframe,
+			"type":      types.StatisticTypeSubscriptionRefund,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.SubscriptionStakingReward,
+			"value":     s.SubscriptionRefund,
 		},
 	}
 }
@@ -82,17 +126,18 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 	filter := bson.M{}
 	projection := bson.M{
 		"_id":             0,
-		"deposit":         1,
 		"end_timestamp":   1,
+		"deposit":         1,
+		"gigabytes":       1,
+		"hours":           1,
 		"payment":         1,
+		"plan_id":         1,
+		"refund":          1,
 		"staking_reward":  1,
 		"start_timestamp": 1,
 	}
-	sort := bson.D{
-		bson.E{Key: "start_timestamp", Value: 1},
-	}
 
-	items, err := database.SubscriptionFind(ctx, db, filter, options.Find().SetProjection(projection).SetSort(sort))
+	items, err := database.SubscriptionFind(ctx, db, filter, options.Find().SetProjection(projection))
 	if err != nil {
 		return nil, err
 	}
@@ -163,17 +208,52 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 			m[monthStartTimestamp].SubscriptionDeposit = m[monthStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
 			y[yearStartTimestamp].SubscriptionDeposit = y[yearStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
 		}
+		if items[i].Gigabytes != 0 {
+			d[dayStartTimestamp].BytesSubscription += 1
+			w[weekStartTimestamp].BytesSubscription += 1
+			m[monthStartTimestamp].BytesSubscription += 1
+			y[yearStartTimestamp].BytesSubscription += 1
+
+			bytes := hubtypes.Gigabyte.MulRaw(items[i].Gigabytes)
+			d[dayStartTimestamp].SubscriptionBytes = utils.MustIntFromString(d[dayStartTimestamp].SubscriptionBytes).Add(bytes).String()
+			w[weekStartTimestamp].SubscriptionBytes = utils.MustIntFromString(w[weekStartTimestamp].SubscriptionBytes).Add(bytes).String()
+			m[monthStartTimestamp].SubscriptionBytes = utils.MustIntFromString(m[monthStartTimestamp].SubscriptionBytes).Add(bytes).String()
+			y[yearStartTimestamp].SubscriptionBytes = utils.MustIntFromString(y[yearStartTimestamp].SubscriptionBytes).Add(bytes).String()
+		}
+		if items[i].Hours != 0 {
+			d[dayStartTimestamp].HoursSubscription += 1
+			w[weekStartTimestamp].HoursSubscription += 1
+			m[monthStartTimestamp].HoursSubscription += 1
+			y[yearStartTimestamp].HoursSubscription += 1
+
+			d[dayStartTimestamp].SubscriptionHours += items[i].Hours
+			w[weekStartTimestamp].SubscriptionHours += items[i].Hours
+			m[monthStartTimestamp].SubscriptionHours += items[i].Hours
+			y[yearStartTimestamp].SubscriptionHours += items[i].Hours
+		}
 		if items[i].Payment != nil {
-			d[dayEndTimestamp].SubscriptionPayment = d[dayEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
-			w[weekEndTimestamp].SubscriptionPayment = w[weekEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
-			m[monthEndTimestamp].SubscriptionPayment = m[monthEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
-			y[yearEndTimestamp].SubscriptionPayment = y[yearEndTimestamp].SubscriptionPayment.Add(items[i].Payment)
+			d[dayStartTimestamp].PlanPayment = d[dayStartTimestamp].PlanPayment.Add(items[i].Payment)
+			w[weekStartTimestamp].PlanPayment = w[weekStartTimestamp].PlanPayment.Add(items[i].Payment)
+			m[monthStartTimestamp].PlanPayment = m[monthStartTimestamp].PlanPayment.Add(items[i].Payment)
+			y[yearStartTimestamp].PlanPayment = y[yearStartTimestamp].PlanPayment.Add(items[i].Payment)
+		}
+		if items[i].PlanID != 0 {
+			d[dayStartTimestamp].PlanSubscription += 1
+			w[weekStartTimestamp].PlanSubscription += 1
+			m[monthStartTimestamp].PlanSubscription += 1
+			y[yearStartTimestamp].PlanSubscription += 1
+		}
+		if items[i].Refund != nil {
+			d[dayEndTimestamp].SubscriptionRefund = d[dayEndTimestamp].SubscriptionRefund.Add(items[i].Refund)
+			w[weekEndTimestamp].SubscriptionRefund = w[weekEndTimestamp].SubscriptionRefund.Add(items[i].Refund)
+			m[monthEndTimestamp].SubscriptionRefund = m[monthEndTimestamp].SubscriptionRefund.Add(items[i].Refund)
+			y[yearEndTimestamp].SubscriptionRefund = y[yearEndTimestamp].SubscriptionRefund.Add(items[i].Refund)
 		}
 		if items[i].StakingReward != nil {
-			d[dayEndTimestamp].SubscriptionStakingReward = d[dayEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
-			w[weekEndTimestamp].SubscriptionStakingReward = w[weekEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
-			m[monthEndTimestamp].SubscriptionStakingReward = m[monthEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
-			y[yearEndTimestamp].SubscriptionStakingReward = y[yearEndTimestamp].SubscriptionStakingReward.Add(items[i].StakingReward)
+			d[dayStartTimestamp].PlanStakingReward = d[dayStartTimestamp].PlanStakingReward.Add(items[i].StakingReward)
+			w[weekStartTimestamp].PlanStakingReward = w[weekStartTimestamp].PlanStakingReward.Add(items[i].StakingReward)
+			m[monthStartTimestamp].PlanStakingReward = m[monthStartTimestamp].PlanStakingReward.Add(items[i].StakingReward)
+			y[yearStartTimestamp].PlanStakingReward = y[yearStartTimestamp].PlanStakingReward.Add(items[i].StakingReward)
 		}
 		if !items[i].StartTimestamp.IsZero() {
 			d[dayStartTimestamp].StartSubscription += 1

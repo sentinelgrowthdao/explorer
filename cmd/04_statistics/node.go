@@ -27,13 +27,13 @@ func NewNodeStatistics(timeframe string) *NodeStatistics {
 	}
 }
 
-func (ss *NodeStatistics) Result(timestamp time.Time) []bson.M {
+func (s *NodeStatistics) Result(timestamp time.Time) []bson.M {
 	return []bson.M{
 		{
 			"type":      types.StatisticTypeRegisterNode,
-			"timeframe": ss.Timeframe,
+			"timeframe": s.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.RegisterNode,
+			"value":     s.RegisterNode,
 		},
 	}
 }
@@ -46,11 +46,8 @@ func StatisticsFromNodes(ctx context.Context, db *mongo.Database) (result []bson
 		"_id":                0,
 		"register_timestamp": 1,
 	}
-	sort := bson.D{
-		bson.E{Key: "register_timestamp", Value: 1},
-	}
 
-	items, err := database.NodeFind(ctx, db, filter, options.Find().SetProjection(projection).SetSort(sort))
+	items, err := database.NodeFind(ctx, db, filter, options.Find().SetProjection(projection))
 	if err != nil {
 		return nil, err
 	}

@@ -7,48 +7,29 @@ import (
 
 var (
 	validators = map[string]func(req *RequestGetStatistics) error{
-		types.StatisticMethodAverageActiveNodeCount:              nil,
-		types.StatisticMethodAverageActiveSessionCount:           nil,
-		types.StatisticMethodAverageActiveSubscriptionCount:      nil,
-		types.StatisticMethodAverageEndSessionCount:              nil,
-		types.StatisticMethodAverageEndSubscriptionCount:         nil,
-		types.StatisticMethodAverageRegisterNodeCount:            nil,
-		types.StatisticMethodAverageSessionPayment:               nil,
-		types.StatisticMethodAverageSessionStakingReward:         nil,
-		types.StatisticMethodAverageStartSessionCount:            nil,
-		types.StatisticMethodAverageStartSubscriptionCount:       nil,
-		types.StatisticMethodAverageSubscriptionDeposit:          nil,
-		types.StatisticMethodAverageSubscriptionPayment:          nil,
-		types.StatisticMethodAverageSubscriptionStakingReward:    nil,
-		types.StatisticMethodCurrentNodeCount:                    nil,
-		types.StatisticMethodCurrentSessionCount:                 nil,
-		types.StatisticMethodCurrentSubscriptionCount:            nil,
-		types.StatisticMethodHistoricalActiveNodeCount:           validateHistoricalActiveNodesCount,
-		types.StatisticMethodHistoricalActiveSessionCount:        validateHistoricalActiveSessionsCount,
-		types.StatisticMethodHistoricalActiveSubscriptionCount:   validateHistoricalActiveSubscriptionsCount,
-		types.StatisticMethodHistoricalEndSessionCount:           validateHistoricalEndSessionsCount,
-		types.StatisticMethodHistoricalEndSubscriptionCount:      validateHistoricalEndSubscriptionsCount,
-		types.StatisticMethodHistoricalRegisterNodeCount:         validateHistoricalRegisterNodesCount,
-		types.StatisticMethodHistoricalSessionBandwidth:          validateHistoricalSessionBandwidths,
-		types.StatisticMethodHistoricalSessionDuration:           validateHistoricalSessionDurations,
-		types.StatisticMethodHistoricalSessionPayment:            validateHistoricalSessionPayments,
-		types.StatisticMethodHistoricalSessionStakingReward:      validateHistoricalSessionStakingRewards,
-		types.StatisticMethodHistoricalStartSessionCount:         validateHistoricalStartSessionsCount,
-		types.StatisticMethodHistoricalStartSubscriptionCount:    validateHistoricalStartSubscriptionsCount,
-		types.StatisticMethodHistoricalSubscriptionDeposit:       validateHistoricalSubscriptionDeposits,
-		types.StatisticMethodHistoricalSubscriptionPayment:       validateHistoricalSubscriptionPayments,
-		types.StatisticMethodHistoricalSubscriptionStakingReward: validateHistoricalSubscriptionStakingRewards,
-		types.StatisticMethodTotalSessionBandwidth:               nil,
-		types.StatisticMethodTotalSessionDuration:                nil,
-		types.StatisticMethodTotalSessionPayment:                 nil,
-		types.StatisticMethodTotalSessionStakingReward:           nil,
-		types.StatisticMethodTotalSubscriptionDeposit:            nil,
-		types.StatisticMethodTotalSubscriptionPayment:            nil,
-		types.StatisticMethodTotalSubscriptionStakingReward:      nil,
+		types.StatisticMethodHistoricalActiveNodeCount:         validateHistoricalActiveNodeCount,
+		types.StatisticMethodHistoricalActiveSessionCount:      validateHistoricalActiveSessionCount,
+		types.StatisticMethodHistoricalActiveSubscriptionCount: validateHistoricalActiveSubscriptionCount,
+		types.StatisticMethodHistoricalBytesPayment:            validateHistoricalBytesPayment,
+		types.StatisticMethodHistoricalBytesStakingReward:      validateHistoricalBytesStakingReward,
+		types.StatisticMethodHistoricalEndSessionCount:         validateHistoricalEndSessionCount,
+		types.StatisticMethodHistoricalEndSubscriptionCount:    validateHistoricalEndSubscriptionCount,
+		types.StatisticMethodHistoricalHoursPayment:            validateHistoricalHoursPayment,
+		types.StatisticMethodHistoricalHoursStakingReward:      validateHistoricalHoursStakingReward,
+		types.StatisticMethodHistoricalPlanPayment:             validateHistoricalPlanPayment,
+		types.StatisticMethodHistoricalPlanStakingReward:       validateHistoricalPlanStakingReward,
+		types.StatisticMethodHistoricalRegisterNodeCount:       validateHistoricalRegisterNodeCount,
+		types.StatisticMethodHistoricalSessionAddressCount:     validateHistoricalSessionAddressCount,
+		types.StatisticMethodHistoricalSessionBytes:            validateHistoricalSessionBytes,
+		types.StatisticMethodHistoricalSessionDuration:         validateHistoricalSessionDuration,
+		types.StatisticMethodHistoricalSessionNodeCount:        validateHistoricalSessionNodeCount,
+		types.StatisticMethodHistoricalStartSessionCount:       validateHistoricalStartSessionCount,
+		types.StatisticMethodHistoricalStartSubscriptionCount:  validateHistoricalStartSubscriptionCount,
+		types.StatisticMethodHistoricalSubscriptionDeposit:     validateHistoricalSubscriptionDeposit,
 	}
 )
 
-func validateHistoricalActiveNodesCount(req *RequestGetStatistics) (err error) {
+func validateHistoricalActiveNodeCount(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -62,7 +43,7 @@ func validateHistoricalActiveNodesCount(req *RequestGetStatistics) (err error) {
 	return nil
 }
 
-func validateHistoricalActiveSessionsCount(req *RequestGetStatistics) (err error) {
+func validateHistoricalActiveSessionCount(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -76,7 +57,7 @@ func validateHistoricalActiveSessionsCount(req *RequestGetStatistics) (err error
 	return nil
 }
 
-func validateHistoricalActiveSubscriptionsCount(req *RequestGetStatistics) (err error) {
+func validateHistoricalActiveSubscriptionCount(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -90,7 +71,7 @@ func validateHistoricalActiveSubscriptionsCount(req *RequestGetStatistics) (err 
 	return nil
 }
 
-func validateHistoricalSessionBandwidths(req *RequestGetStatistics) (err error) {
+func validateHistoricalSessionBytes(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -102,7 +83,7 @@ func validateHistoricalSessionBandwidths(req *RequestGetStatistics) (err error) 
 	return nil
 }
 
-func validateHistoricalEndSessionsCount(req *RequestGetStatistics) (err error) {
+func validateHistoricalEndSessionCount(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -116,7 +97,7 @@ func validateHistoricalEndSessionsCount(req *RequestGetStatistics) (err error) {
 	return nil
 }
 
-func validateHistoricalEndSubscriptionsCount(req *RequestGetStatistics) (err error) {
+func validateHistoricalEndSubscriptionCount(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -130,7 +111,7 @@ func validateHistoricalEndSubscriptionsCount(req *RequestGetStatistics) (err err
 	return nil
 }
 
-func validateHistoricalRegisterNodesCount(req *RequestGetStatistics) (err error) {
+func validateHistoricalRegisterNodeCount(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -144,7 +125,7 @@ func validateHistoricalRegisterNodesCount(req *RequestGetStatistics) (err error)
 	return nil
 }
 
-func validateHistoricalSessionDurations(req *RequestGetStatistics) (err error) {
+func validateHistoricalSessionDuration(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -158,7 +139,31 @@ func validateHistoricalSessionDurations(req *RequestGetStatistics) (err error) {
 	return nil
 }
 
-func validateHistoricalSessionPayments(req *RequestGetStatistics) (err error) {
+func validateHistoricalBytesPayment(req *RequestGetStatistics) (err error) {
+	allowed := []string{
+		"-timestamp",
+		"timestamp",
+	}
+	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateHistoricalBytesStakingReward(req *RequestGetStatistics) (err error) {
+	allowed := []string{
+		"-timestamp",
+		"timestamp",
+	}
+	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateHistoricalStartSessionCount(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -172,19 +177,7 @@ func validateHistoricalSessionPayments(req *RequestGetStatistics) (err error) {
 	return nil
 }
 
-func validateHistoricalSessionStakingRewards(req *RequestGetStatistics) (err error) {
-	allowed := []string{
-		"-timestamp",
-		"timestamp",
-	}
-	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func validateHistoricalStartSessionsCount(req *RequestGetStatistics) (err error) {
+func validateHistoricalStartSubscriptionCount(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -198,7 +191,55 @@ func validateHistoricalStartSessionsCount(req *RequestGetStatistics) (err error)
 	return nil
 }
 
-func validateHistoricalStartSubscriptionsCount(req *RequestGetStatistics) (err error) {
+func validateHistoricalSubscriptionDeposit(req *RequestGetStatistics) (err error) {
+	allowed := []string{
+		"-timestamp",
+		"timestamp",
+	}
+	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateHistoricalPlanPayment(req *RequestGetStatistics) (err error) {
+	allowed := []string{
+		"-timestamp",
+		"timestamp",
+	}
+	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateHistoricalPlanStakingReward(req *RequestGetStatistics) (err error) {
+	allowed := []string{
+		"-timestamp",
+		"timestamp",
+	}
+	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateHistoricalHoursPayment(req *RequestGetStatistics) (err error) {
+	allowed := []string{
+		"-timestamp",
+		"timestamp",
+	}
+	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateHistoricalSessionAddressCount(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -212,7 +253,7 @@ func validateHistoricalStartSubscriptionsCount(req *RequestGetStatistics) (err e
 	return nil
 }
 
-func validateHistoricalSubscriptionDeposits(req *RequestGetStatistics) (err error) {
+func validateHistoricalHoursStakingReward(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
@@ -224,22 +265,12 @@ func validateHistoricalSubscriptionDeposits(req *RequestGetStatistics) (err erro
 	return nil
 }
 
-func validateHistoricalSubscriptionPayments(req *RequestGetStatistics) (err error) {
+func validateHistoricalSessionNodeCount(req *RequestGetStatistics) (err error) {
 	allowed := []string{
 		"-timestamp",
 		"timestamp",
-	}
-	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func validateHistoricalSubscriptionStakingRewards(req *RequestGetStatistics) (err error) {
-	allowed := []string{
-		"-timestamp",
-		"timestamp",
+		"-value",
+		"value",
 	}
 	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
 		return err

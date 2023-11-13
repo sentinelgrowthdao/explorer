@@ -61,6 +61,15 @@ func InsertOne(ctx context.Context, c *mongo.Collection, v interface{}, opts ...
 	return c.InsertOne(ctx, v, opts...)
 }
 
+func InsertMany(ctx context.Context, c *mongo.Collection, v []interface{}, opts ...*options.InsertManyOptions) (*mongo.InsertManyResult, error) {
+	now := time.Now()
+	defer func() {
+		log.Println(c.Name(), "InsertMany", time.Since(now))
+	}()
+
+	return c.InsertMany(ctx, v, opts...)
+}
+
 func FindOneAndUpdate(ctx context.Context, c *mongo.Collection, filter, update bson.M, v interface{}, opts ...*options.FindOneAndUpdateOptions) error {
 	now := time.Now()
 	defer func() {
@@ -121,6 +130,15 @@ func CountDocuments(ctx context.Context, c *mongo.Collection, filter bson.M, opt
 	}()
 
 	return c.CountDocuments(ctx, filter, opts...)
+}
+
+func Distinct(ctx context.Context, c *mongo.Collection, fieldName string, filter bson.M, opts ...*options.DistinctOptions) (bson.A, error) {
+	now := time.Now()
+	defer func() {
+		log.Println(c.Name(), "Distinct", time.Since(now))
+	}()
+
+	return c.Distinct(ctx, fieldName, filter, opts...)
 }
 
 func Drop(ctx context.Context, c *mongo.Collection) error {

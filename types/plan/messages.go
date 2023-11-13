@@ -11,90 +11,114 @@ import (
 	"github.com/sentinel-official/explorer/types"
 )
 
-type MsgAddRequest struct {
-	From     string
-	Price    types.Coins
-	Bytes    string
-	Validity int64
+type MsgCreateRequest struct {
+	From      string
+	Duration  int64
+	Gigabytes int64
+	Prices    types.Coins
 }
 
-func NewMsgAddRequest(v bson.M) (*MsgAddRequest, error) {
-	buf, err := json.Marshal(v["price"])
+func NewMsgCreateRequest(v bson.M) (*MsgCreateRequest, error) {
+	duration, err := time.ParseDuration(v["duration"].(string))
 	if err != nil {
 		return nil, err
 	}
 
-	var price sdk.Coins
-	if err := json.Unmarshal(buf, &price); err != nil {
-		return nil, err
-	}
-
-	validity, err := time.ParseDuration(v["validity"].(string))
+	gigabytes, err := strconv.ParseInt(v["gigabytes"].(string), 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	return &MsgAddRequest{
-		From:     v["from"].(string),
-		Price:    types.NewCoins(price),
-		Bytes:    v["bytes"].(string),
-		Validity: validity.Nanoseconds(),
+	buf, err := json.Marshal(v["prices"])
+	if err != nil {
+		return nil, err
+	}
+
+	var prices sdk.Coins
+	if err := json.Unmarshal(buf, &prices); err != nil {
+		return nil, err
+	}
+
+	return &MsgCreateRequest{
+		From:      v["from"].(string),
+		Gigabytes: gigabytes,
+		Duration:  duration.Nanoseconds(),
+		Prices:    types.NewCoins(prices),
 	}, nil
 }
 
-type MsgSetStatusRequest struct {
+type MsgUpdateStatusRequest struct {
 	From   string
 	ID     uint64
 	Status string
 }
 
-func NewMsgSetStatusRequest(v bson.M) (*MsgSetStatusRequest, error) {
+func NewMsgUpdateStatusRequest(v bson.M) (*MsgUpdateStatusRequest, error) {
 	id, err := strconv.ParseUint(v["id"].(string), 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	return &MsgSetStatusRequest{
+	return &MsgUpdateStatusRequest{
 		From:   v["from"].(string),
 		ID:     id,
 		Status: v["status"].(string),
 	}, nil
 }
 
-type MsgAddNodeRequest struct {
-	From    string
-	ID      uint64
-	Address string
+type MsgLinkNodeRequest struct {
+	From        string
+	ID          uint64
+	NodeAddress string
 }
 
-func NewMsgAddNodeRequest(v bson.M) (*MsgAddNodeRequest, error) {
+func NewMsgLinkNodeRequest(v bson.M) (*MsgLinkNodeRequest, error) {
 	id, err := strconv.ParseUint(v["id"].(string), 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	return &MsgAddNodeRequest{
-		From:    v["from"].(string),
-		ID:      id,
-		Address: v["address"].(string),
+	return &MsgLinkNodeRequest{
+		From:        v["from"].(string),
+		ID:          id,
+		NodeAddress: v["node_address"].(string),
 	}, nil
 }
 
-type MsgRemoveNodeRequest struct {
-	From    string
-	ID      uint64
-	Address string
+type MsgUnlinkNodeRequest struct {
+	From        string
+	ID          uint64
+	NodeAddress string
 }
 
-func NewMsgRemoveNodeRequest(v bson.M) (*MsgRemoveNodeRequest, error) {
+func NewMsgUnlinkNodeRequest(v bson.M) (*MsgUnlinkNodeRequest, error) {
 	id, err := strconv.ParseUint(v["id"].(string), 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	return &MsgRemoveNodeRequest{
-		From:    v["from"].(string),
-		ID:      id,
-		Address: v["address"].(string),
+	return &MsgUnlinkNodeRequest{
+		From:        v["from"].(string),
+		ID:          id,
+		NodeAddress: v["node_address"].(string),
+	}, nil
+}
+
+type MsgSubscribeRequest struct {
+	From  string
+	ID    uint64
+	Denom string
+}
+
+func NewMsgSubscribeRequest(v bson.M) (*MsgSubscribeRequest, error) {
+	id, err := strconv.ParseUint(v["id"].(string), 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MsgSubscribeRequest{
+		From:  v["from"].(string),
+		ID:    id,
+		Denom: v["denom"].(string),
 	}, nil
 }

@@ -2,6 +2,8 @@ package models
 
 import (
 	"encoding/json"
+	"maps"
+	"strings"
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -27,7 +29,7 @@ func NewMessage(v sdk.Msg) *Message {
 		Type: utils.MsgTypeURL(v),
 	}
 
-	buf, err := types.EncCfg.Marshaler.MarshalJSON(v)
+	buf, err := types.EncCfg.Codec.MarshalJSON(v)
 	if err != nil {
 		panic(err)
 	}
@@ -45,6 +47,31 @@ func NewMessages(v []sdk.Msg) Messages {
 	items := make(Messages, 0, len(v))
 	for _, item := range v {
 		items = append(items, NewMessage(item))
+	}
+
+	return items
+}
+
+func (m Messages) WithAuthzMsgExecMessages() (items Messages) {
+	for i := 0; i < len(m); i++ {
+		items = append(items, m[i])
+		if strings.Contains(m[i].Type, "cosmos.authz") && strings.Contains(m[i].Type, "MsgExec") {
+			msgs := m[i].Data["msgs"].(bson.A)
+			for j := 0; j < len(msgs); j++ {
+				item := &Message{
+					Data: func() bson.M {
+						m := make(bson.M)
+						maps.Copy(m, msgs[j].(bson.M))
+						delete(m, "@type")
+
+						return m
+					}(),
+					Type: msgs[j].(bson.M)["@type"].(string),
+				}
+
+				items = append(items, item)
+			}
+		}
 	}
 
 	return items
@@ -130,7 +157,9 @@ type Tx struct {
 func NewTx(v tmtypes.Tx) *Tx {
 	t, err := types.EncCfg.TxConfig.TxDecoder()(v)
 	if err != nil {
-		panic(err)
+		return &Tx{
+			Hash: bytes.HexBytes(v.Hash()).String(),
+		}
 	}
 
 	tx := t.(authsigning.Tx)

@@ -10,12 +10,12 @@ import (
 	"github.com/sentinel-official/explorer/types"
 )
 
-func NewSubscriptionQuotaAddOperation(
+func NewSubscriptionAllocationCreate(
 	db *mongo.Database,
-	v *models.SubscriptionQuota,
+	v *models.SubscriptionAllocation,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
-		if _, err := database.SubscriptionQuotaInsertOne(ctx, db, v); err != nil {
+		if _, err := database.SubscriptionAllocationInsertOne(ctx, db, v); err != nil {
 			return err
 		}
 
@@ -23,19 +23,19 @@ func NewSubscriptionQuotaAddOperation(
 	}
 }
 
-func NewSubscriptionQuotaUpdateOperation(
+func NewSubscriptionAllocationUpdate(
 	db *mongo.Database,
-	id uint64, address string, allocated, consumed string,
+	id uint64, accAddr string, grantedBytes, utilisedBytes string,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
-			"id":      id,
-			"address": address,
+			"id":       id,
+			"acc_addr": accAddr,
 		}
 		update := bson.M{
 			"$set": bson.M{
-				"allocated": allocated,
-				"consumed":  consumed,
+				"granted_bytes":  grantedBytes,
+				"utilised_bytes": utilisedBytes,
 			},
 		}
 		projection := bson.M{
@@ -45,7 +45,7 @@ func NewSubscriptionQuotaUpdateOperation(
 			SetProjection(projection).
 			SetUpsert(true)
 
-		if _, err := database.SubscriptionQuotaFindOneAndUpdate(ctx, db, filter, update, opts); err != nil {
+		if _, err := database.SubscriptionAllocationFindOneAndUpdate(ctx, db, filter, update, opts); err != nil {
 			return err
 		}
 

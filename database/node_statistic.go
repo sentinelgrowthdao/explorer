@@ -48,3 +48,16 @@ func NodeStatisticFind(ctx context.Context, db *mongo.Database, filter bson.M, o
 func NodeStatisticIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
 	return IndexesCreateMany(ctx, db.Collection(NodeStatisticCollectionName), models, opts...)
 }
+
+func NodeStatisticInsertMany(ctx context.Context, db *mongo.Database, v bson.A, opts ...*options.InsertManyOptions) (*mongo.InsertManyResult, error) {
+	return InsertMany(ctx, db.Collection(NodeStatisticCollectionName), v, opts...)
+}
+
+func NodeStatisticDeleteMany(ctx context.Context, db *mongo.Database, filter bson.M, opts ...*options.DeleteOptions) error {
+	_, err := DeleteMany(ctx, db.Collection(NodeStatisticCollectionName), filter, opts...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

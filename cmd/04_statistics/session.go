@@ -16,20 +16,24 @@ import (
 
 type (
 	SessionStatistics struct {
-		Timeframe            string
-		ActiveSession        int64
-		EndSession           int64
-		SessionPayment       types.Coins
-		SessionStakingReward types.Coins
-		StartSession         int64
+		Timeframe          string
+		ActiveSession      int64
+		BytesPayment       types.Coins
+		BytesStakingReward types.Coins
+		EndSession         int64
+		SessionAddress     map[string]bool
+		SessionNode        map[string]bool
+		StartSession       int64
 	}
 )
 
 func NewSessionStatistics(timeframe string) *SessionStatistics {
 	return &SessionStatistics{
-		Timeframe:            timeframe,
-		SessionPayment:       types.NewCoins(nil),
-		SessionStakingReward: types.NewCoins(nil),
+		Timeframe:          timeframe,
+		BytesPayment:       types.NewCoins(nil),
+		BytesStakingReward: types.NewCoins(nil),
+		SessionAddress:     make(map[string]bool),
+		SessionNode:        make(map[string]bool),
 	}
 }
 
@@ -42,22 +46,34 @@ func (ss *SessionStatistics) Result(timestamp time.Time) []bson.M {
 			"value":     ss.ActiveSession,
 		},
 		{
+			"type":      types.StatisticTypeBytesPayment,
+			"timeframe": ss.Timeframe,
+			"timestamp": timestamp,
+			"value":     ss.BytesPayment,
+		},
+		{
+			"type":      types.StatisticTypeBytesStakingReward,
+			"timeframe": ss.Timeframe,
+			"timestamp": timestamp,
+			"value":     ss.BytesStakingReward,
+		},
+		{
 			"type":      types.StatisticTypeEndSession,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
 			"value":     ss.EndSession,
 		},
 		{
-			"type":      types.StatisticTypeSessionPayment,
+			"type":      types.StatisticTypeSessionAddress,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.SessionPayment,
+			"value":     len(ss.SessionAddress),
 		},
 		{
-			"type":      types.StatisticTypeSessionStakingReward,
+			"type":      types.StatisticTypeSessionNode,
 			"timeframe": ss.Timeframe,
 			"timestamp": timestamp,
-			"value":     ss.SessionStakingReward,
+			"value":     len(ss.SessionNode),
 		},
 		{
 			"type":      types.StatisticTypeStartSession,
@@ -69,21 +85,20 @@ func (ss *SessionStatistics) Result(timestamp time.Time) []bson.M {
 }
 
 func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time) (result []bson.M, err error) {
-	log.Println("StatisticsFromSubscriptions", minTimestamp, maxTimestamp)
+	log.Println("StatisticsFromSessions", minTimestamp, maxTimestamp)
 
 	filter := bson.M{}
 	projection := bson.M{
 		"_id":             0,
+		"acc_addr":        1,
+		"node_addr":       1,
 		"end_timestamp":   1,
 		"payment":         1,
 		"staking_reward":  1,
 		"start_timestamp": 1,
 	}
-	sort := bson.D{
-		bson.E{Key: "start_timestamp", Value: 1},
-	}
 
-	items, err := database.SessionFind(ctx, db, filter, options.Find().SetProjection(projection).SetSort(sort))
+	items, err := database.SessionFind(ctx, db, filter, options.Find().SetProjection(projection))
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +128,8 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 			}
 
 			d[t].ActiveSession += 1
+			d[t].SessionAddress[items[i].AccAddr] = true
+			d[t].SessionNode[items[i].NodeAddr] = true
 		}
 
 		weekStartTimestamp, weekEndTimestamp := utils.ISOWeekDate(startTimestamp), utils.ISOWeekDate(endTimestamp)
@@ -122,6 +139,8 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 			}
 
 			w[t].ActiveSession += 1
+			w[t].SessionAddress[items[i].AccAddr] = true
+			w[t].SessionNode[items[i].NodeAddr] = true
 		}
 
 		monthStartTimestamp, monthEndTimestamp := utils.MonthDate(startTimestamp), utils.MonthDate(endTimestamp)
@@ -131,6 +150,8 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 			}
 
 			m[t].ActiveSession += 1
+			m[t].SessionAddress[items[i].AccAddr] = true
+			m[t].SessionNode[items[i].NodeAddr] = true
 		}
 
 		yearStartTimestamp, yearEndTimestamp := utils.YearDate(startTimestamp), utils.YearDate(endTimestamp)
@@ -140,6 +161,8 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 			}
 
 			y[t].ActiveSession += 1
+			y[t].SessionAddress[items[i].AccAddr] = true
+			y[t].SessionNode[items[i].NodeAddr] = true
 		}
 
 		if !items[i].EndTimestamp.IsZero() {
@@ -149,16 +172,16 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 			y[yearEndTimestamp].EndSession += 1
 		}
 		if items[i].Payment != nil {
-			d[dayEndTimestamp].SessionPayment = d[dayEndTimestamp].SessionPayment.Add(items[i].Payment)
-			w[weekEndTimestamp].SessionPayment = w[weekEndTimestamp].SessionPayment.Add(items[i].Payment)
-			m[monthEndTimestamp].SessionPayment = m[monthEndTimestamp].SessionPayment.Add(items[i].Payment)
-			y[yearEndTimestamp].SessionPayment = y[yearEndTimestamp].SessionPayment.Add(items[i].Payment)
+			d[dayEndTimestamp].BytesPayment = d[dayEndTimestamp].BytesPayment.Add(items[i].Payment)
+			w[weekEndTimestamp].BytesPayment = w[weekEndTimestamp].BytesPayment.Add(items[i].Payment)
+			m[monthEndTimestamp].BytesPayment = m[monthEndTimestamp].BytesPayment.Add(items[i].Payment)
+			y[yearEndTimestamp].BytesPayment = y[yearEndTimestamp].BytesPayment.Add(items[i].Payment)
 		}
 		if items[i].StakingReward != nil {
-			d[dayEndTimestamp].SessionStakingReward = d[dayEndTimestamp].SessionStakingReward.Add(items[i].StakingReward)
-			w[weekEndTimestamp].SessionStakingReward = w[weekEndTimestamp].SessionStakingReward.Add(items[i].StakingReward)
-			m[monthEndTimestamp].SessionStakingReward = m[monthEndTimestamp].SessionStakingReward.Add(items[i].StakingReward)
-			y[yearEndTimestamp].SessionStakingReward = y[yearEndTimestamp].SessionStakingReward.Add(items[i].StakingReward)
+			d[dayEndTimestamp].BytesStakingReward = d[dayEndTimestamp].BytesStakingReward.Add(items[i].StakingReward)
+			w[weekEndTimestamp].BytesStakingReward = w[weekEndTimestamp].BytesStakingReward.Add(items[i].StakingReward)
+			m[monthEndTimestamp].BytesStakingReward = m[monthEndTimestamp].BytesStakingReward.Add(items[i].StakingReward)
+			y[yearEndTimestamp].BytesStakingReward = y[yearEndTimestamp].BytesStakingReward.Add(items[i].StakingReward)
 		}
 		if !items[i].StartTimestamp.IsZero() {
 			d[dayStartTimestamp].StartSession += 1

@@ -1,7 +1,6 @@
 package statistics
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +18,7 @@ type RequestGetStatistics struct {
 		Sort          string    `form:"sort"`
 		Status        string    `form:"status" binding:"omitempty,oneof=active inactive inactive_pending"`
 		Timeframe     string    `form:"timeframe,default=day" binding:"oneof=day week month year"`
-		ToTimestamp   time.Time `form:"to_timestamp" binding:"gtfield=FromTimestamp"`
+		ToTimestamp   time.Time `form:"to_timestamp,default=9999-12-31T23:59:59Z" binding:"gtfield=FromTimestamp"`
 	}
 }
 
@@ -31,7 +30,7 @@ func NewRequestGetStatistics(c *gin.Context) (req *RequestGetStatistics, err err
 
 	validatorFunc, ok := validators[req.Query.Method]
 	if !ok {
-		return nil, fmt.Errorf("unknown method %s", req.Query.Method)
+		return req, nil
 	}
 	if validatorFunc == nil {
 		return req, nil

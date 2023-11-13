@@ -13,7 +13,7 @@ import (
 	"github.com/sentinel-official/explorer/types"
 )
 
-func NewSessionStartOperation(
+func NewSessionCreate(
 	db *mongo.Database,
 	v *models.Session,
 ) types.DatabaseOperation {
@@ -26,7 +26,7 @@ func NewSessionStartOperation(
 	}
 }
 
-func NewSessionUpdateDetailsOperation(
+func NewSessionUpdateDetails(
 	db *mongo.Database,
 	id uint64, bandwidth *types.Bandwidth, duration int64, payment, stakingReward *types.Coin, rating int64,
 ) types.DatabaseOperation {
@@ -70,7 +70,7 @@ func NewSessionUpdateDetailsOperation(
 	}
 }
 
-func NewSessionUpdateStatusOperation(
+func NewSessionUpdateStatus(
 	db *mongo.Database,
 	id uint64, status string, height int64, timestamp time.Time, txHash string,
 ) types.DatabaseOperation {

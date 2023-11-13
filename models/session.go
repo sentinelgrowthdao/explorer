@@ -8,12 +8,12 @@ import (
 )
 
 type Session struct {
-	ID           uint64           `json:"id,omitempty" bson:"id"`
-	Subscription uint64           `json:"subscription,omitempty" bson:"subscription"`
-	Address      string           `json:"address,omitempty" bson:"address"`
-	Node         string           `json:"node,omitempty" bson:"node"`
-	Bandwidth    *types.Bandwidth `json:"bandwidth,omitempty" bson:"bandwidth"`
-	Duration     int64            `json:"duration,omitempty" bson:"duration"`
+	ID             uint64           `json:"id,omitempty" bson:"id"`
+	SubscriptionID uint64           `json:"subscription_id,omitempty" bson:"subscription_id"`
+	AccAddr        string           `json:"acc_addr,omitempty" bson:"acc_addr"`
+	NodeAddr       string           `json:"node_addr,omitempty" bson:"node_addr"`
+	Bandwidth      *types.Bandwidth `json:"bandwidth,omitempty" bson:"bandwidth"`
+	Duration       int64            `json:"duration,omitempty" bson:"duration"`
 
 	StartHeight    int64     `json:"start_height,omitempty" bson:"start_height"`
 	StartTimestamp time.Time `json:"start_timestamp,omitempty" bson:"start_timestamp"`

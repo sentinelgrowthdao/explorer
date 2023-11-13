@@ -1,79 +1,55 @@
 package deposit
 
 import (
-	"encoding/json"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/sentinel-official/explorer/types"
 )
 
 type EventAdd struct {
-	Address  string
-	Previous types.Coins
-	Coins    types.Coins
-	Current  types.Coins
+	Address string
+	Coins   types.Coins
 }
 
 func NewEventAdd(v *types.Event) (*EventAdd, error) {
-	var previous sdk.Coins
-	if err := json.Unmarshal([]byte(v.Attributes["previous"]), &previous); err != nil {
-		return nil, err
-	}
-
-	var coins sdk.Coins
-	if err := json.Unmarshal([]byte(v.Attributes["coins"]), &coins); err != nil {
+	coins, err := sdk.ParseCoinsNormalized(v.Attributes["coins"])
+	if err != nil {
 		return nil, err
 	}
 
 	return &EventAdd{
-		Address:  v.Attributes["address"],
-		Previous: types.NewCoins(previous),
-		Coins:    types.NewCoins(coins),
-		Current:  types.NewCoins(previous.Add(coins...)),
+		Address: v.Attributes["address"],
+		Coins:   types.NewCoins(coins),
 	}, nil
 }
 
-func NewEventAddFromEvents(v types.Events) (*EventAdd, error) {
-	e, err := v.Get("sentinel.deposit.v1.EventAdd")
+func NewEventAddFromEvents(v types.Events) (int, *EventAdd, error) {
+	i, e, err := v.Get("sentinel.deposit.v1.EventAdd")
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
-	return NewEventAdd(e)
+	item, err := NewEventAdd(e)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return i, item, nil
 }
 
 type EventSubtract struct {
-	Address  string
-	Previous types.Coins
-	Coins    types.Coins
-	Current  types.Coins
+	Address string
+	Coins   types.Coins
 }
 
 func NewEventSubtract(v *types.Event) (*EventSubtract, error) {
-	var previous sdk.Coins
-	if err := json.Unmarshal([]byte(v.Attributes["previous"]), &previous); err != nil {
-		return nil, err
-	}
-
-	var coins sdk.Coins
-	if err := json.Unmarshal([]byte(v.Attributes["coins"]), &coins); err != nil {
+	coins, err := sdk.ParseCoinsNormalized(v.Attributes["coins"])
+	if err != nil {
 		return nil, err
 	}
 
 	return &EventSubtract{
-		Address:  v.Attributes["address"],
-		Previous: types.NewCoins(previous),
-		Coins:    types.NewCoins(coins),
-		Current:  types.NewCoins(previous.Sub(coins)),
+		Address: v.Attributes["address"],
+		Coins:   types.NewCoins(coins),
 	}, nil
-}
-
-func NewEventSubtractFromEvents(v types.Events) (*EventSubtract, error) {
-	e, err := v.Get("sentinel.deposit.v1.EventSubtract")
-	if err != nil {
-		return nil, err
-	}
-
-	return NewEventSubtract(e)
 }

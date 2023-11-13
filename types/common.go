@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/sentinel-official/hub"
+	"github.com/sentinel-official/hub/app"
 	hubtypes "github.com/sentinel-official/hub/types"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -21,7 +21,7 @@ type (
 
 var (
 	Replacer = strings.NewReplacer(`"\"`, `"`, `\""`, `"`)
-	EncCfg   = hub.MakeEncodingConfig()
+	EncCfg   = app.DefaultEncodingConfig()
 )
 
 type Event struct {
@@ -49,17 +49,39 @@ func NewEventFromABCIEvent(v *abcitypes.Event) *Event {
 	return item
 }
 
-func NewEventFromStringEvent(v *sdk.StringEvent) *Event {
-	item := &Event{
-		Type:       v.Type,
-		Attributes: make(map[string]string),
-	}
+func NewEventsFromStringEvent(v *sdk.StringEvent) (items []*Event) {
+	var (
+		keys      = make(map[string]int)
+		numEvents = 0
+	)
 
 	for _, x := range v.Attributes {
-		item.Attributes[x.Key] = x.Value
+		if _, ok := keys[x.Key]; !ok {
+			keys[x.Key] = 0
+		}
+
+		keys[x.Key] = keys[x.Key] + 1
+		if keys[x.Key] > numEvents {
+			numEvents = keys[x.Key]
+		}
 	}
 
-	return item
+	numAttributes := len(v.Attributes) / numEvents
+	for eventIndex := 0; eventIndex < numEvents; eventIndex++ {
+		item := &Event{
+			Type:       v.Type,
+			Attributes: make(map[string]string),
+		}
+
+		startIndex, endIndex := eventIndex*numAttributes, (eventIndex+1)*numAttributes
+		for attributeIndex := startIndex; attributeIndex < endIndex; attributeIndex++ {
+			item.Attributes[v.Attributes[attributeIndex].Key] = v.Attributes[attributeIndex].Value
+		}
+
+		items = append(items, item)
+	}
+
+	return items
 }
 
 type Events []*Event
@@ -76,20 +98,20 @@ func NewEventsFromABCIEvents(v []abcitypes.Event) Events {
 func NewEventsFromStringEvents(v []sdk.StringEvent) Events {
 	items := make(Events, 0, len(v))
 	for _, item := range v {
-		items = append(items, NewEventFromStringEvent(&item))
+		items = append(items, NewEventsFromStringEvent(&item)...)
 	}
 
 	return items
 }
 
-func (e Events) Get(s string) (*Event, error) {
+func (e Events) Get(s string) (int, *Event, error) {
 	for i := 0; i < len(e); i++ {
 		if e[i].Type == s {
-			return e[i], nil
+			return i, e[i], nil
 		}
 	}
 
-	return nil, fmt.Errorf("event %s does not exist", s)
+	return 0, nil, fmt.Errorf("event %s does not exist", s)
 }
 
 type ABCIMessageLog struct {
@@ -153,7 +175,24 @@ func (c *Coin) Add(v string) *Coin {
 	return c
 }
 
+func (c *Coin) Sub(v string) *Coin {
+	a1 := utils.MustIntFromString(c.Amount)
+	a2 := utils.MustIntFromString(v)
+
+	c.Amount = a1.Sub(a2).String()
+	return c
+}
+
 type Coins []*Coin
+
+func NewCoins(v sdk.Coins) Coins {
+	items := make(Coins, 0, v.Len())
+	for _, c := range v {
+		items = append(items, NewCoin(&c))
+	}
+
+	return items.Sort()
+}
 
 func (c Coins) Len() int           { return len(c) }
 func (c Coins) Less(i, j int) bool { return c[i].Denom < c[j].Denom }
@@ -167,15 +206,6 @@ func (c Coins) IndexOf(v string) int {
 	})
 }
 
-func NewCoins(v sdk.Coins) Coins {
-	items := make(Coins, 0, v.Len())
-	for _, c := range v {
-		items = append(items, NewCoin(&c))
-	}
-
-	return items.Sort()
-}
-
 func (c Coins) Copy() (n Coins) {
 	for i := 0; i < len(c); i++ {
 		n = append(n, c[i].Copy())
@@ -184,16 +214,44 @@ func (c Coins) Copy() (n Coins) {
 	return n
 }
 
+func (c Coins) Get(v string) *Coin {
+	for i := 0; i < c.Len(); i++ {
+		if c[i].Denom == v {
+			return c[i]
+		}
+	}
+
+	return nil
+}
+
 func (c Coins) Add(v ...*Coin) (n Coins) {
 	if !c.IsSorted() {
 		panic("coins must be sorted")
 	}
 
-	n = c.Copy()
+	n = c.Copy() // TODO: remove?
 	for i := 0; i < len(v); i++ {
 		index := n.IndexOf(v[i].Denom)
 		if index < len(n) && n[index].Denom == v[i].Denom {
 			n[index] = n[index].Add(v[i].Amount)
+		} else {
+			n = append(n, v[i]).Sort()
+		}
+	}
+
+	return n
+}
+
+func (c Coins) Sub(v ...*Coin) (n Coins) {
+	if !c.IsSorted() {
+		panic("coins must be sorted")
+	}
+
+	n = c.Copy() // TODO: remove?
+	for i := 0; i < len(v); i++ {
+		index := n.IndexOf(v[i].Denom)
+		if index < len(n) && n[index].Denom == v[i].Denom {
+			n[index] = n[index].Sub(v[i].Amount)
 		} else {
 			n = append(n, v[i]).Sort()
 		}
@@ -215,6 +273,13 @@ func NewBandwidth(v *hubtypes.Bandwidth) *Bandwidth {
 	return &Bandwidth{
 		Upload:   v.Upload.String(),
 		Download: v.Download.String(),
+	}
+}
+
+func (b *Bandwidth) Copy() *Bandwidth {
+	return &Bandwidth{
+		Upload:   b.Upload,
+		Download: b.Download,
 	}
 }
 

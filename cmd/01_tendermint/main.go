@@ -4,9 +4,10 @@ import (
 	"context"
 	"flag"
 	"log"
+	"math"
 	"time"
 
-	"github.com/sentinel-official/hub"
+	"github.com/sentinel-official/hub/app"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -35,8 +36,8 @@ var (
 )
 
 func init() {
-	flag.Int64Var(&fromHeight, "from-height", 9_348_475, "")
-	flag.Int64Var(&toHeight, "to-height", 12_310_005, "")
+	flag.Int64Var(&fromHeight, "from-height", 12_310_005, "")
+	flag.Int64Var(&toHeight, "to-height", math.MaxInt64, "")
 	flag.StringVar(&rpcAddress, "rpc-address", "http://127.0.0.1:26657", "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
@@ -183,24 +184,24 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (ops []types.Data
 }
 
 func main() {
-	encCfg := hub.MakeEncodingConfig()
+	encCfg := app.DefaultEncodingConfig()
 
 	q, err := querier.NewQuerier(encCfg.InterfaceRegistry, rpcAddress, "/websocket")
 	if err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	db, err := utils.PrepareDatabase(context.TODO(), appName, dbUsername, dbPassword, dbAddress, dbName)
 	if err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	if err := db.Client().Ping(context.TODO(), nil); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	if err := createIndexes(context.TODO(), db); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	filter := bson.M{
@@ -209,7 +210,7 @@ func main() {
 
 	dSyncStatus, err := database.SyncStatusFindOne(context.TODO(), db, filter)
 	if err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 	if dSyncStatus == nil {
 		dSyncStatus = &models.SyncStatus{
@@ -226,7 +227,7 @@ func main() {
 
 		ops, err := run(db, q, height)
 		if err != nil {
-			log.Panicln(err)
+			log.Fatalln(err)
 		}
 
 		log.Println("OperationsLen", len(ops))
@@ -287,7 +288,7 @@ func main() {
 		log.Println("Duration", time.Since(now))
 		log.Println()
 		if err != nil {
-			log.Panicln(err)
+			log.Fatalln(err)
 		}
 	}
 }

@@ -12,7 +12,7 @@ type MsgRegisterRequest struct {
 	Name        string
 	Identity    string
 	Website     string
-	Description string `json:"description"`
+	Description string
 }
 
 func NewMsgRegisterRequest(v bson.M) (*MsgRegisterRequest, error) {
@@ -25,7 +25,7 @@ func NewMsgRegisterRequest(v bson.M) (*MsgRegisterRequest, error) {
 	}, nil
 }
 
-func (msg *MsgRegisterRequest) ProvAddress() hubtypes.ProvAddress {
+func (msg *MsgRegisterRequest) ProvAddr() hubtypes.ProvAddress {
 	addr := utils.MustAccAddressFromBech32(msg.From)
 	return addr.Bytes()
 }
@@ -36,6 +36,7 @@ type MsgUpdateRequest struct {
 	Identity    string
 	Website     string
 	Description string
+	Status      string
 }
 
 func NewMsgUpdateRequest(v bson.M) (*MsgUpdateRequest, error) {
@@ -45,5 +46,6 @@ func NewMsgUpdateRequest(v bson.M) (*MsgUpdateRequest, error) {
 		Identity:    v["identity"].(string),
 		Website:     v["website"].(string),
 		Description: v["description"].(string),
+		Status:      v["status"].(string),
 	}, nil
 }

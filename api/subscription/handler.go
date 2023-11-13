@@ -109,9 +109,9 @@ func HandlerGetSubscriptionEvents(db *mongo.Database) gin.HandlerFunc {
 	}
 }
 
-func HandlerGetQuotas(db *mongo.Database) gin.HandlerFunc {
+func HandlerGetAllocations(db *mongo.Database) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		req, err := NewRequestGetQuotas(c)
+		req, err := NewRequestGetAllocations(c)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, types.NewResponseError(1, err.Error()))
 			return
@@ -126,7 +126,7 @@ func HandlerGetQuotas(db *mongo.Database) gin.HandlerFunc {
 			SetSkip(req.Query.Skip).
 			SetLimit(req.Query.Limit)
 
-		items, err := database.SubscriptionQuotaFind(context.TODO(), db, filter, opts)
+		items, err := database.SubscriptionAllocationFind(context.TODO(), db, filter, opts)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, types.NewResponseError(2, err.Error()))
 			return
@@ -136,9 +136,9 @@ func HandlerGetQuotas(db *mongo.Database) gin.HandlerFunc {
 	}
 }
 
-func HandlerGetQuota(db *mongo.Database) gin.HandlerFunc {
+func HandlerGetAllocation(db *mongo.Database) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		req, err := NewRequestGetQuota(c)
+		req, err := NewRequestGetAllocation(c)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, types.NewResponseError(1, err.Error()))
 			return
@@ -152,7 +152,7 @@ func HandlerGetQuota(db *mongo.Database) gin.HandlerFunc {
 		opts := options.FindOne().
 			SetProjection(projection)
 
-		item, err := database.SubscriptionQuotaFindOne(context.TODO(), db, filter, opts)
+		item, err := database.SubscriptionAllocationFindOne(context.TODO(), db, filter, opts)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, types.NewResponseError(2, err.Error()))
 			return
@@ -162,9 +162,9 @@ func HandlerGetQuota(db *mongo.Database) gin.HandlerFunc {
 	}
 }
 
-func HandlerGetQuotaEvents(db *mongo.Database) gin.HandlerFunc {
+func HandlerGetAllocationEvents(db *mongo.Database) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		req, err := NewRequestGetQuotaEvents(c)
+		req, err := NewRequestGetAllocationEvents(c)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, types.NewResponseError(1, err.Error()))
 			return
@@ -173,7 +173,7 @@ func HandlerGetQuotaEvents(db *mongo.Database) gin.HandlerFunc {
 		filter := bson.M{
 			"type": bson.M{
 				"$in": bson.A{
-					types.EventTypeSubscriptionQuotaUpdateDetails,
+					types.EventTypeSubscriptionAllocationUpdateDetails,
 				},
 			},
 			"subscription_id": req.URI.ID,

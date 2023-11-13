@@ -66,7 +66,7 @@ func NewRequestGetSubscriptionEvents(c *gin.Context) (req *RequestGetSubscriptio
 	return req, nil
 }
 
-type RequestGetQuotas struct {
+type RequestGetAllocations struct {
 	URI struct {
 		ID uint64 `uri:"id"`
 	}
@@ -76,8 +76,8 @@ type RequestGetQuotas struct {
 	}
 }
 
-func NewRequestGetQuotas(c *gin.Context) (req *RequestGetQuotas, err error) {
-	req = &RequestGetQuotas{}
+func NewRequestGetAllocations(c *gin.Context) (req *RequestGetAllocations, err error) {
+	req = &RequestGetAllocations{}
 	if err = c.ShouldBindUri(&req.URI); err != nil {
 		return nil, err
 	}
@@ -88,15 +88,15 @@ func NewRequestGetQuotas(c *gin.Context) (req *RequestGetQuotas, err error) {
 	return req, nil
 }
 
-type RequestGetQuota struct {
+type RequestGetAllocation struct {
 	URI struct {
 		AccAddr string `uri:"acc_addr"`
 		ID      uint64 `uri:"id"`
 	}
 }
 
-func NewRequestGetQuota(c *gin.Context) (req *RequestGetQuota, err error) {
-	req = &RequestGetQuota{}
+func NewRequestGetAllocation(c *gin.Context) (req *RequestGetAllocation, err error) {
+	req = &RequestGetAllocation{}
 	if err = c.ShouldBindUri(&req.URI); err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func NewRequestGetQuota(c *gin.Context) (req *RequestGetQuota, err error) {
 	return req, nil
 }
 
-type RequestGetQuotaEvents struct {
+type RequestGetAllocationEvents struct {
 	URI struct {
 		AccAddr string `uri:"acc_addr"`
 		ID      uint64 `uri:"id"`
@@ -115,8 +115,8 @@ type RequestGetQuotaEvents struct {
 	}
 }
 
-func NewRequestGetQuotaEvents(c *gin.Context) (req *RequestGetQuotaEvents, err error) {
-	req = &RequestGetQuotaEvents{}
+func NewRequestGetAllocationEvents(c *gin.Context) (req *RequestGetAllocationEvents, err error) {
+	req = &RequestGetAllocationEvents{}
 	if err = c.ShouldBindUri(&req.URI); err != nil {
 		return nil, err
 	}

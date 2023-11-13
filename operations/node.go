@@ -12,7 +12,7 @@ import (
 	"github.com/sentinel-official/explorer/types"
 )
 
-func NewNodeRegisterOperation(
+func NewNodeRegister(
 	db *mongo.Database,
 	v *models.Node,
 ) types.DatabaseOperation {
@@ -25,21 +25,21 @@ func NewNodeRegisterOperation(
 	}
 }
 
-func NewNodeUpdateDetailsOperation(
+func NewNodeUpdateDetails(
 	db *mongo.Database,
-	address, provider string, price types.Coins, remoteURL string,
+	addr string, gigabytePrices, hourlyPrices types.Coins, remoteURL string,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
-			"address": address,
+			"addr": addr,
 		}
 
 		updateSet := bson.M{}
-		if provider != "" {
-			updateSet["provider"], updateSet["price"] = provider, nil
+		if gigabytePrices != nil && len(gigabytePrices) > 0 {
+			updateSet["gigabyte_prices"] = gigabytePrices
 		}
-		if price != nil && len(price) > 0 {
-			updateSet["price"], updateSet["provider"] = price, ""
+		if hourlyPrices != nil && len(hourlyPrices) > 0 {
+			updateSet["hourly_prices"] = hourlyPrices
 		}
 		if remoteURL != "" {
 			updateSet["remote_url"] = remoteURL
@@ -63,13 +63,13 @@ func NewNodeUpdateDetailsOperation(
 	}
 }
 
-func NewNodeUpdateStatusOperation(
+func NewNodeUpdateStatus(
 	db *mongo.Database,
-	address, status string, height int64, timestamp time.Time, txHash string,
+	addr, status string, height int64, timestamp time.Time, txHash string,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
-			"address": address,
+			"addr": addr,
 		}
 		update := bson.M{
 			"$set": bson.M{

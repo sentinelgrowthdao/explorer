@@ -14,13 +14,13 @@ import (
 	"github.com/sentinel-official/explorer/utils"
 )
 
-func NewNodeStatisticUpdateSessionStartCount(
+func NewNodeStatisticIncreaseSessionStartCount(
 	db *mongo.Database,
-	address string, timestamp time.Time, v int64,
+	addr string, timestamp time.Time, v int64,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
-			"address":   address,
+			"addr":      addr,
 			"timestamp": timestamp,
 		}
 		update := bson.M{
@@ -43,7 +43,7 @@ func NewNodeStatisticUpdateSessionStartCount(
 	}
 }
 
-func NewNodeStatisticUpdateSessionEndCount(
+func NewNodeStatisticIncreaseSessionEndCount(
 	db *mongo.Database,
 	timestamp time.Time, id uint64, v int64,
 ) types.DatabaseOperation {
@@ -52,8 +52,8 @@ func NewNodeStatisticUpdateSessionEndCount(
 			"id": id,
 		}
 		projection := bson.M{
-			"_id":  0,
-			"node": 1,
+			"_id":       0,
+			"node_addr": 1,
 		}
 		findOneOpts := options.FindOne().
 			SetProjection(projection)
@@ -64,7 +64,7 @@ func NewNodeStatisticUpdateSessionEndCount(
 		}
 
 		filter = bson.M{
-			"address":   item.Node,
+			"addr":      item.NodeAddr,
 			"timestamp": timestamp,
 		}
 		update := bson.M{
@@ -87,13 +87,13 @@ func NewNodeStatisticUpdateSessionEndCount(
 	}
 }
 
-func NewNodeStatisticUpdateSubscriptionStartCount(
+func NewNodeStatisticIncreaseSubscriptionStartCount(
 	db *mongo.Database,
-	address string, timestamp time.Time, v int64,
+	addr string, timestamp time.Time, v int64,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
-			"address":   address,
+			"addr":      addr,
 			"timestamp": timestamp,
 		}
 		update := bson.M{
@@ -116,113 +116,7 @@ func NewNodeStatisticUpdateSubscriptionStartCount(
 	}
 }
 
-func NewNodeStatisticUpdateSubscriptionBytes(
-	db *mongo.Database,
-	address string, timestamp time.Time, v sdk.Int,
-) types.DatabaseOperation {
-	return func(ctx mongo.SessionContext) error {
-		filter := bson.M{
-			"address":   address,
-			"timestamp": timestamp,
-		}
-		projection := bson.M{
-			"_id":                0,
-			"subscription_bytes": 1,
-		}
-		findOneOpts := options.FindOne().
-			SetProjection(projection)
-
-		item, err := database.NodeStatisticFindOne(ctx, db, filter, findOneOpts)
-		if err != nil {
-			return err
-		}
-		if item != nil {
-			v = v.Add(utils.MustIntFromString(item.SubscriptionBytes))
-		}
-
-		update := bson.M{
-			"$set": bson.M{
-				"subscription_bytes": v.String(),
-			},
-		}
-		projection = bson.M{
-			"_id": 1,
-		}
-		findOneAndUpdateOpts := options.FindOneAndUpdate().
-			SetProjection(projection).
-			SetUpsert(true)
-
-		if _, err := database.NodeStatisticFindOneAndUpdate(ctx, db, filter, update, findOneAndUpdateOpts); err != nil {
-			return err
-		}
-
-		return nil
-	}
-}
-
-func NewNodeStatisticUpdateEarningsForBytes(
-	db *mongo.Database,
-	timestamp time.Time, id uint64, v *types.Coin,
-) types.DatabaseOperation {
-	return func(ctx mongo.SessionContext) error {
-		filter := bson.M{
-			"id": id,
-		}
-		projection := bson.M{
-			"_id":  0,
-			"node": 1,
-		}
-		findOneOpts := options.FindOne().
-			SetProjection(projection)
-
-		session, err := database.SessionFindOne(ctx, db, filter)
-		if err != nil {
-			return err
-		}
-
-		filter = bson.M{
-			"address":   session.Node,
-			"timestamp": timestamp,
-		}
-		projection = bson.M{
-			"_id":                0,
-			"earnings_for_bytes": 1,
-		}
-		findOneOpts = options.FindOne().
-			SetProjection(projection)
-
-		item, err := database.NodeStatisticFindOne(ctx, db, filter, findOneOpts)
-		if err != nil {
-			return err
-		}
-		if item == nil {
-			item = models.NewNodeStatistic()
-		}
-		if item.EarningsForBytes == nil {
-			item.EarningsForBytes = types.NewCoins(nil)
-		}
-
-		update := bson.M{
-			"$set": bson.M{
-				"earnings_for_bytes": item.EarningsForBytes.Add(v),
-			},
-		}
-		projection = bson.M{
-			"_id": 1,
-		}
-		findOneAndUpdateOpts := options.FindOneAndUpdate().
-			SetProjection(projection).
-			SetUpsert(true)
-
-		if _, err := database.NodeStatisticFindOneAndUpdate(ctx, db, filter, update, findOneAndUpdateOpts); err != nil {
-			return err
-		}
-
-		return nil
-	}
-}
-
-func NewNodeStatisticUpdateSubscriptionEndCount(
+func NewNodeStatisticIncreaseSubscriptionEndCount(
 	db *mongo.Database,
 	timestamp time.Time, id uint64, v int64,
 ) types.DatabaseOperation {
@@ -231,8 +125,8 @@ func NewNodeStatisticUpdateSubscriptionEndCount(
 			"id": id,
 		}
 		projection := bson.M{
-			"_id":  0,
-			"node": 1,
+			"_id":       0,
+			"node_addr": 1,
 		}
 		findOneOpts := options.FindOne().
 			SetProjection(projection)
@@ -241,9 +135,12 @@ func NewNodeStatisticUpdateSubscriptionEndCount(
 		if err != nil {
 			return err
 		}
+		if item.PlanID != 0 {
+			return nil
+		}
 
 		filter = bson.M{
-			"address":   item.Node,
+			"addr":      item.NodeAddr,
 			"timestamp": timestamp,
 		}
 		update := bson.M{
@@ -266,13 +163,87 @@ func NewNodeStatisticUpdateSubscriptionEndCount(
 	}
 }
 
-func NewNodeStatisticUpdateSessionDetails(
+func NewNodeStatisticUpdateSubscriptionBytes(
 	db *mongo.Database,
-	address string, timestamp time.Time, id uint64, bandwidth *types.Bandwidth, duration int64,
+	addr string, timestamp time.Time, v sdk.Int,
 ) types.DatabaseOperation {
 	return func(ctx mongo.SessionContext) error {
 		filter := bson.M{
-			"address":   address,
+			"addr":      addr,
+			"timestamp": timestamp,
+		}
+		projection := bson.M{
+			"_id":                0,
+			"subscription_bytes": 1,
+		}
+		findOneOpts := options.FindOne().
+			SetProjection(projection)
+
+		item, err := database.NodeStatisticFindOne(ctx, db, filter, findOneOpts)
+		if err != nil {
+			return err
+		}
+		if item == nil {
+			item = models.NewNodeStatistic()
+		}
+
+		bytes := utils.MustIntFromString(item.SubscriptionBytes)
+		update := bson.M{
+			"$set": bson.M{
+				"subscription_bytes": bytes.Add(v).String(),
+			},
+		}
+		projection = bson.M{
+			"_id": 1,
+		}
+		findOneAndUpdateOpts := options.FindOneAndUpdate().
+			SetProjection(projection).
+			SetUpsert(true)
+
+		if _, err := database.NodeStatisticFindOneAndUpdate(ctx, db, filter, update, findOneAndUpdateOpts); err != nil {
+			return err
+		}
+
+		return nil
+	}
+}
+
+func NewNodeStatisticUpdateSubscriptionHours(
+	db *mongo.Database,
+	addr string, timestamp time.Time, v int64,
+) types.DatabaseOperation {
+	return func(ctx mongo.SessionContext) error {
+		filter := bson.M{
+			"addr":      addr,
+			"timestamp": timestamp,
+		}
+		update := bson.M{
+			"$inc": bson.M{
+				"subscription_hours": v,
+			},
+		}
+		projection := bson.M{
+			"_id": 1,
+		}
+		findOneAndUpdateOpts := options.FindOneAndUpdate().
+			SetProjection(projection).
+			SetUpsert(true)
+
+		if _, err := database.NodeStatisticFindOneAndUpdate(ctx, db, filter, update, findOneAndUpdateOpts); err != nil {
+			return err
+		}
+
+		return nil
+	}
+}
+
+func NewNodeStatisticUpdateSessionDetails(
+	db *mongo.Database,
+	addr string, timestamp time.Time, id uint64, bandwidth *types.Bandwidth, duration int64,
+) types.DatabaseOperation {
+	return func(ctx mongo.SessionContext) error {
+		filter := bson.M{
+			"addr":      addr,
 			"timestamp": timestamp,
 		}
 		projection := bson.M{
@@ -328,13 +299,137 @@ func NewNodeStatisticUpdateSessionDetails(
 		item.SessionDuration = item.SessionDuration + duration
 
 		filter = bson.M{
-			"address":   address,
+			"addr":      addr,
 			"timestamp": timestamp,
 		}
 		update := bson.M{
 			"$set": bson.M{
 				"session_bandwidth": item.SessionBandwidth,
 				"session_duration":  item.SessionDuration,
+			},
+		}
+		projection = bson.M{
+			"_id": 1,
+		}
+		findOneAndUpdateOpts := options.FindOneAndUpdate().
+			SetProjection(projection).
+			SetUpsert(true)
+
+		if _, err := database.NodeStatisticFindOneAndUpdate(ctx, db, filter, update, findOneAndUpdateOpts); err != nil {
+			return err
+		}
+
+		return nil
+	}
+}
+
+func NewNodeStatisticUpdateEarningsForBytes(
+	db *mongo.Database,
+	timestamp time.Time, id uint64, v *types.Coin,
+) types.DatabaseOperation {
+	return func(ctx mongo.SessionContext) error {
+		filter := bson.M{
+			"id": id,
+		}
+		projection := bson.M{
+			"_id":       0,
+			"node_addr": 1,
+		}
+		findOneOpts := options.FindOne().
+			SetProjection(projection)
+
+		session, err := database.SessionFindOne(ctx, db, filter)
+		if err != nil {
+			return err
+		}
+
+		filter = bson.M{
+			"addr":      session.NodeAddr,
+			"timestamp": timestamp,
+		}
+		projection = bson.M{
+			"_id":                0,
+			"earnings_for_bytes": 1,
+		}
+		findOneOpts = options.FindOne().
+			SetProjection(projection)
+
+		item, err := database.NodeStatisticFindOne(ctx, db, filter, findOneOpts)
+		if err != nil {
+			return err
+		}
+		if item == nil {
+			item = models.NewNodeStatistic()
+		}
+		if item.EarningsForBytes == nil {
+			item.EarningsForBytes = types.NewCoins(nil)
+		}
+
+		update := bson.M{
+			"$set": bson.M{
+				"earnings_for_bytes": item.EarningsForBytes.Add(v),
+			},
+		}
+		projection = bson.M{
+			"_id": 1,
+		}
+		findOneAndUpdateOpts := options.FindOneAndUpdate().
+			SetProjection(projection).
+			SetUpsert(true)
+
+		if _, err := database.NodeStatisticFindOneAndUpdate(ctx, db, filter, update, findOneAndUpdateOpts); err != nil {
+			return err
+		}
+
+		return nil
+	}
+}
+
+func NewNodeStatisticUpdateEarningsForHours(
+	db *mongo.Database,
+	timestamp time.Time, id uint64, v *types.Coin,
+) types.DatabaseOperation {
+	return func(ctx mongo.SessionContext) error {
+		filter := bson.M{
+			"id": id,
+		}
+		projection := bson.M{
+			"_id":       0,
+			"node_addr": 1,
+		}
+		findOneOpts := options.FindOne().
+			SetProjection(projection)
+
+		session, err := database.SessionFindOne(ctx, db, filter)
+		if err != nil {
+			return err
+		}
+
+		filter = bson.M{
+			"addr":      session.NodeAddr,
+			"timestamp": timestamp,
+		}
+		projection = bson.M{
+			"_id":                0,
+			"earnings_for_hours": 1,
+		}
+		findOneOpts = options.FindOne().
+			SetProjection(projection)
+
+		item, err := database.NodeStatisticFindOne(ctx, db, filter, findOneOpts)
+		if err != nil {
+			return err
+		}
+		if item == nil {
+			item = models.NewNodeStatistic()
+		}
+		if item.EarningsForHours == nil {
+			item.EarningsForHours = types.NewCoins(nil)
+		}
+
+		update := bson.M{
+			"$set": bson.M{
+				"earnings_for_hours": item.EarningsForHours.Add(v),
 			},
 		}
 		projection = bson.M{
