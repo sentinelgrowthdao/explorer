@@ -38,7 +38,7 @@ func (q *Querier) ABCIQuerySubscription(id uint64, height int64) (*subscriptiont
 	}
 
 	var item subscriptiontypes.Subscription
-	if err := types.EncCfg.Marshaler.UnmarshalBinaryBare(value, &item); err != nil {
+	if err := types.EncCfg.Marshaler.Unmarshal(value, &item); err != nil {
 		return nil, err
 	}
 
@@ -67,7 +67,7 @@ func (q *Querier) ABCIQueryQuota(id uint64, addr sdk.AccAddress, height int64) (
 	}
 
 	var item subscriptiontypes.Quota
-	if err := types.EncCfg.Marshaler.UnmarshalBinaryBare(value, &item); err != nil {
+	if err := types.EncCfg.Marshaler.Unmarshal(value, &item); err != nil {
 		return nil, err
 	}
 

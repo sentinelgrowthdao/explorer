@@ -38,7 +38,7 @@ func (q *Querier) ABCIQueryNode(addr hubtypes.NodeAddress, height int64) (*nodet
 	}
 
 	var item nodetypes.Node
-	if err := types.EncCfg.Marshaler.UnmarshalBinaryBare(value, &item); err != nil {
+	if err := types.EncCfg.Marshaler.Unmarshal(value, &item); err != nil {
 		return nil, err
 	}
 

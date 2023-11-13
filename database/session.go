@@ -48,3 +48,7 @@ func SessionFind(ctx context.Context, db *mongo.Database, filter bson.M, opts ..
 func SessionIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mongo.IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
 	return IndexesCreateMany(ctx, db.Collection(SessionCollectionName), models, opts...)
 }
+
+func SessionCountDocuments(ctx context.Context, db *mongo.Database, filter bson.M, opts ...*options.CountOptions) (int64, error) {
+	return CountDocuments(ctx, db.Collection(SessionCollectionName), filter, opts...)
+}

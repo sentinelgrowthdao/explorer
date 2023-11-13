@@ -35,8 +35,8 @@ var (
 )
 
 func init() {
-	flag.Int64Var(&fromHeight, "from-height", 901_801, "")
-	flag.Int64Var(&toHeight, "to-height", 5_125_000, "")
+	flag.Int64Var(&fromHeight, "from-height", 5_125_000, "")
+	flag.Int64Var(&toHeight, "to-height", 9_348_475, "")
 	flag.StringVar(&rpcAddress, "rpc-address", "http://127.0.0.1:26657", "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
@@ -185,7 +185,7 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (ops []types.Data
 func main() {
 	encCfg := hub.MakeEncodingConfig()
 
-	q, err := querier.NewQuerier(&encCfg, rpcAddress, "/websocket")
+	q, err := querier.NewQuerier(encCfg.InterfaceRegistry, rpcAddress, "/websocket")
 	if err != nil {
 		log.Panicln(err)
 	}

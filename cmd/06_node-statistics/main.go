@@ -37,8 +37,8 @@ var (
 )
 
 func init() {
-	flag.Int64Var(&fromHeight, "from-height", 901_801, "")
-	flag.Int64Var(&toHeight, "to-height", 5_125_000, "")
+	flag.Int64Var(&fromHeight, "from-height", 5_125_000, "")
+	flag.Int64Var(&toHeight, "to-height", 9_348_475, "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
 	flag.StringVar(&dbUsername, "db-username", "", "")
@@ -50,21 +50,6 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	indexes := []mongo.IndexModel{
 		{
 			Keys: bson.D{
-				bson.E{Key: "session_id", Value: 1},
-				bson.E{Key: "type", Value: 1},
-				bson.E{Key: "timestamp", Value: 1},
-			},
-		},
-	}
-
-	_, err := database.EventIndexesCreateMany(ctx, db, indexes)
-	if err != nil {
-		return err
-	}
-
-	indexes = []mongo.IndexModel{
-		{
-			Keys: bson.D{
 				bson.E{Key: "address", Value: 1},
 				bson.E{Key: "timestamp", Value: 1},
 			},
@@ -73,7 +58,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		},
 	}
 
-	_, err = database.NodeStatisticIndexesCreateMany(ctx, db, indexes)
+	_, err := database.NodeStatisticIndexesCreateMany(ctx, db, indexes)
 	if err != nil {
 		return err
 	}

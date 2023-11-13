@@ -7,9 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/sentinel-official/hub/params"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/client"
@@ -18,20 +16,18 @@ import (
 )
 
 type Querier struct {
-	codec.Marshaler
 	codectypes.InterfaceRegistry
 	*tmhttp.HTTP
 }
 
-func NewQuerier(encCfg *params.EncodingConfig, remote, wsEndpoint string) (q *Querier, err error) {
+func NewQuerier(ir codectypes.InterfaceRegistry, remote, wsEndpoint string) (q *Querier, err error) {
 	http, err := tmhttp.New(remote, wsEndpoint)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Querier{
-		Marshaler:         encCfg.Marshaler,
-		InterfaceRegistry: encCfg.InterfaceRegistry,
+		InterfaceRegistry: ir,
 		HTTP:              http,
 	}, nil
 }

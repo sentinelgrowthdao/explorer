@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"io"
 	"log"
 	"net/http"
 
@@ -14,6 +13,7 @@ import (
 	depositapi "github.com/sentinel-official/explorer/api/deposit"
 	nodeapi "github.com/sentinel-official/explorer/api/node"
 	sessionapi "github.com/sentinel-official/explorer/api/session"
+	statisticsapi "github.com/sentinel-official/explorer/api/statistics"
 	subscriptionapi "github.com/sentinel-official/explorer/api/subscription"
 	txapi "github.com/sentinel-official/explorer/api/tx"
 	"github.com/sentinel-official/explorer/utils"
@@ -31,8 +31,6 @@ var (
 )
 
 func init() {
-	log.SetOutput(io.Discard)
-
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
 	flag.StringVar(&dbUsername, "db-username", "", "")
@@ -59,6 +57,7 @@ func main() {
 	depositapi.RegisterRoutes(router, db)
 	nodeapi.RegisterRoutes(router, db)
 	sessionapi.RegisterRoutes(router, db)
+	statisticsapi.RegisterRoutes(router, db)
 	subscriptionapi.RegisterRoutes(router, db)
 	txapi.RegisterRoutes(router, db)
 
