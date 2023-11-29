@@ -104,8 +104,11 @@ func NewEventsFromStringEvents(v []sdk.StringEvent) Events {
 	return items
 }
 
-func (e Events) Get(s string) (int, *Event, error) {
+func (e Events) Get(s string, skip int) (int, *Event, error) {
 	for i := 0; i < len(e); i++ {
+		if i < skip {
+			continue
+		}
 		if e[i].Type == s {
 			return i, e[i], nil
 		}

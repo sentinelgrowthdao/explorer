@@ -61,8 +61,8 @@ func NewEventCreateSubscription(v *types.Event) (*EventCreateSubscription, error
 	}, nil
 }
 
-func NewEventCreateSubscriptionFromEvents(v types.Events) (int, *EventCreateSubscription, error) {
-	i, e, err := v.Get("sentinel.node.v2.EventCreateSubscription")
+func NewEventCreateSubscriptionFromEvents(v types.Events, skip int) (int, *EventCreateSubscription, error) {
+	i, e, err := v.Get("sentinel.node.v2.EventCreateSubscription", skip)
 	if err != nil {
 		return 0, nil, err
 	}
