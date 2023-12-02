@@ -5,6 +5,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func RegisterRoutes(router gin.IRouter, db *mongo.Database) {
-	router.GET("/statistics", HandlerGetStatistics(db))
+func RegisterRoutes(router gin.IRouter, db *mongo.Database, excludeAddrs []string) {
+	router.GET("/statistics", HandlerGetStatistics(db, excludeAddrs))
 }

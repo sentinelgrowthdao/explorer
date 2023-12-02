@@ -14,8 +14,8 @@ import (
 	"github.com/sentinel-official/explorer/types"
 )
 
-var (
-	requestHandlers = map[string]func(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error){
+func HandlerGetStatistics(db *mongo.Database, excludeAddrs []string) gin.HandlerFunc {
+	requestHandlers := map[string]func(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error){
 		types.StatisticMethodAverageActiveNodeCount:            handleAverageActiveNodeCount,
 		types.StatisticMethodAverageActiveSessionCount:         handleAverageActiveSessionCount,
 		types.StatisticMethodAverageActiveSubscriptionCount:    handleAverageActiveSubscriptionCount,
@@ -30,10 +30,10 @@ var (
 		types.StatisticMethodAverageStartSubscriptionCount:     handleAverageStartSubscriptionCount,
 		types.StatisticMethodAverageSubscriptionDeposit:        handleAverageSubscriptionDeposit,
 		types.StatisticMethodCurrentNodeCount:                  handleCurrentNodeCount,
-		types.StatisticMethodCurrentSessionAddressCount:        handleCurrentSessionAddressCount,
-		types.StatisticMethodCurrentSessionCount:               handleCurrentSessionCount,
-		types.StatisticMethodCurrentSessionNodeCount:           handleCurrentSessionNodeCount,
-		types.StatisticMethodCurrentSubscriptionCount:          handleCurrentSubscriptionCount,
+		types.StatisticMethodCurrentSessionAddressCount:        handleCurrentSessionAddressCount(excludeAddrs),
+		types.StatisticMethodCurrentSessionCount:               handleCurrentSessionCount(excludeAddrs),
+		types.StatisticMethodCurrentSessionNodeCount:           handleCurrentSessionNodeCount(excludeAddrs),
+		types.StatisticMethodCurrentSubscriptionCount:          handleCurrentSubscriptionCount(excludeAddrs),
 		types.StatisticMethodHistoricalActiveNodeCount:         handleHistoricalActiveNodeCount,
 		types.StatisticMethodHistoricalActiveSessionCount:      handleHistoricalActiveSessionCount,
 		types.StatisticMethodHistoricalActiveSubscriptionCount: handleHistoricalActiveSubscriptionCount,
@@ -63,9 +63,7 @@ var (
 		types.StatisticMethodTotalSessionDuration:              handleTotalSessionDuration,
 		types.StatisticMethodTotalSubscriptionDeposit:          handleTotalSubscriptionDeposit,
 	}
-)
 
-func HandlerGetStatistics(db *mongo.Database) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req, err := NewRequestGetStatistics(c)
 		if err != nil {
@@ -268,96 +266,104 @@ func handleCurrentNodeCount(db *mongo.Database, req *RequestGetStatistics) ([]bs
 	}, err
 }
 
-func handleCurrentSessionCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	filter := bson.M{}
-	if req.Query.Status != "" {
-		filter["status"] = req.Query.Status
-	} else {
-		filter["_id"] = bson.M{
-			"$ne": nil,
+func handleCurrentSessionCount(excludeAddrs []string) func(*mongo.Database, *RequestGetStatistics) ([]bson.M, error) {
+	return func(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+		filter := bson.M{
+			"acc_addr": bson.M{
+				"$nin": excludeAddrs,
+			},
 		}
-	}
-
-	count, err := database.SessionCountDocuments(context.TODO(), db, filter)
-	if err != nil {
-		return nil, err
-	}
-
-	return []bson.M{
-		{
-			"_id":   nil,
-			"value": count,
-		},
-	}, err
-}
-
-func handleCurrentSubscriptionCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	filter := bson.M{}
-	if req.Query.Status != "" {
-		filter["status"] = req.Query.Status
-	} else {
-		filter["_id"] = bson.M{
-			"$ne": nil,
+		if req.Query.Status != "" {
+			filter["status"] = req.Query.Status
 		}
-	}
 
-	count, err := database.SubscriptionCountDocuments(context.TODO(), db, filter)
-	if err != nil {
-		return nil, err
-	}
+		count, err := database.SessionCountDocuments(context.TODO(), db, filter)
+		if err != nil {
+			return nil, err
+		}
 
-	return []bson.M{
-		{
-			"_id":   nil,
-			"value": count,
-		},
-	}, err
+		return []bson.M{
+			{
+				"_id":   nil,
+				"value": count,
+			},
+		}, err
+	}
 }
 
-func handleCurrentSessionAddressCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	filter := bson.M{
-		"status": bson.M{
-			"$ne": nil,
-		},
-	}
-	if req.Query.Status != "" {
-		filter["status"] = req.Query.Status
-	}
+func handleCurrentSubscriptionCount(excludeAddrs []string) func(*mongo.Database, *RequestGetStatistics) ([]bson.M, error) {
+	return func(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+		filter := bson.M{
+			"acc_addr": bson.M{
+				"$nin": excludeAddrs,
+			},
+		}
+		if req.Query.Status != "" {
+			filter["status"] = req.Query.Status
+		}
 
-	items, err := database.SessionDistinct(context.TODO(), db, "acc_addr", filter)
-	if err != nil {
-		return nil, err
-	}
+		count, err := database.SubscriptionCountDocuments(context.TODO(), db, filter)
+		if err != nil {
+			return nil, err
+		}
 
-	return []bson.M{
-		{
-			"_id":   nil,
-			"value": len(items),
-		},
-	}, err
+		return []bson.M{
+			{
+				"_id":   nil,
+				"value": count,
+			},
+		}, err
+	}
 }
 
-func handleCurrentSessionNodeCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
-	filter := bson.M{
-		"status": bson.M{
-			"$ne": nil,
-		},
-	}
-	if req.Query.Status != "" {
-		filter["status"] = req.Query.Status
-	}
+func handleCurrentSessionAddressCount(excludeAddrs []string) func(*mongo.Database, *RequestGetStatistics) ([]bson.M, error) {
+	return func(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+		filter := bson.M{
+			"acc_addr": bson.M{
+				"$nin": excludeAddrs,
+			},
+		}
+		if req.Query.Status != "" {
+			filter["status"] = req.Query.Status
+		}
 
-	items, err := database.SessionDistinct(context.TODO(), db, "node_addr", filter)
-	if err != nil {
-		return nil, err
-	}
+		items, err := database.SessionDistinct(context.TODO(), db, "acc_addr", filter)
+		if err != nil {
+			return nil, err
+		}
 
-	return []bson.M{
-		{
-			"_id":   nil,
-			"value": len(items),
-		},
-	}, err
+		return []bson.M{
+			{
+				"_id":   nil,
+				"value": len(items),
+			},
+		}, err
+	}
+}
+
+func handleCurrentSessionNodeCount(excludeAddrs []string) func(*mongo.Database, *RequestGetStatistics) ([]bson.M, error) {
+	return func(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
+		filter := bson.M{
+			"acc_addr": bson.M{
+				"$nin": excludeAddrs,
+			},
+		}
+		if req.Query.Status != "" {
+			filter["status"] = req.Query.Status
+		}
+
+		items, err := database.SessionDistinct(context.TODO(), db, "node_addr", filter)
+		if err != nil {
+			return nil, err
+		}
+
+		return []bson.M{
+			{
+				"_id":   nil,
+				"value": len(items),
+			},
+		}, err
+	}
 }
 
 func handleHistoricalActiveNodeCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {

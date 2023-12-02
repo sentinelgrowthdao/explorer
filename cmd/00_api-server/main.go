@@ -5,6 +5,8 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"sort"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -27,10 +29,11 @@ const (
 )
 
 var (
-	dbAddress  string
-	dbName     string
-	dbUsername string
-	dbPassword string
+	dbAddress    string
+	dbName       string
+	dbUsername   string
+	dbPassword   string
+	excludeAddrs string
 )
 
 func init() {
@@ -38,6 +41,7 @@ func init() {
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
 	flag.StringVar(&dbUsername, "db-username", "", "")
 	flag.StringVar(&dbPassword, "db-password", "", "")
+	flag.StringVar(&excludeAddrs, "exclude-addrs", "sent1c4nvz43tlw6d0c9nfu6r957y5d9pgjk5czl3n3", "")
 	flag.Parse()
 }
 
@@ -84,6 +88,9 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 }
 
 func main() {
+	excludeAddrs := strings.Split(excludeAddrs, ",")
+	sort.Strings(excludeAddrs)
+
 	db, err := utils.PrepareDatabase(context.TODO(), appName, dbUsername, dbPassword, dbAddress, dbName)
 	if err != nil {
 		log.Fatalln(err)
@@ -106,7 +113,7 @@ func main() {
 	depositapi.RegisterRoutes(router, db)
 	nodeapi.RegisterRoutes(router, db)
 	sessionapi.RegisterRoutes(router, db)
-	statisticsapi.RegisterRoutes(router, db)
+	statisticsapi.RegisterRoutes(router, db, excludeAddrs)
 	subscriptionapi.RegisterRoutes(router, db)
 	txapi.RegisterRoutes(router, db)
 
