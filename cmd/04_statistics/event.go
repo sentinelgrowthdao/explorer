@@ -81,7 +81,7 @@ func (s *NodeEventStatistics) Result(timestamp time.Time) []bson.M {
 	}
 }
 
-func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
+func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database, excludeAddrs []string) (result []bson.M, err error) {
 	log.Println("StatisticsFromSessionEvents")
 
 	pipeline := []bson.M{
@@ -127,6 +127,29 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database) (resul
 				},
 				"duration": bson.M{
 					"$first": "$duration",
+				},
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         database.SessionCollectionName,
+				"localField":   "_id.session_id",
+				"foreignField": "id",
+				"as":           "session",
+			},
+		},
+		{
+			"$addFields": bson.M{
+				"acc_addr": "$session.acc_addr",
+			},
+		},
+		{
+			"$unwind": "$acc_addr",
+		},
+		{
+			"$match": bson.M{
+				"acc_addr": bson.M{
+					"$nin": excludeAddrs,
 				},
 			},
 		},
