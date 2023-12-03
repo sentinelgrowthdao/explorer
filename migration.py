@@ -89,7 +89,10 @@ db["nodes"].update_many(
     {
         "$rename": {
             "address": "addr",
+            "bandwidth": "internet_speed",
+            "handshake": "handshake_dns",
             "price": "gigabyte_prices",
+            "reach_status": "health",
         },
     },
 )
