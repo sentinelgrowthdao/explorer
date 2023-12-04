@@ -188,20 +188,20 @@ func main() {
 
 	q, err := querier.NewQuerier(encCfg.InterfaceRegistry, rpcAddress, "/websocket")
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
 	db, err := utils.PrepareDatabase(context.TODO(), appName, dbUsername, dbPassword, dbAddress, dbName)
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
 	if err := db.Client().Ping(context.TODO(), nil); err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
 	if err := createIndexes(context.TODO(), db); err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
 	filter := bson.M{
@@ -210,7 +210,7 @@ func main() {
 
 	dSyncStatus, err := database.SyncStatusFindOne(context.TODO(), db, filter)
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	if dSyncStatus == nil {
 		dSyncStatus = &models.SyncStatus{
@@ -227,7 +227,7 @@ func main() {
 
 		ops, err := run(db, q, height)
 		if err != nil {
-			log.Fatalln(err)
+			log.Panicln(err)
 		}
 
 		log.Println("OperationsLen", len(ops))
@@ -288,7 +288,7 @@ func main() {
 		log.Println("Duration", time.Since(now))
 		log.Println()
 		if err != nil {
-			log.Fatalln(err)
+			log.Panicln(err)
 		}
 	}
 }

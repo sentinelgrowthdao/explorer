@@ -77,17 +77,17 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 func main() {
 	db, err := utils.PrepareDatabase(context.TODO(), appName, dbUsername, dbPassword, dbAddress, dbName)
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
 	if err := db.Client().Ping(context.TODO(), nil); err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
 	now := time.Now()
 
 	if err := createIndexes(context.TODO(), db); err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
 	filter := bson.M{}
@@ -102,7 +102,7 @@ func main() {
 
 	dBlocks, err := database.BlockFind(context.TODO(), db, filter, options.Find().SetProjection(projection).SetSort(_sort).SetLimit(1))
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
 	maxTimestamp := time.Now().UTC()
@@ -179,7 +179,7 @@ func main() {
 	})
 
 	if err := group.Wait(); err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
 	var result bson.A
@@ -223,6 +223,6 @@ func main() {
 	log.Println("Duration", time.Since(now))
 	log.Println("")
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 }
