@@ -104,10 +104,8 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	engine := gin.Default()
-	engine.Use(cors.Default())
-
-	router := engine.Group("/v2")
+	router := gin.Default()
+	router.Use(cors.Default())
 
 	blockapi.RegisterRoutes(router, db)
 	depositapi.RegisterRoutes(router, db)
@@ -117,7 +115,7 @@ func main() {
 	subscriptionapi.RegisterRoutes(router, db)
 	txapi.RegisterRoutes(router, db)
 
-	if err := http.ListenAndServe(":8080", engine); err != nil {
+	if err := http.ListenAndServe(":8080", router); err != nil {
 		log.Fatalln(err)
 	}
 }
