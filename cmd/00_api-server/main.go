@@ -52,6 +52,11 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 				bson.E{Key: "status", Value: 1},
 			},
 		},
+		{
+			Keys: bson.D{
+				bson.E{Key: "register_height", Value: 1},
+			},
+		},
 	}
 
 	_, err := database.NodeIndexesCreateMany(ctx, db, indexes)
