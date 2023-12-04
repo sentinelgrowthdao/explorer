@@ -93,15 +93,15 @@ func main() {
 
 	db, err := utils.PrepareDatabase(context.TODO(), appName, dbUsername, dbPassword, dbAddress, dbName)
 	if err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	if err = db.Client().Ping(context.TODO(), nil); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	if err := createIndexes(context.TODO(), db); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	router := gin.Default()
@@ -116,6 +116,6 @@ func main() {
 	txapi.RegisterRoutes(router, db)
 
 	if err := http.ListenAndServe(":8080", router); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 }

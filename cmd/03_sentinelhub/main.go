@@ -997,15 +997,15 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 func main() {
 	db, err := utils.PrepareDatabase(context.TODO(), appName, dbUsername, dbPassword, dbAddress, dbName)
 	if err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	if err = db.Client().Ping(context.TODO(), nil); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	if err := createIndexes(context.TODO(), db); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	filter := bson.M{
@@ -1014,7 +1014,7 @@ func main() {
 
 	dSyncStatus, err := database.SyncStatusFindOne(context.TODO(), db, filter)
 	if err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 	if dSyncStatus == nil {
 		dSyncStatus = &models.SyncStatus{
@@ -1031,7 +1031,7 @@ func main() {
 
 		ops, err := run(db, height)
 		if err != nil {
-			log.Panicln(err)
+			log.Fatalln(err)
 		}
 
 		log.Println("OperationsLen", len(ops))
@@ -1092,7 +1092,7 @@ func main() {
 		log.Println("Duration", time.Since(now))
 		log.Println("")
 		if err != nil {
-			log.Panicln(err)
+			log.Fatalln(err)
 		}
 	}
 }

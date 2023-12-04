@@ -63,15 +63,15 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 func main() {
 	db, err := utils.PrepareDatabase(context.TODO(), appName, dbUsername, dbPassword, dbAddress, dbName)
 	if err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	if err := db.Client().Ping(context.TODO(), nil); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	if err := createIndexes(context.TODO(), db); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	filter := bson.M{
@@ -89,7 +89,7 @@ func main() {
 
 	nodes, err := database.NodeFind(context.TODO(), db, filter, opts)
 	if err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 
 	group := &errgroup.Group{}
@@ -153,6 +153,6 @@ func main() {
 	}
 
 	if err := group.Wait(); err != nil {
-		log.Panicln(err)
+		log.Fatalln(err)
 	}
 }
