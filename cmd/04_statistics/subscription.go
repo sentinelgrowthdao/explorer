@@ -120,12 +120,13 @@ func (s *SubscriptionStatistics) Result(timestamp time.Time) []bson.M {
 	}
 }
 
-func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time) (result []bson.M, err error) {
+func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time, excludeAddrs []string) (result []bson.M, err error) {
 	log.Println("StatisticsFromSubscriptions", minTimestamp, maxTimestamp)
 
 	filter := bson.M{}
 	projection := bson.M{
 		"_id":             0,
+		"acc_addr":        1,
 		"end_timestamp":   1,
 		"deposit":         1,
 		"gigabytes":       1,
@@ -150,6 +151,11 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 	)
 
 	for i := 0; i < len(items); i++ {
+		exclude := utils.ContainsString(excludeAddrs, items[i].AccAddr)
+		if exclude {
+			continue
+		}
+
 		startTimestamp := items[i].StartTimestamp
 		if items[i].StartTimestamp.IsZero() {
 			startTimestamp = minTimestamp
@@ -202,12 +208,6 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 			m[monthEndTimestamp].EndSubscription += 1
 			y[yearEndTimestamp].EndSubscription += 1
 		}
-		if items[i].Deposit != nil {
-			d[dayStartTimestamp].SubscriptionDeposit = d[dayStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
-			w[weekStartTimestamp].SubscriptionDeposit = w[weekStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
-			m[monthStartTimestamp].SubscriptionDeposit = m[monthStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
-			y[yearStartTimestamp].SubscriptionDeposit = y[yearStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
-		}
 		if items[i].Gigabytes != 0 {
 			d[dayStartTimestamp].BytesSubscription += 1
 			w[weekStartTimestamp].BytesSubscription += 1
@@ -231,17 +231,74 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 			m[monthStartTimestamp].SubscriptionHours += items[i].Hours
 			y[yearStartTimestamp].SubscriptionHours += items[i].Hours
 		}
-		if items[i].Payment != nil {
-			d[dayStartTimestamp].PlanPayment = d[dayStartTimestamp].PlanPayment.Add(items[i].Payment)
-			w[weekStartTimestamp].PlanPayment = w[weekStartTimestamp].PlanPayment.Add(items[i].Payment)
-			m[monthStartTimestamp].PlanPayment = m[monthStartTimestamp].PlanPayment.Add(items[i].Payment)
-			y[yearStartTimestamp].PlanPayment = y[yearStartTimestamp].PlanPayment.Add(items[i].Payment)
-		}
 		if items[i].PlanID != 0 {
 			d[dayStartTimestamp].PlanSubscription += 1
 			w[weekStartTimestamp].PlanSubscription += 1
 			m[monthStartTimestamp].PlanSubscription += 1
 			y[yearStartTimestamp].PlanSubscription += 1
+		}
+		if !items[i].StartTimestamp.IsZero() {
+			d[dayStartTimestamp].StartSubscription += 1
+			w[weekStartTimestamp].StartSubscription += 1
+			m[monthStartTimestamp].StartSubscription += 1
+			y[yearStartTimestamp].StartSubscription += 1
+		}
+	}
+
+	for i := 0; i < len(items); i++ {
+		startTimestamp := items[i].StartTimestamp
+		if items[i].StartTimestamp.IsZero() {
+			startTimestamp = minTimestamp
+		}
+
+		endTimestamp := items[i].EndTimestamp
+		if items[i].EndTimestamp.IsZero() {
+			endTimestamp = maxTimestamp
+		}
+
+		dayStartTimestamp, dayEndTimestamp := utils.DayDate(startTimestamp), utils.DayDate(endTimestamp)
+		if _, ok := d[dayStartTimestamp]; !ok {
+			d[dayStartTimestamp] = NewSubscriptionStatistics("day")
+		}
+		if _, ok := d[dayEndTimestamp]; !ok {
+			d[dayEndTimestamp] = NewSubscriptionStatistics("day")
+		}
+
+		weekStartTimestamp, weekEndTimestamp := utils.ISOWeekDate(startTimestamp), utils.ISOWeekDate(endTimestamp)
+		if _, ok := w[weekStartTimestamp]; !ok {
+			w[weekStartTimestamp] = NewSubscriptionStatistics("week")
+		}
+		if _, ok := w[weekEndTimestamp]; !ok {
+			w[weekEndTimestamp] = NewSubscriptionStatistics("week")
+		}
+
+		monthStartTimestamp, monthEndTimestamp := utils.MonthDate(startTimestamp), utils.MonthDate(endTimestamp)
+		if _, ok := m[monthStartTimestamp]; !ok {
+			m[monthStartTimestamp] = NewSubscriptionStatistics("month")
+		}
+		if _, ok := m[monthEndTimestamp]; !ok {
+			m[monthEndTimestamp] = NewSubscriptionStatistics("month")
+		}
+
+		yearStartTimestamp, yearEndTimestamp := utils.YearDate(startTimestamp), utils.YearDate(endTimestamp)
+		if _, ok := y[yearStartTimestamp]; !ok {
+			y[yearStartTimestamp] = NewSubscriptionStatistics("year")
+		}
+		if _, ok := y[yearEndTimestamp]; !ok {
+			y[yearEndTimestamp] = NewSubscriptionStatistics("year")
+		}
+
+		if items[i].Deposit != nil {
+			d[dayStartTimestamp].SubscriptionDeposit = d[dayStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
+			w[weekStartTimestamp].SubscriptionDeposit = w[weekStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
+			m[monthStartTimestamp].SubscriptionDeposit = m[monthStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
+			y[yearStartTimestamp].SubscriptionDeposit = y[yearStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
+		}
+		if items[i].Payment != nil {
+			d[dayStartTimestamp].PlanPayment = d[dayStartTimestamp].PlanPayment.Add(items[i].Payment)
+			w[weekStartTimestamp].PlanPayment = w[weekStartTimestamp].PlanPayment.Add(items[i].Payment)
+			m[monthStartTimestamp].PlanPayment = m[monthStartTimestamp].PlanPayment.Add(items[i].Payment)
+			y[yearStartTimestamp].PlanPayment = y[yearStartTimestamp].PlanPayment.Add(items[i].Payment)
 		}
 		if items[i].Refund != nil {
 			d[dayEndTimestamp].SubscriptionRefund = d[dayEndTimestamp].SubscriptionRefund.Add(items[i].Refund)
@@ -254,12 +311,6 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 			w[weekStartTimestamp].PlanStakingReward = w[weekStartTimestamp].PlanStakingReward.Add(items[i].StakingReward)
 			m[monthStartTimestamp].PlanStakingReward = m[monthStartTimestamp].PlanStakingReward.Add(items[i].StakingReward)
 			y[yearStartTimestamp].PlanStakingReward = y[yearStartTimestamp].PlanStakingReward.Add(items[i].StakingReward)
-		}
-		if !items[i].StartTimestamp.IsZero() {
-			d[dayStartTimestamp].StartSubscription += 1
-			w[weekStartTimestamp].StartSubscription += 1
-			m[monthStartTimestamp].StartSubscription += 1
-			y[yearStartTimestamp].StartSubscription += 1
 		}
 	}
 

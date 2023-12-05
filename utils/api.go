@@ -10,7 +10,7 @@ import (
 
 func ParseQuerySort(allowed []string, v string) (d bson.D, err error) {
 	if v == "" {
-		return d, nil
+		return nil, nil
 	}
 
 	if !tmstrings.StringInSlice(v, allowed) {

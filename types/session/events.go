@@ -21,8 +21,8 @@ func NewEventStart(v *types.Event) (*EventStart, error) {
 	}, nil
 }
 
-func NewEventStartFromEvents(v types.Events) (int, *EventStart, error) {
-	i, e, err := v.Get("sentinel.session.v2.EventStart")
+func NewEventStartFromEvents(v types.Events, skip int) (int, *EventStart, error) {
+	i, e, err := v.Get("sentinel.session.v2.EventStart", skip)
 	if err != nil {
 		return 0, nil, err
 	}

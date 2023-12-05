@@ -89,7 +89,10 @@ db["nodes"].update_many(
     {
         "$rename": {
             "address": "addr",
+            "bandwidth": "internet_speed",
+            "handshake": "handshake_dns",
             "price": "gigabyte_prices",
+            "reach_status": "health",
         },
     },
 )
@@ -103,6 +106,11 @@ db["nodes"].update_many(
 )
 db["nodes"].update_many({"status": "STATUS_ACTIVE"}, {"$set": {"status": "active"}})
 db["nodes"].update_many({"status": "STATUS_INACTIVE"}, {"$set": {"status": "inactive"}})
+db["nodes"].update_many({"internet_speed": None}, {"$set": {"internet_speed": {}}})
+db["nodes"].update_many({"handshake_dns": None}, {"$set": {"handshake_dns": {}}})
+db["nodes"].update_many({"location": None}, {"$set": {"location": {}}})
+db["nodes"].update_many({"qos": None}, {"$set": {"qos": {}}})
+db["nodes"].update_many({"health": None}, {"$set": {"health": {}}})
 
 nodes_ops = []
 cursor = db["nodes"].find()

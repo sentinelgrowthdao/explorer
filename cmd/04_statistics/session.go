@@ -84,7 +84,7 @@ func (ss *SessionStatistics) Result(timestamp time.Time) []bson.M {
 	}
 }
 
-func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time) (result []bson.M, err error) {
+func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestamp, maxTimestamp time.Time, excludeAddrs []string) (result []bson.M, err error) {
 	log.Println("StatisticsFromSessions", minTimestamp, maxTimestamp)
 
 	filter := bson.M{}
@@ -111,6 +111,11 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 	)
 
 	for i := 0; i < len(items); i++ {
+		exclude := utils.ContainsString(excludeAddrs, items[i].AccAddr)
+		if exclude {
+			continue
+		}
+
 		startTimestamp := items[i].StartTimestamp
 		if items[i].StartTimestamp.IsZero() {
 			startTimestamp = minTimestamp
@@ -171,6 +176,40 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 			m[monthEndTimestamp].EndSession += 1
 			y[yearEndTimestamp].EndSession += 1
 		}
+		if !items[i].StartTimestamp.IsZero() {
+			d[dayStartTimestamp].StartSession += 1
+			w[weekStartTimestamp].StartSession += 1
+			m[monthStartTimestamp].StartSession += 1
+			y[yearStartTimestamp].StartSession += 1
+		}
+	}
+
+	for i := 0; i < len(items); i++ {
+		endTimestamp := items[i].EndTimestamp
+		if items[i].EndTimestamp.IsZero() {
+			endTimestamp = maxTimestamp
+		}
+
+		dayEndTimestamp := utils.DayDate(endTimestamp)
+		if _, ok := d[dayEndTimestamp]; !ok {
+			d[dayEndTimestamp] = NewSessionStatistics("day")
+		}
+
+		weekEndTimestamp := utils.ISOWeekDate(endTimestamp)
+		if _, ok := w[weekEndTimestamp]; !ok {
+			w[weekEndTimestamp] = NewSessionStatistics("week")
+		}
+
+		monthEndTimestamp := utils.MonthDate(endTimestamp)
+		if _, ok := m[monthEndTimestamp]; !ok {
+			m[monthEndTimestamp] = NewSessionStatistics("month")
+		}
+
+		yearEndTimestamp := utils.YearDate(endTimestamp)
+		if _, ok := y[yearEndTimestamp]; !ok {
+			y[yearEndTimestamp] = NewSessionStatistics("year")
+		}
+
 		if items[i].Payment != nil {
 			d[dayEndTimestamp].BytesPayment = d[dayEndTimestamp].BytesPayment.Add(items[i].Payment)
 			w[weekEndTimestamp].BytesPayment = w[weekEndTimestamp].BytesPayment.Add(items[i].Payment)
@@ -182,12 +221,6 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 			w[weekEndTimestamp].BytesStakingReward = w[weekEndTimestamp].BytesStakingReward.Add(items[i].StakingReward)
 			m[monthEndTimestamp].BytesStakingReward = m[monthEndTimestamp].BytesStakingReward.Add(items[i].StakingReward)
 			y[yearEndTimestamp].BytesStakingReward = y[yearEndTimestamp].BytesStakingReward.Add(items[i].StakingReward)
-		}
-		if !items[i].StartTimestamp.IsZero() {
-			d[dayStartTimestamp].StartSession += 1
-			w[weekStartTimestamp].StartSession += 1
-			m[monthStartTimestamp].StartSession += 1
-			y[yearStartTimestamp].StartSession += 1
 		}
 	}
 

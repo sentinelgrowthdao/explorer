@@ -25,20 +25,10 @@ func NewRequestGetNodes(c *gin.Context) (req *RequestGetNodes, err error) {
 	}
 
 	allowed := []string{
-		"bandwidth.download,bandwidth.upload,-peers",
-		"-bandwidth.download,-bandwidth.upload,peers",
 		"peers",
 		"-peers",
-		"join_height",
-		"-join_height",
-		"location.country,location.city",
-		"-location.country,-location.city",
-		"moniker",
-		"-moniker",
-		"price.amount,price.denom",
-		"-price.amount,price.denom",
-		"version",
-		"-version",
+		"register_height",
+		"-register_height",
 	}
 	if req.Sort, err = utils.ParseQuerySort(allowed, req.Query.Sort); err != nil {
 		return nil, err

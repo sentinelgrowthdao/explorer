@@ -23,8 +23,8 @@ func NewEventAdd(v *types.Event) (*EventAdd, error) {
 	}, nil
 }
 
-func NewEventAddFromEvents(v types.Events) (int, *EventAdd, error) {
-	i, e, err := v.Get("sentinel.deposit.v1.EventAdd")
+func NewEventAddFromEvents(v types.Events, skip int) (int, *EventAdd, error) {
+	i, e, err := v.Get("sentinel.deposit.v1.EventAdd", skip)
 	if err != nil {
 		return 0, nil, err
 	}

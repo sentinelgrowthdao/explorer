@@ -382,19 +382,19 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					eventCreateSubscription *nodetypes.EventCreateSubscription
 				)
 
-				eIndex, eventAdd, err = deposittypes.NewEventAddFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
+				eIndex, eventAdd, err = deposittypes.NewEventAddFromEvents(dTxs[tIndex].Result.Events, eIndex+1)
 				if err != nil {
 					return nil, err
 				}
 
 				if msg.Gigabytes != 0 {
-					eIndex, eventAllocate, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
+					eIndex, eventAllocate, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events, eIndex+1)
 					if err != nil {
 						return nil, err
 					}
 				}
 
-				eIndex, eventCreateSubscription, err = nodetypes.NewEventCreateSubscriptionFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
+				eIndex, eventCreateSubscription, err = nodetypes.NewEventCreateSubscriptionFromEvents(dTxs[tIndex].Result.Events, eIndex+1)
 				if err != nil {
 					return nil, err
 				}
@@ -477,7 +477,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					eventCreate *plantypes.EventCreate
 				)
 
-				eIndex, eventCreate, err = plantypes.NewEventCreateFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
+				eIndex, eventCreate, err = plantypes.NewEventCreateFromEvents(dTxs[tIndex].Result.Events, eIndex+1)
 				if err != nil {
 					return nil, err
 				}
@@ -574,17 +574,17 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					eventCreateSubscription *plantypes.EventCreateSubscription
 				)
 
-				eIndex, eventPayForPlan, err = subscriptiontypes.NewEventPayForPlanFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
+				eIndex, eventPayForPlan, err = subscriptiontypes.NewEventPayForPlanFromEvents(dTxs[tIndex].Result.Events, eIndex+1)
 				if err != nil {
 					return nil, err
 				}
 
-				eIndex, eventAllocate, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
+				eIndex, eventAllocate, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events, eIndex+1)
 				if err != nil {
 					return nil, err
 				}
 
-				eIndex, eventCreateSubscription, err = plantypes.NewEventCreateSubscriptionFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
+				eIndex, eventCreateSubscription, err = plantypes.NewEventCreateSubscriptionFromEvents(dTxs[tIndex].Result.Events, eIndex+1)
 				if err != nil {
 					return nil, err
 				}
@@ -692,7 +692,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					eventStart *sessiontypes.EventStart
 				)
 
-				eIndex, eventStart, err = sessiontypes.NewEventStartFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
+				eIndex, eventStart, err = sessiontypes.NewEventStartFromEvents(dTxs[tIndex].Result.Events, eIndex+1)
 				if err != nil {
 					return nil, err
 				}
@@ -793,7 +793,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					eventAllocate2 *subscriptiontypes.EventAllocate
 				)
 
-				eIndex, eventAllocate1, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
+				eIndex, eventAllocate1, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events, eIndex+1)
 				if err != nil {
 					return nil, err
 				}
@@ -809,7 +809,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 					UtilisedBytes:  eventAllocate1.UtilisedBytes,
 				}
 
-				eIndex, eventAllocate2, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events[eIndex+1:])
+				eIndex, eventAllocate2, err = subscriptiontypes.NewEventAllocateFromEvents(dTxs[tIndex].Result.Events, eIndex+1)
 				if err != nil {
 					return nil, err
 				}

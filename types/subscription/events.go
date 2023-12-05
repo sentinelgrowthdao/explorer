@@ -46,8 +46,8 @@ func NewEventAllocate(v *types.Event) (*EventAllocate, error) {
 	}, nil
 }
 
-func NewEventAllocateFromEvents(v types.Events) (int, *EventAllocate, error) {
-	i, e, err := v.Get("sentinel.subscription.v2.EventAllocate")
+func NewEventAllocateFromEvents(v types.Events, skip int) (int, *EventAllocate, error) {
+	i, e, err := v.Get("sentinel.subscription.v2.EventAllocate", skip)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -122,8 +122,8 @@ func NewEventPayForPlan(v *types.Event) (*EventPayForPlan, error) {
 	}, nil
 }
 
-func NewEventPayForPlanFromEvents(v types.Events) (int, *EventPayForPlan, error) {
-	i, e, err := v.Get("sentinel.subscription.v2.EventPayForPlan")
+func NewEventPayForPlanFromEvents(v types.Events, skip int) (int, *EventPayForPlan, error) {
+	i, e, err := v.Get("sentinel.subscription.v2.EventPayForPlan", skip)
 	if err != nil {
 		return 0, nil, err
 	}

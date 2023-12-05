@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"log"
+	"sort"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -22,10 +24,11 @@ const (
 )
 
 var (
-	dbAddress  string
-	dbName     string
-	dbUsername string
-	dbPassword string
+	dbAddress    string
+	dbName       string
+	dbUsername   string
+	dbPassword   string
+	excludeAddrs string
 )
 
 func init() {
@@ -33,6 +36,8 @@ func init() {
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
 	flag.StringVar(&dbUsername, "db-username", "", "")
 	flag.StringVar(&dbPassword, "db-password", "", "")
+	flag.StringVar(&excludeAddrs, "exclude-addrs", "sent1c4nvz43tlw6d0c9nfu6r957y5d9pgjk5czl3n3", "")
+
 	flag.Parse()
 }
 
@@ -47,6 +52,21 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	}
 
 	_, err := database.EventIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "id", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.SessionIndexesCreateMany(ctx, db, indexes)
 	if err != nil {
 		return err
 	}
@@ -90,6 +110,9 @@ func main() {
 		maxTimestamp = dBlocks[0].Time
 	}
 
+	excludeAddrs := strings.Split(excludeAddrs, ",")
+	sort.Strings(excludeAddrs)
+
 	var (
 		m     []bson.M
 		group = errgroup.Group{}
@@ -106,7 +129,7 @@ func main() {
 	})
 
 	group.Go(func() error {
-		v, err := StatisticsFromSessionEvents(context.TODO(), db)
+		v, err := StatisticsFromSessionEvents(context.TODO(), db, excludeAddrs)
 		if err != nil {
 			return err
 		}
@@ -126,7 +149,7 @@ func main() {
 	})
 
 	group.Go(func() error {
-		v, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp)
+		v, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
 			return err
 		}
@@ -136,7 +159,7 @@ func main() {
 	})
 
 	group.Go(func() error {
-		v, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp)
+		v, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
 			return err
 		}
