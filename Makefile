@@ -6,3 +6,6 @@ install:
   		echo "Installing $$app_name..."; \
   		go build -o "${GOBIN}/$$app_name" $$app_dir/*.go; \
   	done
+
+systemd-link:
+	@bash ./scripts/systemd/link.sh
