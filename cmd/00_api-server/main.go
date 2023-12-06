@@ -54,6 +54,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		},
 		{
 			Keys: bson.D{
+				bson.E{Key: "status", Value: 1},
 				bson.E{Key: "register_height", Value: 1},
 			},
 		},
