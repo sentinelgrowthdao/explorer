@@ -27,7 +27,14 @@ func HandlerGetNodes(db *mongo.Database) gin.HandlerFunc {
 		}
 
 		projection := bson.M{
-			"_id": 0,
+			"_id":            0,
+			"addr":           1,
+			"handshake_dns":  1,
+			"internet_speed": 1,
+			"location":       1,
+			"moniker":        1,
+			"type":           1,
+			"version":        1,
 		}
 		opts := options.Find().
 			SetProjection(projection).
@@ -56,7 +63,16 @@ func HandlerGetNode(db *mongo.Database) gin.HandlerFunc {
 		filter := bson.M{
 			"address": req.URI.NodeAddr,
 		}
-		projection := bson.M{}
+		projection := bson.M{
+			"_id":            0,
+			"addr":           1,
+			"handshake_dns":  1,
+			"internet_speed": 1,
+			"location":       1,
+			"moniker":        1,
+			"type":           1,
+			"version":        1,
+		}
 		opts := options.FindOne().
 			SetProjection(projection)
 
