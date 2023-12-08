@@ -7,5 +7,5 @@ install:
   		go build -o "${GOBIN}/$$app_name" $$app_dir/*.go; \
   	done
 
-systemd-link:
-	@bash ./scripts/systemd/link.sh
+create-systemd:
+	@bash ./scripts/systemd/create.sh
