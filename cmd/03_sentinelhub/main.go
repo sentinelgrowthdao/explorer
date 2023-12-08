@@ -42,6 +42,8 @@ var (
 )
 
 func init() {
+	log.SetFlags(0)
+
 	flag.Int64Var(&fromHeight, "from-height", 12_310_005, "")
 	flag.Int64Var(&toHeight, "to-height", math.MaxInt64, "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")

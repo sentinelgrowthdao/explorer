@@ -37,6 +37,8 @@ var (
 )
 
 func init() {
+	log.SetFlags(0)
+
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
 	flag.StringVar(&dbUsername, "db-username", "", "")

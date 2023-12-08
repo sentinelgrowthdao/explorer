@@ -10,7 +10,7 @@ After=network-online.target
 User=root
 ExecStart=APP_NAME
 Restart=always
-RestartSec=5
+RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target"
@@ -20,7 +20,7 @@ for app_name in "$app_directory"/*; do
   service_file="$systemd_dir/${app_name}.service"
   modified_template="${app_template//APP_NAME/$app_name}"
 
-  ln -s "${GOPATH}/bin/${app_name}" "/usr/local/bin/${app_name}"
+  ln -fs "${GOPATH}/bin/${app_name}" "/usr/local/bin/${app_name}"
   if echo "$modified_template" > "$service_file"; then
     echo "Created $service_file"
   fi
