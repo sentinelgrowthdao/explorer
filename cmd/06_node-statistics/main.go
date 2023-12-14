@@ -12,8 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readconcern"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/sentinel-official/explorer/database"
@@ -206,37 +204,13 @@ func main() {
 
 	fmt.Println("result", len(result))
 
-	err = db.Client().UseSession(
-		context.TODO(),
-		func(ctx mongo.SessionContext) error {
-			err := ctx.StartTransaction(
-				options.Transaction().
-					SetReadConcern(readconcern.Snapshot()).
-					SetWriteConcern(writeconcern.Majority()),
-			)
-			if err != nil {
-				return err
-			}
+	if err := database.NodeStatisticDeleteMany(context.TODO(), db, nil); err != nil {
+		log.Fatalln(err)
+	}
 
-			abort := true
-			defer func() {
-				if abort {
-					_ = ctx.AbortTransaction(ctx)
-				}
-			}()
-
-			if err := database.NodeStatisticDrop(ctx, db); err != nil {
-				return err
-			}
-
-			if _, err := database.NodeStatisticInsertMany(ctx, db, result); err != nil {
-				return err
-			}
-
-			abort = false
-			return ctx.CommitTransaction(ctx)
-		},
-	)
+	if _, err := database.NodeStatisticInsertMany(context.TODO(), db, result); err != nil {
+		log.Fatalln(err)
+	}
 
 	log.Println("Duration", time.Since(now))
 	log.Println("")
