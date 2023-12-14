@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
+	"sort"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -22,10 +25,11 @@ const (
 )
 
 var (
-	dbAddress  string
-	dbName     string
-	dbUsername string
-	dbPassword string
+	dbAddress    string
+	dbName       string
+	dbUsername   string
+	dbPassword   string
+	excludeAddrs string
 )
 
 func init() {
@@ -35,6 +39,7 @@ func init() {
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
 	flag.StringVar(&dbUsername, "db-username", "", "")
 	flag.StringVar(&dbPassword, "db-password", "", "")
+	flag.StringVar(&excludeAddrs, "exclude-addrs", "sent1c4nvz43tlw6d0c9nfu6r957y5d9pgjk5czl3n3", "")
 	flag.Parse()
 }
 
@@ -53,6 +58,21 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		return err
 	}
 
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "id", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.SessionIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -67,7 +87,6 @@ func main() {
 	}
 
 	now := time.Now()
-
 	if err := createIndexes(context.TODO(), db); err != nil {
 		log.Fatalln(err)
 	}
@@ -78,11 +97,14 @@ func main() {
 		"height": 1,
 		"time":   1,
 	}
-	_sort := bson.D{
-		bson.E{Key: "height", Value: -1},
-	}
+	opts := options.Find().
+		SetProjection(projection).
+		SetSort(bson.D{
+			bson.E{Key: "height", Value: -1},
+		}).
+		SetLimit(1)
 
-	dBlocks, err := database.BlockFind(context.TODO(), db, filter, options.Find().SetProjection(projection).SetSort(_sort).SetLimit(1))
+	dBlocks, err := database.BlockFind(context.TODO(), db, filter, opts)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -91,6 +113,9 @@ func main() {
 	if len(dBlocks) > 0 {
 		maxTimestamp = dBlocks[0].Time
 	}
+
+	excludeAddrs := strings.Split(excludeAddrs, ",")
+	sort.Strings(excludeAddrs)
 
 	var (
 		m     []bson.M
@@ -103,25 +128,31 @@ func main() {
 			return err
 		}
 
-		m = append(m, v...)
-		return nil
-	})
-
-	group.Go(func() error {
-		v, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp)
-		if err != nil {
-			return err
-		}
+		fmt.Println("StatisticsFromEvents", len(v))
 
 		m = append(m, v...)
 		return nil
 	})
 
 	group.Go(func() error {
-		v, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp)
+		v, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
 			return err
 		}
+
+		fmt.Println("StatisticsFromSessions", len(v))
+
+		m = append(m, v...)
+		return nil
+	})
+
+	group.Go(func() error {
+		v, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("StatisticsFromSubscriptions", len(v))
 
 		m = append(m, v...)
 		return nil
@@ -133,6 +164,8 @@ func main() {
 			return err
 		}
 
+		fmt.Println("StatisticsFromSubscriptionPayouts", len(v))
+
 		m = append(m, v...)
 		return nil
 	})
@@ -141,29 +174,37 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	mm := make(map[string]map[time.Time]bson.M)
+	mmm := make(map[string]map[string]map[time.Time]bson.M)
 	for i := 0; i < len(m); i++ {
 		addr := m[i]["addr"].(string)
+		timeframe := m[i]["timeframe"].(string)
 		timestamp := m[i]["timestamp"].(time.Time)
 
-		if _, ok := mm[addr]; !ok {
-			mm[addr] = make(map[time.Time]bson.M)
+		if _, ok := mmm[timeframe]; !ok {
+			mmm[timeframe] = make(map[string]map[time.Time]bson.M)
 		}
-		if _, ok := mm[addr][timestamp]; !ok {
-			mm[addr][timestamp] = make(bson.M)
+		if _, ok := mmm[timeframe][addr]; !ok {
+			mmm[timeframe][addr] = make(map[time.Time]bson.M)
+		}
+		if _, ok := mmm[timeframe][addr][timestamp]; !ok {
+			mmm[timeframe][addr][timestamp] = make(bson.M)
 		}
 
 		for s, v := range m[i] {
-			mm[addr][timestamp][s] = v
+			mmm[timeframe][addr][timestamp][s] = v
 		}
 	}
 
 	var result bson.A
-	for _, m := range mm {
-		for _, item := range m {
-			result = append(result, item)
+	for _, mm := range mmm {
+		for _, m := range mm {
+			for _, item := range m {
+				result = append(result, item)
+			}
 		}
 	}
+
+	fmt.Println("result", len(result))
 
 	err = db.Client().UseSession(
 		context.TODO(),

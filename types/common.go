@@ -279,6 +279,17 @@ func NewBandwidth(v *hubtypes.Bandwidth) *Bandwidth {
 	}
 }
 
+func (b *Bandwidth) IsZero() bool {
+	if b.Download == "" && b.Upload == "" {
+		return true
+	}
+	if b.Download == "0" && b.Upload == "0" {
+		return true
+	}
+
+	return false
+}
+
 func (b *Bandwidth) Copy() *Bandwidth {
 	return &Bandwidth{
 		Upload:   b.Upload,

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"sort"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -15,13 +16,15 @@ import (
 
 type (
 	EventStatistics struct {
+		Timeframe        string
 		SessionBandwidth map[uint64]*types.Bandwidth
 		SessionDuration  map[uint64]int64
 	}
 )
 
-func NewStatistics() *EventStatistics {
+func NewStatistics(timeframe string) *EventStatistics {
 	return &EventStatistics{
+		Timeframe:        timeframe,
 		SessionBandwidth: make(map[uint64]*types.Bandwidth),
 		SessionDuration:  make(map[uint64]int64),
 	}
@@ -38,12 +41,20 @@ func (s *EventStatistics) Result(addr string, timestamp time.Time) bson.M {
 		sessionDuration = sessionDuration + v
 	}
 
-	return bson.M{
-		"addr":              addr,
-		"timestamp":         timestamp,
-		"session_bandwidth": sessionBandwidth,
-		"session_duration":  sessionDuration,
+	res := bson.M{
+		"addr":      addr,
+		"timeframe": s.Timeframe,
+		"timestamp": timestamp,
 	}
+
+	if !sessionBandwidth.IsZero() {
+		res["session_bandwidth"] = sessionBandwidth
+	}
+	if sessionDuration != 0 {
+		res["session_duration"] = sessionDuration
+	}
+
+	return res
 }
 
 func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bson.M, err error) {
@@ -123,7 +134,13 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 		return nil, err
 	}
 
-	d := make(map[string]map[time.Time]*EventStatistics)
+	var (
+		d = make(map[string]map[time.Time]*EventStatistics)
+		w = make(map[string]map[time.Time]*EventStatistics)
+		m = make(map[string]map[time.Time]*EventStatistics)
+		y = make(map[string]map[time.Time]*EventStatistics)
+	)
+
 	for i := 0; i < len(items); i++ {
 		bandwidth := types.BandwidthFromInterface(items[i]["bandwidth"])
 		duration := types.Int64FromInterface(items[i]["duration"])
@@ -134,33 +151,161 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 		if _, ok := d[nodeAddr]; !ok {
 			d[nodeAddr] = make(map[time.Time]*EventStatistics)
 		}
-
-		timestamp = utils.DayDate(timestamp)
-		if _, ok := d[nodeAddr][timestamp]; !ok {
-			d[nodeAddr][timestamp] = NewStatistics()
+		if _, ok := w[nodeAddr]; !ok {
+			w[nodeAddr] = make(map[time.Time]*EventStatistics)
+		}
+		if _, ok := m[nodeAddr]; !ok {
+			m[nodeAddr] = make(map[time.Time]*EventStatistics)
+		}
+		if _, ok := y[nodeAddr]; !ok {
+			y[nodeAddr] = make(map[time.Time]*EventStatistics)
 		}
 
-		d[nodeAddr][timestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
-		d[nodeAddr][timestamp].SessionDuration[sessionID] = duration
+		dayTimestamp := utils.DayDate(timestamp)
+		if _, ok := d[nodeAddr][dayTimestamp]; !ok {
+			d[nodeAddr][dayTimestamp] = NewStatistics("day")
+		}
+		weekTimestamp := utils.DayDate(timestamp)
+		if _, ok := w[nodeAddr][weekTimestamp]; !ok {
+			w[nodeAddr][weekTimestamp] = NewStatistics("week")
+		}
+		monthTimestamp := utils.DayDate(timestamp)
+		if _, ok := m[nodeAddr][monthTimestamp]; !ok {
+			m[nodeAddr][monthTimestamp] = NewStatistics("month")
+		}
+		yearTimestamp := utils.DayDate(timestamp)
+		if _, ok := y[nodeAddr][yearTimestamp]; !ok {
+			y[nodeAddr][yearTimestamp] = NewStatistics("year")
+		}
+
+		d[nodeAddr][dayTimestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
+		d[nodeAddr][dayTimestamp].SessionDuration[sessionID] = duration
+
+		w[nodeAddr][weekTimestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
+		w[nodeAddr][weekTimestamp].SessionDuration[sessionID] = duration
+
+		m[nodeAddr][monthTimestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
+		m[nodeAddr][monthTimestamp].SessionDuration[sessionID] = duration
+
+		y[nodeAddr][yearTimestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
+		y[nodeAddr][yearTimestamp].SessionDuration[sessionID] = duration
 	}
 
-	for i := 0; i < len(items); i++ {
-		nodeAddr := types.StringFromInterface(items[i]["node_addr"])
-		sessionID := types.Uint64FromInterface(items[i]["session_id"])
-		timestamp := types.TimeFromInterface(items[i]["timestamp"])
+	for s := range d {
+		var tKeys []time.Time
+		for t := range d[s] {
+			tKeys = append(tKeys, t)
+		}
 
-		timestamp = utils.DayDate(timestamp)
-		if v, ok := d[nodeAddr][timestamp.AddDate(0, 0, -1)]; ok {
-			if v, ok := v.SessionBandwidth[sessionID]; ok {
-				d[nodeAddr][timestamp].SessionBandwidth[sessionID] = d[nodeAddr][timestamp].SessionBandwidth[sessionID].Sub(v)
+		sort.Slice(tKeys, func(i, j int) bool {
+			return tKeys[i].After(tKeys[j])
+		})
+
+		for _, t := range tKeys {
+			for u := range d[s][t].SessionBandwidth {
+				if v, ok := d[s][t.AddDate(0, 0, -1)]; ok {
+					if v, ok := v.SessionBandwidth[u]; ok {
+						d[s][t].SessionBandwidth[u] = d[s][t].SessionBandwidth[u].Sub(v)
+					}
+					if v, ok := v.SessionDuration[u]; ok {
+						d[s][t].SessionDuration[u] = d[s][t].SessionDuration[u] - v
+					}
+				}
 			}
-			if v, ok := v.SessionDuration[sessionID]; ok {
-				d[nodeAddr][timestamp].SessionDuration[sessionID] = d[nodeAddr][timestamp].SessionDuration[sessionID] - v
+		}
+	}
+
+	for s := range w {
+		var tKeys []time.Time
+		for t := range w[s] {
+			tKeys = append(tKeys, t)
+		}
+
+		sort.Slice(tKeys, func(i, j int) bool {
+			return tKeys[i].After(tKeys[j])
+		})
+
+		for _, t := range tKeys {
+			for u := range w[s][t].SessionBandwidth {
+				if v, ok := w[s][t.AddDate(0, 0, -7)]; ok {
+					if v, ok := v.SessionBandwidth[u]; ok {
+						w[s][t].SessionBandwidth[u] = w[s][t].SessionBandwidth[u].Sub(v)
+					}
+					if v, ok := v.SessionDuration[u]; ok {
+						w[s][t].SessionDuration[u] = w[s][t].SessionDuration[u] - v
+					}
+				}
+			}
+		}
+	}
+
+	for s := range m {
+		var tKeys []time.Time
+		for t := range m[s] {
+			tKeys = append(tKeys, t)
+		}
+
+		sort.Slice(tKeys, func(i, j int) bool {
+			return tKeys[i].After(tKeys[j])
+		})
+
+		for _, t := range tKeys {
+			for u := range m[s][t].SessionBandwidth {
+				if v, ok := m[s][t.AddDate(0, -1, 0)]; ok {
+					if v, ok := v.SessionBandwidth[u]; ok {
+						m[s][t].SessionBandwidth[u] = m[s][t].SessionBandwidth[u].Sub(v)
+					}
+					if v, ok := v.SessionDuration[u]; ok {
+						m[s][t].SessionDuration[u] = m[s][t].SessionDuration[u] - v
+					}
+				}
+			}
+		}
+	}
+
+	for s := range y {
+		var tKeys []time.Time
+		for t := range y[s] {
+			tKeys = append(tKeys, t)
+		}
+
+		sort.Slice(tKeys, func(i, j int) bool {
+			return tKeys[i].After(tKeys[j])
+		})
+
+		for _, t := range tKeys {
+			for u := range y[s][t].SessionBandwidth {
+				if v, ok := y[s][t.AddDate(-1, 0, 0)]; ok {
+					if v, ok := v.SessionBandwidth[u]; ok {
+						y[s][t].SessionBandwidth[u] = y[s][t].SessionBandwidth[u].Sub(v)
+					}
+					if v, ok := v.SessionDuration[u]; ok {
+						y[s][t].SessionDuration[u] = y[s][t].SessionDuration[u] - v
+					}
+				}
 			}
 		}
 	}
 
 	for s, m := range d {
+		for t, statistics := range m {
+			result = append(result, statistics.Result(s, t))
+		}
+	}
+
+	for s, m := range w {
+		for t, statistics := range m {
+			result = append(result, statistics.Result(s, t))
+		}
+	}
+
+	for s, m := range m {
+		for t, statistics := range m {
+			result = append(result, statistics.Result(s, t))
+		}
+	}
+
+	for s, m := range y {
 		for t, statistics := range m {
 			result = append(result, statistics.Result(s, t))
 		}
