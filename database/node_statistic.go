@@ -61,3 +61,7 @@ func NodeStatisticDeleteMany(ctx context.Context, db *mongo.Database, filter bso
 
 	return nil
 }
+
+func NodeStatisticDrop(ctx context.Context, db *mongo.Database) error {
+	return Drop(ctx, db.Collection(NodeStatisticCollectionName))
+}

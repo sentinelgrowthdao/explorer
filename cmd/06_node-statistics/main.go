@@ -225,8 +225,7 @@ func main() {
 				}
 			}()
 
-			filter := bson.M{}
-			if err := database.NodeStatisticDeleteMany(ctx, db, filter); err != nil {
+			if err := database.NodeStatisticDrop(ctx, db); err != nil {
 				return err
 			}
 
