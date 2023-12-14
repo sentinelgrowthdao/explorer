@@ -48,6 +48,7 @@ func StatisticsFromSubscriptionPayouts(ctx context.Context, db *mongo.Database) 
 	filter := bson.M{}
 	projection := bson.M{
 		"_id":       0,
+		"node_addr": 1,
 		"payment":   1,
 		"timestamp": 1,
 	}
