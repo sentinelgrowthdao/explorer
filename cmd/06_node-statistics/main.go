@@ -135,77 +135,83 @@ func main() {
 	sort.Strings(excludeAddrs)
 
 	var (
-		m     []bson.M
-		group = errgroup.Group{}
+		models []mongo.WriteModel
+		group  = errgroup.Group{}
 	)
 
+	addModels := func(m []bson.M) error {
+		for i := 0; i < len(m); i++ {
+			filter := bson.M{
+				"addr":      m[i]["addr"],
+				"timeframe": m[i]["timeframe"],
+				"timestamp": m[i]["timestamp"],
+			}
+			update := bson.M{
+				"$set": m[i],
+			}
+			model := mongo.NewUpdateOneModel().
+				SetFilter(filter).
+				SetUpdate(update).
+				SetUpsert(true)
+
+			models = append(models, model)
+		}
+
+		return nil
+	}
+
 	group.Go(func() error {
-		v, err := StatisticsFromEvents(context.TODO(), db)
+		defer runtime.GC()
+
+		m, err := StatisticsFromEvents(context.TODO(), db)
 		if err != nil {
 			return err
 		}
 
-		m = append(m, v...)
-		return nil
+		return addModels(m)
 	})
 
 	group.Go(func() error {
-		v, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
+		defer runtime.GC()
+
+		m, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
 			return err
 		}
 
-		m = append(m, v...)
-		return nil
+		return addModels(m)
 	})
 
 	group.Go(func() error {
-		v, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
+		defer runtime.GC()
+
+		m, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
 			return err
 		}
 
-		m = append(m, v...)
-		return nil
+		return addModels(m)
 	})
 
 	group.Go(func() error {
-		v, err := StatisticsFromSubscriptionPayouts(context.TODO(), db)
+		defer runtime.GC()
+
+		m, err := StatisticsFromSubscriptionPayouts(context.TODO(), db)
 		if err != nil {
 			return err
 		}
 
-		m = append(m, v...)
-		return nil
+		return addModels(m)
 	})
 
 	if err := group.Wait(); err != nil {
 		log.Fatalln(err)
 	}
 
-	var models []mongo.WriteModel
-	for i := 0; i < len(m); i++ {
-		filter := bson.M{
-			"addr":      m[i]["addr"].(string),
-			"timeframe": m[i]["timeframe"].(string),
-			"timestamp": m[i]["timestamp"].(time.Time),
-		}
-		update := bson.M{
-			"$set": m[i],
-		}
-		model := mongo.NewUpdateOneModel().
-			SetFilter(filter).
-			SetUpdate(update).
-			SetUpsert(true)
-
-		models = append(models, model)
-	}
-
-	log.Println("Models", len(models))
-
 	group = errgroup.Group{}
 	group.SetLimit(runtime.NumCPU() * 3 / 4)
 
+	log.Println("Models", len(models))
 	for i := 0; ; {
 		from, to := i, i+batchSize
 		if to > len(models) {
@@ -213,6 +219,8 @@ func main() {
 		}
 
 		group.Go(func() error {
+			defer runtime.GC()
+
 			opts := options.BulkWrite().
 				SetBypassDocumentValidation(false).
 				SetOrdered(false)
