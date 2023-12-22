@@ -209,7 +209,7 @@ func main() {
 	}
 
 	group = errgroup.Group{}
-	group.SetLimit(runtime.NumCPU() * 3 / 4)
+	group.SetLimit(runtime.NumCPU() / 2)
 
 	log.Println("Models", len(models))
 	for i := 0; ; {
