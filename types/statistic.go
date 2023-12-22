@@ -34,8 +34,10 @@ const (
 	StatisticMethodCurrentSessionCount        = "CurrentSessionCount"
 	StatisticMethodCurrentSessionNodeCount    = "CurrentSessionNodeCount"
 
+	StatisticMethodHistoricalBytesEarning        = "HistoricalBytesEarning"
 	StatisticMethodHistoricalBytesPayment        = "HistoricalBytesPayment"
 	StatisticMethodHistoricalBytesStakingReward  = "HistoricalBytesStakingReward"
+	StatisticMethodHistoricalHoursEarning        = "HistoricalHoursEarning"
 	StatisticMethodHistoricalHoursPayment        = "HistoricalHoursPayment"
 	StatisticMethodHistoricalHoursStakingReward  = "HistoricalHoursStakingReward"
 	StatisticMethodHistoricalPlanStakingReward   = "HistoricalPlanStakingReward"
@@ -44,8 +46,10 @@ const (
 	StatisticMethodHistoricalSessionNodeCount    = "HistoricalSessionNodeCount"
 	StatisticMethodHistoricalStartSessionCount   = "HistoricalStartSessionCount"
 
+	StatisticMethodTotalBytesEarning       = "TotalBytesEarning"
 	StatisticMethodTotalBytesPayment       = "TotalBytesPayment"
 	StatisticMethodTotalBytesStakingReward = "TotalBytesStakingReward"
+	StatisticMethodTotalHoursEarning       = "TotalHoursEarning"
 	StatisticMethodTotalHoursPayment       = "TotalHoursPayment"
 	StatisticMethodTotalHoursStakingReward = "TotalHoursStakingReward"
 	StatisticMethodTotalPlanStakingReward  = "TotalPlanStakingReward"
