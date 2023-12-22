@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -120,6 +121,8 @@ func main() {
 	)
 
 	group.Go(func() error {
+		defer runtime.GC()
+
 		v, err := StatisticsFromNodeEvents(context.TODO(), db)
 		if err != nil {
 			return err
@@ -130,6 +133,8 @@ func main() {
 	})
 
 	group.Go(func() error {
+		defer runtime.GC()
+
 		v, err := StatisticsFromSessionEvents(context.TODO(), db, excludeAddrs)
 		if err != nil {
 			return err
@@ -140,6 +145,8 @@ func main() {
 	})
 
 	group.Go(func() error {
+		defer runtime.GC()
+
 		v, err := StatisticsFromNodes(context.TODO(), db)
 		if err != nil {
 			return err
@@ -150,6 +157,8 @@ func main() {
 	})
 
 	group.Go(func() error {
+		defer runtime.GC()
+
 		v, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
 			return err
@@ -160,6 +169,8 @@ func main() {
 	})
 
 	group.Go(func() error {
+		defer runtime.GC()
+
 		v, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
 			return err
@@ -170,6 +181,8 @@ func main() {
 	})
 
 	group.Go(func() error {
+		defer runtime.GC()
+
 		v, err := StatisticsFromSubscriptionPayouts(context.TODO(), db)
 		if err != nil {
 			return err
