@@ -165,15 +165,15 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 		if _, ok := d[nodeAddr][dayTimestamp]; !ok {
 			d[nodeAddr][dayTimestamp] = NewStatistics("day")
 		}
-		weekTimestamp := utils.DayDate(timestamp)
+		weekTimestamp := utils.ISOWeekDate(timestamp)
 		if _, ok := w[nodeAddr][weekTimestamp]; !ok {
 			w[nodeAddr][weekTimestamp] = NewStatistics("week")
 		}
-		monthTimestamp := utils.DayDate(timestamp)
+		monthTimestamp := utils.MonthDate(timestamp)
 		if _, ok := m[nodeAddr][monthTimestamp]; !ok {
 			m[nodeAddr][monthTimestamp] = NewStatistics("month")
 		}
-		yearTimestamp := utils.DayDate(timestamp)
+		yearTimestamp := utils.YearDate(timestamp)
 		if _, ok := y[nodeAddr][yearTimestamp]; !ok {
 			y[nodeAddr][yearTimestamp] = NewStatistics("year")
 		}
