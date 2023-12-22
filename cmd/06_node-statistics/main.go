@@ -161,7 +161,7 @@ func main() {
 	}
 
 	group.Go(func() error {
-		defer runtime.GC()
+		defer func() { defer runtime.GC() }()
 
 		m, err := StatisticsFromEvents(context.TODO(), db)
 		if err != nil {
@@ -172,7 +172,7 @@ func main() {
 	})
 
 	group.Go(func() error {
-		defer runtime.GC()
+		defer func() { defer runtime.GC() }()
 
 		m, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
@@ -183,7 +183,7 @@ func main() {
 	})
 
 	group.Go(func() error {
-		defer runtime.GC()
+		defer func() { defer runtime.GC() }()
 
 		m, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
@@ -194,7 +194,7 @@ func main() {
 	})
 
 	group.Go(func() error {
-		defer runtime.GC()
+		defer func() { defer runtime.GC() }()
 
 		m, err := StatisticsFromSubscriptionPayouts(context.TODO(), db)
 		if err != nil {
@@ -219,7 +219,7 @@ func main() {
 		}
 
 		group.Go(func() error {
-			defer runtime.GC()
+			defer func() { defer runtime.GC() }()
 
 			opts := options.BulkWrite().
 				SetBypassDocumentValidation(false).
