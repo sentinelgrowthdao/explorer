@@ -161,7 +161,16 @@ func handleHistorical(db *mongo.Database, req *RequestGetNodeStatistics) ([]bson
 		},
 	}
 	projection := bson.M{
-		"_id": 0,
+		"active_session":      1,
+		"active_subscription": 1,
+		"addr":                1,
+		"bytes_earning":       1,
+		"hours_earning":       1,
+		"_id":                 0,
+		"session_address":     1,
+		"session_bandwidth":   1,
+		"timeframe":           1,
+		"timestamp":           1,
 	}
 	opts := options.Find().
 		SetProjection(projection).
