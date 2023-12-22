@@ -117,7 +117,7 @@ func main() {
 
 	blockapi.RegisterRoutes(router, db)
 	depositapi.RegisterRoutes(router, db)
-	nodeapi.RegisterRoutes(router, db)
+	nodeapi.RegisterRoutes(router, db, excludeAddrs)
 	sessionapi.RegisterRoutes(router, db)
 	statisticsapi.RegisterRoutes(router, db, excludeAddrs)
 	subscriptionapi.RegisterRoutes(router, db)
