@@ -176,3 +176,12 @@ func IndexesCreateMany(ctx context.Context, c *mongo.Collection, models []mongo.
 
 	return c.Indexes().CreateMany(ctx, models, opts...)
 }
+
+func BulkWrite(ctx context.Context, c *mongo.Collection, models []mongo.WriteModel, opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {
+	now := time.Now()
+	defer func() {
+		log.Println(c.Name(), "BulkWrite", time.Since(now))
+	}()
+
+	return c.BulkWrite(ctx, models, opts...)
+}

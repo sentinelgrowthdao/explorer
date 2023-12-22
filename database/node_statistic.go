@@ -65,3 +65,7 @@ func NodeStatisticDeleteMany(ctx context.Context, db *mongo.Database, filter bso
 func NodeStatisticDrop(ctx context.Context, db *mongo.Database) error {
 	return Drop(ctx, db.Collection(NodeStatisticCollectionName))
 }
+
+func NodeStatisticBulkWrite(ctx context.Context, db *mongo.Database, models []mongo.WriteModel, opts ...*options.BulkWriteOptions) (*mongo.BulkWriteResult, error) {
+	return BulkWrite(ctx, db.Collection(NodeStatisticCollectionName), models, opts...)
+}
