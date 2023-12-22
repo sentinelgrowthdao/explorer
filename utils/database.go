@@ -20,8 +20,7 @@ func PrepareClient(ctx context.Context, appName, username, password, uri string)
 		ApplyURI(uri).
 		SetRegistry(registry).
 		SetMaxPoolSize(0).
-		SetMaxConnecting(0).
-		SetMinPoolSize(256)
+		SetMaxConnecting(8)
 
 	if username != "" && password != "" {
 		opts = opts.SetAuth(
