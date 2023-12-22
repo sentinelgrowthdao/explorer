@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -23,6 +23,7 @@ const (
 )
 
 var (
+	batchSize    int
 	dbAddress    string
 	dbName       string
 	dbUsername   string
@@ -33,6 +34,7 @@ var (
 func init() {
 	log.SetFlags(0)
 
+	flag.IntVar(&batchSize, "batch-size", 25_000, "")
 	flag.StringVar(&dbAddress, "db-address", "mongodb://127.0.0.1:27017", "")
 	flag.StringVar(&dbName, "db-name", "sentinelhub-2", "")
 	flag.StringVar(&dbUsername, "db-username", "", "")
@@ -67,6 +69,23 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	}
 
 	_, err = database.SessionIndexesCreateMany(ctx, db, indexes)
+	if err != nil {
+		return err
+	}
+
+	indexes = []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				bson.E{Key: "addr", Value: 1},
+				bson.E{Key: "timeframe", Value: 1},
+				bson.E{Key: "timestamp", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true),
+		},
+	}
+
+	_, err = database.NodeStatisticIndexesCreateMany(ctx, db, indexes)
 	if err != nil {
 		return err
 	}
@@ -126,8 +145,6 @@ func main() {
 			return err
 		}
 
-		fmt.Println("StatisticsFromEvents", len(v))
-
 		m = append(m, v...)
 		return nil
 	})
@@ -137,8 +154,6 @@ func main() {
 		if err != nil {
 			return err
 		}
-
-		fmt.Println("StatisticsFromSessions", len(v))
 
 		m = append(m, v...)
 		return nil
@@ -150,8 +165,6 @@ func main() {
 			return err
 		}
 
-		fmt.Println("StatisticsFromSubscriptions", len(v))
-
 		m = append(m, v...)
 		return nil
 	})
@@ -162,8 +175,6 @@ func main() {
 			return err
 		}
 
-		fmt.Println("StatisticsFromSubscriptionPayouts", len(v))
-
 		m = append(m, v...)
 		return nil
 	})
@@ -172,43 +183,51 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	mmm := make(map[string]map[string]map[time.Time]bson.M)
+	var models []mongo.WriteModel
 	for i := 0; i < len(m); i++ {
-		addr := m[i]["addr"].(string)
-		timeframe := m[i]["timeframe"].(string)
-		timestamp := m[i]["timestamp"].(time.Time)
+		filter := bson.M{
+			"addr":      m[i]["addr"].(string),
+			"timeframe": m[i]["timeframe"].(string),
+			"timestamp": m[i]["timestamp"].(time.Time),
+		}
+		update := bson.M{
+			"$set": m[i],
+		}
+		model := mongo.NewUpdateOneModel().
+			SetFilter(filter).
+			SetUpdate(update).
+			SetUpsert(true)
 
-		if _, ok := mmm[timeframe]; !ok {
-			mmm[timeframe] = make(map[string]map[time.Time]bson.M)
-		}
-		if _, ok := mmm[timeframe][addr]; !ok {
-			mmm[timeframe][addr] = make(map[time.Time]bson.M)
-		}
-		if _, ok := mmm[timeframe][addr][timestamp]; !ok {
-			mmm[timeframe][addr][timestamp] = make(bson.M)
+		models = append(models, model)
+	}
+
+	log.Println("Models", len(models))
+
+	group = errgroup.Group{}
+	group.SetLimit(runtime.NumCPU() * 3 / 4)
+
+	for i := 0; ; {
+		from, to := i, i+batchSize
+		if to > len(models) {
+			to = len(models)
 		}
 
-		for s, v := range m[i] {
-			mmm[timeframe][addr][timestamp][s] = v
+		group.Go(func() error {
+			opts := options.BulkWrite().
+				SetBypassDocumentValidation(false).
+				SetOrdered(false)
+
+			_, err = database.NodeStatisticBulkWrite(context.TODO(), db, models[from:to], opts)
+			return err
+		})
+
+		i = i + batchSize
+		if to == len(models) {
+			break
 		}
 	}
 
-	var result bson.A
-	for _, mm := range mmm {
-		for _, m := range mm {
-			for _, item := range m {
-				result = append(result, item)
-			}
-		}
-	}
-
-	fmt.Println("result", len(result))
-
-	if err := database.NodeStatisticDeleteMany(context.TODO(), db, nil); err != nil {
-		log.Fatalln(err)
-	}
-
-	if _, err := database.NodeStatisticInsertMany(context.TODO(), db, result); err != nil {
+	if err := group.Wait(); err != nil {
 		log.Fatalln(err)
 	}
 
