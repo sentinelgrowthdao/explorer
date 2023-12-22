@@ -85,6 +85,13 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 				bson.E{Key: "node_addr", Value: 1},
 			},
 		},
+		{
+			Keys: bson.D{
+				bson.E{Key: "node_addr", Value: 1},
+				bson.E{Key: "status", Value: 1},
+				bson.E{Key: "acc_addr", Value: 1},
+			},
+		},
 	}
 
 	_, err = database.SessionIndexesCreateMany(ctx, db, indexes)
