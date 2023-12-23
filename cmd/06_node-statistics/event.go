@@ -129,10 +129,12 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 		},
 	}
 
-	items, err := database.EventAggregateAll(ctx, db, pipeline)
+	cursor, err := database.EventAggregate(ctx, db, pipeline)
 	if err != nil {
 		return nil, err
 	}
+
+	defer cursor.Close(ctx)
 
 	var (
 		d = make(map[string]map[time.Time]*EventStatistics)
@@ -141,12 +143,17 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 		y = make(map[string]map[time.Time]*EventStatistics)
 	)
 
-	for i := 0; i < len(items); i++ {
-		bandwidth := types.BandwidthFromInterface(items[i]["bandwidth"])
-		duration := types.Int64FromInterface(items[i]["duration"])
-		nodeAddr := types.StringFromInterface(items[i]["node_addr"])
-		sessionID := types.Uint64FromInterface(items[i]["session_id"])
-		timestamp := types.TimeFromInterface(items[i]["timestamp"])
+	for cursor.Next(ctx) {
+		var item bson.M
+		if err := cursor.Decode(&item); err != nil {
+			return nil, err
+		}
+
+		bandwidth := types.BandwidthFromInterface(item["bandwidth"])
+		duration := types.Int64FromInterface(item["duration"])
+		nodeAddr := types.StringFromInterface(item["node_addr"])
+		sessionID := types.Uint64FromInterface(item["session_id"])
+		timestamp := types.TimeFromInterface(item["timestamp"])
 
 		if _, ok := d[nodeAddr]; !ok {
 			d[nodeAddr] = make(map[time.Time]*EventStatistics)
@@ -189,6 +196,10 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 
 		y[nodeAddr][yearTimestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
 		y[nodeAddr][yearTimestamp].SessionDuration[sessionID] = duration
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
 	}
 
 	for s := range d {
