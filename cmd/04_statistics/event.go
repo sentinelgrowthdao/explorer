@@ -169,46 +169,49 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database, exclud
 		},
 	}
 
-	items, err := database.EventAggregateAll(ctx, db, pipeline)
+	cursor, err := database.EventAggregate(ctx, db, pipeline)
 	if err != nil {
 		return nil, err
 	}
 
+	defer cursor.Close(ctx)
+
 	var (
-		wKeys []time.Time
-		mKeys []time.Time
-		yKeys []time.Time
-		dKeys []time.Time
-		d     = make(map[time.Time]*SessionEventStatistics)
-		w     = make(map[time.Time]*SessionEventStatistics)
-		m     = make(map[time.Time]*SessionEventStatistics)
-		y     = make(map[time.Time]*SessionEventStatistics)
+		d = make(map[time.Time]*SessionEventStatistics)
+		w = make(map[time.Time]*SessionEventStatistics)
+		m = make(map[time.Time]*SessionEventStatistics)
+		y = make(map[time.Time]*SessionEventStatistics)
 	)
 
-	for i := 0; i < len(items); i++ {
-		bandwidth := types.BandwidthFromInterface(items[i]["bandwidth"])
-		duration := types.Int64FromInterface(items[i]["duration"])
-		sessionID := types.Uint64FromInterface(items[i]["session_id"])
-		timestamp := types.TimeFromInterface(items[i]["timestamp"])
+	for cursor.Next(ctx) {
+		var item bson.M
+		if err := cursor.Decode(&item); err != nil {
+			return nil, err
+		}
+
+		bandwidth := types.BandwidthFromInterface(item["bandwidth"])
+		duration := types.Int64FromInterface(item["duration"])
+		sessionID := types.Uint64FromInterface(item["session_id"])
+		timestamp := types.TimeFromInterface(item["timestamp"])
 
 		dayTimestamp := utils.DayDate(timestamp)
 		if _, ok := d[dayTimestamp]; !ok {
-			dKeys, d[dayTimestamp] = append(dKeys, dayTimestamp), NewSessionEventStatistics("day")
+			d[dayTimestamp] = NewSessionEventStatistics("day")
 		}
 
 		weekTimestamp := utils.ISOWeekDate(timestamp)
 		if _, ok := w[weekTimestamp]; !ok {
-			wKeys, w[weekTimestamp] = append(wKeys, weekTimestamp), NewSessionEventStatistics("week")
+			w[weekTimestamp] = NewSessionEventStatistics("week")
 		}
 
 		monthTimestamp := utils.MonthDate(timestamp)
 		if _, ok := m[monthTimestamp]; !ok {
-			mKeys, m[monthTimestamp] = append(mKeys, monthTimestamp), NewSessionEventStatistics("month")
+			m[monthTimestamp] = NewSessionEventStatistics("month")
 		}
 
 		yearTimestamp := utils.YearDate(timestamp)
 		if _, ok := y[yearTimestamp]; !ok {
-			yKeys, y[yearTimestamp] = append(yKeys, yearTimestamp), NewSessionEventStatistics("year")
+			y[yearTimestamp] = NewSessionEventStatistics("year")
 		}
 
 		d[dayTimestamp].SessionBandwidth[sessionID] = bandwidth.Copy()
@@ -224,17 +227,17 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database, exclud
 		y[yearTimestamp].SessionDuration[sessionID] = duration
 	}
 
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	var dKeys []time.Time
+	for t := range d {
+		dKeys = append(dKeys, t)
+	}
+
 	sort.Slice(dKeys, func(i, j int) bool {
 		return dKeys[i].After(dKeys[j])
-	})
-	sort.Slice(wKeys, func(i, j int) bool {
-		return wKeys[i].After(wKeys[j])
-	})
-	sort.Slice(mKeys, func(i, j int) bool {
-		return mKeys[i].After(mKeys[j])
-	})
-	sort.Slice(yKeys, func(i, j int) bool {
-		return yKeys[i].After(yKeys[j])
 	})
 
 	for _, t := range dKeys {
@@ -250,6 +253,15 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database, exclud
 		}
 	}
 
+	var wKeys []time.Time
+	for t := range w {
+		wKeys = append(wKeys, t)
+	}
+
+	sort.Slice(wKeys, func(i, j int) bool {
+		return wKeys[i].After(wKeys[j])
+	})
+
 	for _, t := range wKeys {
 		for u := range w[t].SessionBandwidth {
 			if v, ok := w[t.AddDate(0, 0, -7)]; ok {
@@ -263,6 +275,15 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database, exclud
 		}
 	}
 
+	var mKeys []time.Time
+	for t := range m {
+		mKeys = append(mKeys, t)
+	}
+
+	sort.Slice(mKeys, func(i, j int) bool {
+		return mKeys[i].After(mKeys[j])
+	})
+
 	for _, t := range mKeys {
 		for u := range m[t].SessionBandwidth {
 			if v, ok := m[t.AddDate(0, -1, 0)]; ok {
@@ -275,6 +296,15 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database, exclud
 			}
 		}
 	}
+
+	var yKeys []time.Time
+	for t := range y {
+		yKeys = append(yKeys, t)
+	}
+
+	sort.Slice(yKeys, func(i, j int) bool {
+		return yKeys[i].After(yKeys[j])
+	})
 
 	for _, t := range yKeys {
 		for u := range y[t].SessionBandwidth {
@@ -344,10 +374,12 @@ func StatisticsFromNodeEvents(ctx context.Context, db *mongo.Database) (result [
 		},
 	}
 
-	items, err := database.EventAggregateAll(ctx, db, pipeline)
+	cursor, err := database.EventAggregate(ctx, db, pipeline)
 	if err != nil {
 		return nil, err
 	}
+
+	defer cursor.Close(ctx)
 
 	var (
 		d = make(map[time.Time]*NodeEventStatistics)
@@ -356,9 +388,14 @@ func StatisticsFromNodeEvents(ctx context.Context, db *mongo.Database) (result [
 		y = make(map[time.Time]*NodeEventStatistics)
 	)
 
-	for i := 0; i < len(items); i++ {
-		nodeAddr := types.StringFromInterface(items[i]["node_addr"])
-		timestamp := types.TimeFromInterface(items[i]["timestamp"])
+	for cursor.Next(ctx) {
+		var item bson.M
+		if err := cursor.Decode(&item); err != nil {
+			return nil, err
+		}
+
+		nodeAddr := types.StringFromInterface(item["node_addr"])
+		timestamp := types.TimeFromInterface(item["timestamp"])
 
 		dayTimestamp := utils.DayDate(timestamp)
 		if _, ok := d[dayTimestamp]; !ok {
@@ -384,6 +421,10 @@ func StatisticsFromNodeEvents(ctx context.Context, db *mongo.Database) (result [
 		w[weekTimestamp].ActiveNode[nodeAddr] = true
 		m[monthTimestamp].ActiveNode[nodeAddr] = true
 		y[yearTimestamp].ActiveNode[nodeAddr] = true
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
 	}
 
 	for t, statistics := range d {
