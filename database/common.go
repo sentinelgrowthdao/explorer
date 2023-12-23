@@ -105,10 +105,10 @@ func Find(ctx context.Context, c *mongo.Collection, filter bson.M, v interface{}
 	return nil
 }
 
-func Aggregate(ctx context.Context, c *mongo.Collection, pipeline []bson.M, v interface{}, opts ...*options.AggregateOptions) error {
+func AggregateAll(ctx context.Context, c *mongo.Collection, pipeline []bson.M, v interface{}, opts ...*options.AggregateOptions) error {
 	now := time.Now()
 	defer func() {
-		log.Println(c.Name(), "Aggregate", time.Since(now))
+		log.Println(c.Name(), "AggregateAll", time.Since(now))
 	}()
 
 	cursor, err := c.Aggregate(ctx, pipeline, opts...)

@@ -169,7 +169,7 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database, exclud
 		},
 	}
 
-	items, err := database.EventAggregate(ctx, db, pipeline)
+	items, err := database.EventAggregateAll(ctx, db, pipeline)
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +344,7 @@ func StatisticsFromNodeEvents(ctx context.Context, db *mongo.Database) (result [
 		},
 	}
 
-	items, err := database.EventAggregate(ctx, db, pipeline)
+	items, err := database.EventAggregateAll(ctx, db, pipeline)
 	if err != nil {
 		return nil, err
 	}

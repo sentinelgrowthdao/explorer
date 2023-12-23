@@ -49,9 +49,9 @@ func EventIndexesCreateMany(ctx context.Context, db *mongo.Database, models []mo
 	return IndexesCreateMany(ctx, db.Collection(EventCollectionName), models, opts...)
 }
 
-func EventAggregate(ctx context.Context, db *mongo.Database, pipeline []bson.M, opts ...*options.AggregateOptions) ([]bson.M, error) {
+func EventAggregateAll(ctx context.Context, db *mongo.Database, pipeline []bson.M, opts ...*options.AggregateOptions) ([]bson.M, error) {
 	var v []bson.M
-	if err := Aggregate(ctx, db.Collection(EventCollectionName), pipeline, &v, opts...); err != nil {
+	if err := AggregateAll(ctx, db.Collection(EventCollectionName), pipeline, &v, opts...); err != nil {
 		return nil, err
 	}
 

@@ -118,7 +118,7 @@ func handleAverage(db *mongo.Database, t, unwind, _id, value string, req *Reques
 		},
 	}
 
-	return database.StatisticAggregate(context.TODO(), db, pipeline)
+	return database.StatisticAggregateAll(context.TODO(), db, pipeline)
 }
 
 func handleHistorical(db *mongo.Database, t string, req *RequestGetStatistics) ([]bson.M, error) {
@@ -188,7 +188,7 @@ func handleTotal(db *mongo.Database, t, unwind, _id, value interface{}, req *Req
 		}...,
 	)
 
-	return database.StatisticAggregate(context.TODO(), db, pipeline)
+	return database.StatisticAggregateAll(context.TODO(), db, pipeline)
 }
 
 func handleAverageActiveNodeCount(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
@@ -480,7 +480,7 @@ func handleTotalSessionBytes(db *mongo.Database, req *RequestGetStatistics) ([]b
 		},
 	}
 
-	return database.StatisticAggregate(context.TODO(), db, pipeline)
+	return database.StatisticAggregateAll(context.TODO(), db, pipeline)
 }
 
 func handleTotalSessionDuration(db *mongo.Database, req *RequestGetStatistics) ([]bson.M, error) {
