@@ -121,7 +121,7 @@ func main() {
 	)
 
 	group.Go(func() error {
-		defer func() { defer runtime.GC() }()
+		defer runtime.GC()
 
 		v, err := StatisticsFromNodeEvents(context.TODO(), db)
 		if err != nil {
@@ -133,7 +133,7 @@ func main() {
 	})
 
 	group.Go(func() error {
-		defer func() { defer runtime.GC() }()
+		defer runtime.GC()
 
 		v, err := StatisticsFromSessionEvents(context.TODO(), db, excludeAddrs)
 		if err != nil {
@@ -145,7 +145,7 @@ func main() {
 	})
 
 	group.Go(func() error {
-		defer func() { defer runtime.GC() }()
+		defer runtime.GC()
 
 		v, err := StatisticsFromNodes(context.TODO(), db)
 		if err != nil {
@@ -157,7 +157,7 @@ func main() {
 	})
 
 	group.Go(func() error {
-		defer func() { defer runtime.GC() }()
+		defer runtime.GC()
 
 		v, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
@@ -169,7 +169,7 @@ func main() {
 	})
 
 	group.Go(func() error {
-		defer func() { defer runtime.GC() }()
+		defer runtime.GC()
 
 		v, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
@@ -181,7 +181,7 @@ func main() {
 	})
 
 	group.Go(func() error {
-		defer func() { defer runtime.GC() }()
+		defer runtime.GC()
 
 		v, err := StatisticsFromSubscriptionPayouts(context.TODO(), db)
 		if err != nil {

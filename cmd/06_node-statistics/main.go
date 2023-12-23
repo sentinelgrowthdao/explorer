@@ -139,15 +139,20 @@ func main() {
 		group  = errgroup.Group{}
 	)
 
-	addModels := func(m []bson.M) error {
-		for i := 0; i < len(m); i++ {
+	addModels := func(items []bson.M) error {
+		for _, item := range items {
 			filter := bson.M{
-				"addr":      m[i]["addr"],
-				"timeframe": m[i]["timeframe"],
-				"timestamp": m[i]["timestamp"],
+				"addr":      item["addr"],
+				"timeframe": item["timeframe"],
+				"timestamp": item["timestamp"],
 			}
+
+			delete(item, "addr")
+			delete(item, "timeframe")
+			delete(item, "timestamp")
+
 			update := bson.M{
-				"$set": m[i],
+				"$set": item,
 			}
 			model := mongo.NewUpdateOneModel().
 				SetFilter(filter).
@@ -161,47 +166,47 @@ func main() {
 	}
 
 	group.Go(func() error {
-		defer func() { defer runtime.GC() }()
+		defer runtime.GC()
 
-		m, err := StatisticsFromEvents(context.TODO(), db)
+		items, err := StatisticsFromEvents(context.TODO(), db)
 		if err != nil {
 			return err
 		}
 
-		return addModels(m)
+		return addModels(items)
 	})
 
 	group.Go(func() error {
-		defer func() { defer runtime.GC() }()
+		defer runtime.GC()
 
-		m, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
+		items, err := StatisticsFromSessions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
 			return err
 		}
 
-		return addModels(m)
+		return addModels(items)
 	})
 
 	group.Go(func() error {
-		defer func() { defer runtime.GC() }()
+		defer runtime.GC()
 
-		m, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
+		items, err := StatisticsFromSubscriptions(context.TODO(), db, time.Time{}, maxTimestamp, excludeAddrs)
 		if err != nil {
 			return err
 		}
 
-		return addModels(m)
+		return addModels(items)
 	})
 
 	group.Go(func() error {
-		defer func() { defer runtime.GC() }()
+		defer runtime.GC()
 
-		m, err := StatisticsFromSubscriptionPayouts(context.TODO(), db)
+		items, err := StatisticsFromSubscriptionPayouts(context.TODO(), db)
 		if err != nil {
 			return err
 		}
 
-		return addModels(m)
+		return addModels(items)
 	})
 
 	if err := group.Wait(); err != nil {
@@ -219,7 +224,7 @@ func main() {
 		}
 
 		group.Go(func() error {
-			defer func() { defer runtime.GC() }()
+			defer runtime.GC()
 
 			opts := options.BulkWrite().
 				SetBypassDocumentValidation(false).
