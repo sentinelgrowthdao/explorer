@@ -60,6 +60,10 @@ func StatisticIndexesCreateMany(ctx context.Context, db *mongo.Database, models 
 	return IndexesCreateMany(ctx, db.Collection(StatisticCollectionName), models, opts...)
 }
 
+func StatisticAggregate(ctx context.Context, db *mongo.Database, pipeline []bson.M, opts ...*options.AggregateOptions) (*mongo.Cursor, error) {
+	return Aggregate(ctx, db.Collection(StatisticCollectionName), pipeline, opts...)
+}
+
 func StatisticAggregateAll(ctx context.Context, db *mongo.Database, pipeline []bson.M, opts ...*options.AggregateOptions) ([]bson.M, error) {
 	var v []bson.M
 	if err := AggregateAll(ctx, db.Collection(StatisticCollectionName), pipeline, &v, opts...); err != nil {
