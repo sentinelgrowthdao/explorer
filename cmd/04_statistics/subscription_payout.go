@@ -102,17 +102,17 @@ func StatisticsFromSubscriptionPayouts(ctx context.Context, db *mongo.Database) 
 		y[yearTimestamp].HoursStakingReward = y[yearTimestamp].HoursStakingReward.Add(items[i].StakingReward)
 	}
 
-	for t, statistics := range d {
-		result = append(result, statistics.Result(t)...)
+	for t := range d {
+		result = append(result, d[t].Result(t)...)
 	}
-	for t, statistics := range w {
-		result = append(result, statistics.Result(t)...)
+	for t := range w {
+		result = append(result, w[t].Result(t)...)
 	}
-	for t, statistics := range m {
-		result = append(result, statistics.Result(t)...)
+	for t := range m {
+		result = append(result, m[t].Result(t)...)
 	}
-	for t, statistics := range y {
-		result = append(result, statistics.Result(t)...)
+	for t := range y {
+		result = append(result, y[t].Result(t)...)
 	}
 
 	return result, nil

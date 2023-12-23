@@ -38,13 +38,13 @@ func NewSessionEventStatistics(timeframe string) *SessionEventStatistics {
 
 func (s *SessionEventStatistics) Result(timestamp time.Time) []bson.M {
 	var sessionBandwidth = &types.Bandwidth{}
-	for _, v := range s.SessionBandwidth {
-		sessionBandwidth = sessionBandwidth.Add(v)
+	for i := range s.SessionBandwidth {
+		sessionBandwidth = sessionBandwidth.Add(s.SessionBandwidth[i])
 	}
 
 	var sessionDuration int64 = 0
-	for _, v := range s.SessionDuration {
-		sessionDuration = sessionDuration + v
+	for i := range s.SessionDuration {
+		sessionDuration = sessionDuration + s.SessionDuration[i]
 	}
 
 	return []bson.M{
@@ -319,17 +319,17 @@ func StatisticsFromSessionEvents(ctx context.Context, db *mongo.Database, exclud
 		}
 	}
 
-	for t, statistics := range d {
-		result = append(result, statistics.Result(t)...)
+	for t := range d {
+		result = append(result, d[t].Result(t)...)
 	}
-	for t, statistics := range w {
-		result = append(result, statistics.Result(t)...)
+	for t := range w {
+		result = append(result, w[t].Result(t)...)
 	}
-	for t, statistics := range m {
-		result = append(result, statistics.Result(t)...)
+	for t := range m {
+		result = append(result, m[t].Result(t)...)
 	}
-	for t, statistics := range y {
-		result = append(result, statistics.Result(t)...)
+	for t := range y {
+		result = append(result, y[t].Result(t)...)
 	}
 
 	return result, nil
@@ -427,17 +427,17 @@ func StatisticsFromNodeEvents(ctx context.Context, db *mongo.Database) (result [
 		return nil, err
 	}
 
-	for t, statistics := range d {
-		result = append(result, statistics.Result(t)...)
+	for t := range d {
+		result = append(result, d[t].Result(t)...)
 	}
-	for t, statistics := range w {
-		result = append(result, statistics.Result(t)...)
+	for t := range w {
+		result = append(result, w[t].Result(t)...)
 	}
-	for t, statistics := range m {
-		result = append(result, statistics.Result(t)...)
+	for t := range m {
+		result = append(result, m[t].Result(t)...)
 	}
-	for t, statistics := range y {
-		result = append(result, statistics.Result(t)...)
+	for t := range y {
+		result = append(result, y[t].Result(t)...)
 	}
 
 	return result, nil

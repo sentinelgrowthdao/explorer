@@ -263,27 +263,27 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 		}
 	}
 
-	for s, m := range d {
-		for t, statistics := range m {
-			result = append(result, statistics.Result(s, t))
+	for s := range d {
+		for t := range d[s] {
+			result = append(result, d[s][t].Result(s, t))
 		}
 	}
 
-	for s, m := range w {
-		for t, statistics := range m {
-			result = append(result, statistics.Result(s, t))
+	for s := range w {
+		for t := range w[s] {
+			result = append(result, w[s][t].Result(s, t))
 		}
 	}
 
-	for s, m := range m {
-		for t, statistics := range m {
-			result = append(result, statistics.Result(s, t))
+	for s := range m {
+		for t := range m[s] {
+			result = append(result, m[s][t].Result(s, t))
 		}
 	}
 
-	for s, m := range y {
-		for t, statistics := range m {
-			result = append(result, statistics.Result(s, t))
+	for s := range y {
+		for t := range y[s] {
+			result = append(result, y[s][t].Result(s, t))
 		}
 	}
 

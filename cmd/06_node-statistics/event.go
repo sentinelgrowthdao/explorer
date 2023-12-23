@@ -32,13 +32,13 @@ func NewStatistics(timeframe string) *EventStatistics {
 
 func (s *EventStatistics) Result(addr string, timestamp time.Time) bson.M {
 	var sessionBandwidth = &types.Bandwidth{}
-	for _, v := range s.SessionBandwidth {
-		sessionBandwidth = sessionBandwidth.Add(v)
+	for i := range s.SessionBandwidth {
+		sessionBandwidth = sessionBandwidth.Add(s.SessionBandwidth[i])
 	}
 
 	var sessionDuration int64 = 0
-	for _, v := range s.SessionDuration {
-		sessionDuration = sessionDuration + v
+	for i := range s.SessionDuration {
+		sessionDuration = sessionDuration + s.SessionDuration[i]
 	}
 
 	res := bson.M{
@@ -298,27 +298,27 @@ func StatisticsFromEvents(ctx context.Context, db *mongo.Database) (result []bso
 		}
 	}
 
-	for s, m := range d {
-		for t, statistics := range m {
-			result = append(result, statistics.Result(s, t))
+	for s := range d {
+		for t := range d[s] {
+			result = append(result, d[s][t].Result(s, t))
 		}
 	}
 
-	for s, m := range w {
-		for t, statistics := range m {
-			result = append(result, statistics.Result(s, t))
+	for s := range w {
+		for t := range w[s] {
+			result = append(result, w[s][t].Result(s, t))
 		}
 	}
 
-	for s, m := range m {
-		for t, statistics := range m {
-			result = append(result, statistics.Result(s, t))
+	for s := range m {
+		for t := range m[s] {
+			result = append(result, m[s][t].Result(s, t))
 		}
 	}
 
-	for s, m := range y {
-		for t, statistics := range m {
-			result = append(result, statistics.Result(s, t))
+	for s := range y {
+		for t := range y[s] {
+			result = append(result, y[s][t].Result(s, t))
 		}
 	}
 
