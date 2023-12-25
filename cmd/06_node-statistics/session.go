@@ -193,7 +193,7 @@ func StatisticsFromSessions(ctx context.Context, db *mongo.Database, minTimestam
 			y[items[i].NodeAddr][yearEndTimestamp] = NewSessionStatistics("year")
 		}
 
-		if items[i].Payment != nil {
+		if items[i].Payment != nil && !items[i].Payment.IsZero() {
 			d[items[i].NodeAddr][dayEndTimestamp].BytesEarning = d[items[i].NodeAddr][dayEndTimestamp].BytesEarning.Add(items[i].Payment)
 			w[items[i].NodeAddr][weekEndTimestamp].BytesEarning = w[items[i].NodeAddr][weekEndTimestamp].BytesEarning.Add(items[i].Payment)
 			m[items[i].NodeAddr][monthEndTimestamp].BytesEarning = m[items[i].NodeAddr][monthEndTimestamp].BytesEarning.Add(items[i].Payment)

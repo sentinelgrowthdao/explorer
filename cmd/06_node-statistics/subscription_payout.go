@@ -99,10 +99,12 @@ func StatisticsFromSubscriptionPayouts(ctx context.Context, db *mongo.Database) 
 			y[items[i].NodeAddr][yearTimestamp] = NewSubscriptionPayoutStatistics("year")
 		}
 
-		d[items[i].NodeAddr][dayTimestamp].HoursEarning = d[items[i].NodeAddr][dayTimestamp].HoursEarning.Add(items[i].Payment)
-		w[items[i].NodeAddr][weekTimestamp].HoursEarning = w[items[i].NodeAddr][weekTimestamp].HoursEarning.Add(items[i].Payment)
-		m[items[i].NodeAddr][monthTimestamp].HoursEarning = m[items[i].NodeAddr][monthTimestamp].HoursEarning.Add(items[i].Payment)
-		y[items[i].NodeAddr][yearTimestamp].HoursEarning = y[items[i].NodeAddr][yearTimestamp].HoursEarning.Add(items[i].Payment)
+		if items[i].Payment != nil && !items[i].Payment.IsZero() {
+			d[items[i].NodeAddr][dayTimestamp].HoursEarning = d[items[i].NodeAddr][dayTimestamp].HoursEarning.Add(items[i].Payment)
+			w[items[i].NodeAddr][weekTimestamp].HoursEarning = w[items[i].NodeAddr][weekTimestamp].HoursEarning.Add(items[i].Payment)
+			m[items[i].NodeAddr][monthTimestamp].HoursEarning = m[items[i].NodeAddr][monthTimestamp].HoursEarning.Add(items[i].Payment)
+			y[items[i].NodeAddr][yearTimestamp].HoursEarning = y[items[i].NodeAddr][yearTimestamp].HoursEarning.Add(items[i].Payment)
+		}
 	}
 
 	for s := range d {

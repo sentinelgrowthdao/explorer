@@ -170,6 +170,10 @@ func (c *Coin) Copy() *Coin {
 	}
 }
 
+func (c *Coin) IsZero() bool {
+	return c.Amount == "" || c.Amount == "0"
+}
+
 func (c *Coin) Add(v string) *Coin {
 	a1 := utils.MustIntFromString(c.Amount)
 	a2 := utils.MustIntFromString(v)

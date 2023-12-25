@@ -249,13 +249,13 @@ func StatisticsFromSubscriptions(ctx context.Context, db *mongo.Database, minTim
 			y[items[i].NodeAddr][yearEndTimestamp] = NewSubscriptionStatistics("year")
 		}
 
-		if items[i].Deposit != nil {
+		if items[i].Deposit != nil && !items[i].Deposit.IsZero() {
 			d[items[i].NodeAddr][dayStartTimestamp].SubscriptionDeposit = d[items[i].NodeAddr][dayStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
 			w[items[i].NodeAddr][weekStartTimestamp].SubscriptionDeposit = w[items[i].NodeAddr][weekStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
 			m[items[i].NodeAddr][monthStartTimestamp].SubscriptionDeposit = m[items[i].NodeAddr][monthStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
 			y[items[i].NodeAddr][yearStartTimestamp].SubscriptionDeposit = y[items[i].NodeAddr][yearStartTimestamp].SubscriptionDeposit.Add(items[i].Deposit)
 		}
-		if items[i].Refund != nil {
+		if items[i].Refund != nil && !items[i].Refund.IsZero() {
 			d[items[i].NodeAddr][dayEndTimestamp].SubscriptionRefund = d[items[i].NodeAddr][dayEndTimestamp].SubscriptionRefund.Add(items[i].Refund)
 			w[items[i].NodeAddr][weekEndTimestamp].SubscriptionRefund = w[items[i].NodeAddr][weekEndTimestamp].SubscriptionRefund.Add(items[i].Refund)
 			m[items[i].NodeAddr][monthEndTimestamp].SubscriptionRefund = m[items[i].NodeAddr][monthEndTimestamp].SubscriptionRefund.Add(items[i].Refund)
