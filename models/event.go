@@ -8,7 +8,7 @@ import (
 )
 
 type Event struct {
-	Type      string    `json:"type,omitempty" bson:"type"`
+	Type      int64     `json:"type,omitempty" bson:"type"`
 	Height    int64     `json:"height,omitempty" bson:"height"`
 	Timestamp time.Time `json:"timestamp,omitempty" bson:"timestamp"`
 	TxHash    string    `json:"tx_hash,omitempty" bson:"tx_hash"`

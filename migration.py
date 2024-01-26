@@ -518,3 +518,19 @@ collections = [
 ]
 for cname in collections:
     db[cname].drop_indexes()
+
+# -------------------------------------------------------------------------------------------------------------------- #
+
+db["events"].update_many({"type": "Deposit.Add"}, {"$set": {"type": 1}})
+db["events"].update_many({"type": "Deposit.Subtract"}, {"$set": {"type": 2}})
+db["events"].update_many({"type": "Node.UpdateDetails"}, {"$set": {"type": 3}})
+db["events"].update_many({"type": "Node.UpdateStatus"}, {"$set": {"type": 4}})
+db["events"].update_many({"type": "Plan.UpdateStatus"}, {"$set": {"type": 5}})
+db["events"].update_many({"type": "Plan.LinkNode"}, {"$set": {"type": 6}})
+db["events"].update_many({"type": "Plan.UnlinkNode"}, {"$set": {"type": 7}})
+db["events"].update_many({"type": "Provider.UpdateDetails"}, {"$set": {"type": 8}})
+db["events"].update_many({"type": "Session.UpdateDetails"}, {"$set": {"type": 9}})
+db["events"].update_many({"type": "Session.UpdateStatus"}, {"$set": {"type": 10}})
+db["events"].update_many({"type": "Subscription.UpdateDetails"}, {"$set": {"type": 11}})
+db["events"].update_many({"type": "Subscription.UpdateStatus"}, {"$set": {"type": 12}})
+db["events"].update_many({"type": "SubscriptionAllocation.UpdateDetails"}, {"$set": {"type": 13}})
