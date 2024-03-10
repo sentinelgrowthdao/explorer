@@ -409,7 +409,7 @@ func run(db *mongo.Database, height int64) (ops []types.DatabaseOperation, err e
 				dSubscription := models.Subscription{
 					ID:              eventCreateSubscription.ID,
 					AccAddr:         msg.From,
-					NodeAddr:        msg.NodeAddress,
+					NodeAddr:        utils.MustNodeAddressFromBech32(msg.NodeAddress).String(),
 					Gigabytes:       msg.Gigabytes,
 					Hours:           msg.Hours,
 					Price:           nil,
