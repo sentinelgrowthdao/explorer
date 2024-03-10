@@ -36,6 +36,7 @@ func HandlerGetNodes(db *mongo.Database) gin.HandlerFunc {
 			"internet_speed":  1,
 			"location":        1,
 			"moniker":         1,
+			"peers":           1,
 			"type":            1,
 			"version":         1,
 		}
@@ -75,6 +76,7 @@ func HandlerGetNode(db *mongo.Database) gin.HandlerFunc {
 			"internet_speed":  1,
 			"location":        1,
 			"moniker":         1,
+			"peers":           1,
 			"type":            1,
 			"version":         1,
 		}
