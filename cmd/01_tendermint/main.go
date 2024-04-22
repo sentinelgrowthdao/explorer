@@ -120,7 +120,6 @@ func run(db *mongo.Database, q *querier.Querier, height int64) (ops []types.Data
 		update := bson.M{
 			"$set": bson.M{
 				"round":        qBlock.Block.LastCommit.Round,
-				"signatures":   models.NewCommitSignatures(qBlock.Block.LastCommit.Signatures),
 				"commit_hash":  qBlock.Block.LastCommitHash.String(),
 				"results_hash": qBlock.Block.LastResultsHash.String(),
 			},

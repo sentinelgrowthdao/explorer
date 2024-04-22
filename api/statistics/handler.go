@@ -272,6 +272,9 @@ func handleCurrentSessionCount(excludeAddrs []string) func(*mongo.Database, *Req
 			"acc_addr": bson.M{
 				"$nin": excludeAddrs,
 			},
+			"status": bson.M{
+				"$ne": nil,
+			},
 		}
 		if req.Query.Status != "" {
 			filter["status"] = req.Query.Status
@@ -296,6 +299,9 @@ func handleCurrentSubscriptionCount(excludeAddrs []string) func(*mongo.Database,
 		filter := bson.M{
 			"acc_addr": bson.M{
 				"$nin": excludeAddrs,
+			},
+			"status": bson.M{
+				"$ne": nil,
 			},
 		}
 		if req.Query.Status != "" {
@@ -322,6 +328,9 @@ func handleCurrentSessionAddressCount(excludeAddrs []string) func(*mongo.Databas
 			"acc_addr": bson.M{
 				"$nin": excludeAddrs,
 			},
+			"status": bson.M{
+				"$ne": nil,
+			},
 		}
 		if req.Query.Status != "" {
 			filter["status"] = req.Query.Status
@@ -346,6 +355,9 @@ func handleCurrentSessionNodeCount(excludeAddrs []string) func(*mongo.Database, 
 		filter := bson.M{
 			"acc_addr": bson.M{
 				"$nin": excludeAddrs,
+			},
+			"status": bson.M{
+				"$ne": nil,
 			},
 		}
 		if req.Query.Status != "" {

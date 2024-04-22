@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -87,9 +88,9 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		},
 		{
 			Keys: bson.D{
-				bson.E{Key: "node_addr", Value: 1},
 				bson.E{Key: "status", Value: 1},
 				bson.E{Key: "acc_addr", Value: 1},
+				bson.E{Key: "node_addr", Value: 1},
 			},
 		},
 	}
@@ -119,8 +120,18 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	corsMiddleware := cors.New(
+		cors.Config{
+			AllowOrigins:  []string{"https://*.sentinel.co"},
+			AllowMethods:  []string{"GET", "HEAD", "OPTIONS"},
+			AllowHeaders:  []string{"Origin", "Content-Length", "Content-Type"},
+			MaxAge:        12 * time.Hour,
+			AllowWildcard: true,
+		},
+	)
+
 	router := gin.Default()
-	router.Use(cors.Default())
+	router.Use(corsMiddleware)
 
 	blockapi.RegisterRoutes(router, db)
 	depositapi.RegisterRoutes(router, db)
