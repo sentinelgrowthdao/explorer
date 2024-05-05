@@ -336,7 +336,25 @@ func handleCurrentSessionAddressCount(excludeAddrs []string) func(*mongo.Databas
 			filter["status"] = req.Query.Status
 		}
 
-		items, err := database.SessionDistinct(context.TODO(), db, "acc_addr", filter)
+		pipeline := []bson.M{
+			{
+				"$project": bson.M{
+					"_id":      0,
+					"acc_addr": 1,
+					"status":   1,
+				},
+			},
+			{
+				"$match": filter,
+			},
+			{
+				"$group": bson.M{
+					"_id": "$acc_addr",
+				},
+			},
+		}
+
+		items, err := database.SessionAggregateAll(context.TODO(), db, pipeline)
 		if err != nil {
 			return nil, err
 		}

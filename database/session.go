@@ -56,3 +56,12 @@ func SessionCountDocuments(ctx context.Context, db *mongo.Database, filter bson.
 func SessionDistinct(ctx context.Context, db *mongo.Database, fieldName string, filter bson.M, opts ...*options.DistinctOptions) (bson.A, error) {
 	return Distinct(ctx, db.Collection(SessionCollectionName), fieldName, filter, opts...)
 }
+
+func SessionAggregateAll(ctx context.Context, db *mongo.Database, pipeline []bson.M, opts ...*options.AggregateOptions) ([]bson.M, error) {
+	var v []bson.M
+	if err := AggregateAll(ctx, db.Collection(SessionCollectionName), pipeline, &v, opts...); err != nil {
+		return nil, err
+	}
+
+	return v, nil
+}
